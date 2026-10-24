@@ -1,4 +1,10 @@
-# SpareScreen
+<p align="center">
+  <img src="assets/logo.svg" width="128" alt="SpareScreen logo">
+</p>
+
+<h1 align="center">SpareScreen</h1>
+
+<p align="center">Turn an old phone (or any device with a browser) into a live dashboard for your PC.</p>
 
 Turn that old phone in your drawer into a live dashboard for your computer.
 Your PC runs a small Python agent that collects the data and serves a web page;

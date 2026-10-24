@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <title>SpareScreen</title>
+  <rect width="1280" height="640" fill="#0b0d10"/>
+  <!-- Logo (same drawing as logo.svg, scaled) -->
+  <g transform="translate(110 160) scale(0.625)">
+    <rect width="512" height="512" rx="112" fill="#151a20"/>
+    <path d="M256 183 V128" fill="none" stroke="#3ddc97" stroke-width="12" stroke-linecap="round"/>
+    <path d="M256 140 C256 108 284 90 316 94 C316 124 290 142 256 140 Z" fill="#3ddc97"/>
+    <path d="M256 154 C256 132 236 118 212 121 C212 143 232 156 256 154 Z" fill="#3ddc97"/>
+    <rect x="56" y="190" width="400" height="220" rx="40" fill="none" stroke="#e8edf2" stroke-width="14"/>
+    <circle cx="84" cy="300" r="8" fill="#e8edf2"/>
+    <rect x="420" y="272" width="12" height="56" rx="6" fill="#e8edf2"/>
+    <g fill="none" stroke-width="16" stroke-linecap="round">
+      <circle cx="148" cy="300" r="38" stroke="#252c35"/>
+      <circle cx="148" cy="300" r="38" stroke="#3ddc97" stroke-dasharray="167 239" transform="rotate(-90 148 300)"/>
+      <circle cx="253" cy="300" r="38" stroke="#252c35"/>
+      <circle cx="253" cy="300" r="38" stroke="#4fa3ff" stroke-dasharray="107 239" transform="rotate(-90 253 300)"/>
+      <circle cx="358" cy="300" r="38" stroke="#252c35"/>
+      <circle cx="358" cy="300" r="38" stroke="#ffc857" stroke-dasharray="60 239" transform="rotate(-90 358 300)"/>
+    </g>
+  </g>
+  <g font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+    <text x="500" y="285" font-size="100" font-weight="600" fill="#e8edf2">SpareScreen</text>
+    <text x="504" y="355" font-size="38" fill="#9aa5b1">Turn an old phone into a live</text>
+    <text x="504" y="405" font-size="38" fill="#9aa5b1">dashboard for your PC.</text>
+    <text x="504" y="475" font-size="28" fill="#4fa3ff">Windows · Linux · macOS · free and open source</text>
+  </g>
+</svg>

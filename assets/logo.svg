@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>SpareScreen</title>
+  <!-- App-icon tile -->
+  <rect width="512" height="512" rx="112" fill="#151a20"/>
+  <!-- Sprout: the old phone's second life -->
+  <path d="M256 183 V128" fill="none" stroke="#3ddc97" stroke-width="12" stroke-linecap="round"/>
+  <path d="M256 140 C256 108 284 90 316 94 C316 124 290 142 256 140 Z" fill="#3ddc97"/>
+  <path d="M256 154 C256 132 236 118 212 121 C212 143 232 156 256 154 Z" fill="#3ddc97"/>
+  <!-- Phone lying on its side: body, camera and home button -->
+  <rect x="56" y="190" width="400" height="220" rx="40" fill="none" stroke="#e8edf2" stroke-width="14"/>
+  <circle cx="84" cy="300" r="8" fill="#e8edf2"/>
+  <rect x="420" y="272" width="12" height="56" rx="6" fill="#e8edf2"/>
+  <!-- Three gauges, like the dashboard itself -->
+  <g fill="none" stroke-width="16" stroke-linecap="round">
+    <circle cx="148" cy="300" r="38" stroke="#252c35"/>
+    <circle cx="148" cy="300" r="38" stroke="#3ddc97" stroke-dasharray="167 239" transform="rotate(-90 148 300)"/>
+    <circle cx="253" cy="300" r="38" stroke="#252c35"/>
+    <circle cx="253" cy="300" r="38" stroke="#4fa3ff" stroke-dasharray="107 239" transform="rotate(-90 253 300)"/>
+    <circle cx="358" cy="300" r="38" stroke="#252c35"/>
+    <circle cx="358" cy="300" r="38" stroke="#ffc857" stroke-dasharray="60 239" transform="rotate(-90 358 300)"/>
+  </g>
+</svg>
