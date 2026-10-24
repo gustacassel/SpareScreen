@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sparescreen"
+version = "0.1.0"
+description = "Use um celular antigo (ou qualquer aparelho com navegador) como painel do seu PC."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["psutil>=5.9"]
+
+[project.scripts]
+sparescreen = "sparescreen.__main__:main"
+sparescreen-statusline = "sparescreen.statusline:main"
+
+[tool.setuptools]
+packages = ["sparescreen"]
+
+[tool.setuptools.package-data]
+sparescreen = ["web/*"]

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>SpareScreen</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ícones (traço de 2px, cor do texto). Alguns baseados no Feather Icons, licença MIT. -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol>
+    <symbol id="i-gpu" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="12" rx="2"/><circle cx="8.5" cy="11" r="3"/><path d="M15 9h4M15 13h4M5 17v3"/></symbol>
+    <symbol id="i-ram" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="10" rx="1"/><path d="M6 9v4M10 9v4M14 9v4M18 9v4M5 16v3M9 16v3M15 16v3M19 16v3"/></symbol>
+    <symbol id="i-temp" viewBox="0 0 24 24"><path d="M14 14.76V4a2 2 0 1 0-4 0v10.76a4 4 0 1 0 4 0z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 16.5v.5"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A5.6 5.6 0 0 0 22 9.8C22 5.5 17.5 2 12 2z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="10.5" cy="6.5" r="1"/><circle cx="15.5" cy="7.5" r="1"/></symbol>
+    <symbol id="i-game" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="5"/><path d="M7 10v4M5 12h4M15.5 11h.01M18 13.5h.01"/></symbol>
+    <symbol id="i-fan" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7s3 4-2 7M14 12c4 0 7 1 7 4s-4 3-7-2M12 14c0 4-1 7-4 7s-3-4 2-7M10 12c-4 0-7-1-7-4s4-3 7 2"/></symbol>
+    <symbol id="i-net" viewBox="0 0 24 24"><path d="M7 19V5M3 9l4-4 4 4M17 5v14M13 15l4 4 4-4"/></symbol>
+    <symbol id="i-disk" viewBox="0 0 24 24"><path d="M22 12H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11zM6 16h.01M10 16h.01"/></symbol>
+    <symbol id="i-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  </svg>
+
+  <header class="top">
+    <span id="time" class="time">--:--</span>
+    <span id="date" class="date"></span>
+    <span id="screen-title" class="screen-title"></span>
+    <span id="tabs" class="tabs"></span>
+    <span id="status" class="dot" title="conexão com o PC"></span>
+    <span id="gear" class="gear" title="configurações"><svg class="icon"><use xlink:href="#i-sliders"></use></svg></span>
+  </header>
+
+  <main>
+    <!-- Tela 1: hardware -->
+    <section class="screen" data-name="hardware" data-title="Hardware">
+      <div class="hw-grid">
+        <div class="card hw" id="cpu">
+          <h2><svg class="icon"><use xlink:href="#i-cpu"></use></svg>CPU <span class="hw-name"></span></h2>
+          <div class="hw-body">
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+                <circle class="ring-fill" cx="60" cy="60" r="52"></circle>
+              </svg>
+              <div class="ring-label"><span class="pct">--</span><small>%</small></div>
+            </div>
+            <div class="hw-info">
+              <div class="temp"><svg class="icon"><use xlink:href="#i-temp"></use></svg><span class="temp-value">--</span><small>°C</small></div>
+              <div class="detail extra"></div>
+              <div class="cores"></div>
+              <ul class="rows hw-rows" id="cpu-rows"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card hw" id="gpu">
+          <h2><svg class="icon"><use xlink:href="#i-gpu"></use></svg>GPU <span class="hw-name"></span></h2>
+          <div class="hw-body">
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+                <circle class="ring-fill" cx="60" cy="60" r="52"></circle>
+              </svg>
+              <div class="ring-label"><span class="pct">--</span><small>%</small></div>
+            </div>
+            <div class="hw-info">
+              <div class="temp"><svg class="icon"><use xlink:href="#i-temp"></use></svg><span class="temp-value">--</span><small>°C</small></div>
+              <div class="detail extra"></div>
+              <div class="bar"><div class="bar-fill"></div></div>
+              <div class="detail mem"></div>
+              <ul class="rows hw-rows" id="gpu-rows"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card hw" id="ram">
+          <h2><svg class="icon"><use xlink:href="#i-ram"></use></svg>RAM <span class="hw-name"></span></h2>
+          <div class="hw-body">
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+                <circle class="ring-fill" cx="60" cy="60" r="52"></circle>
+              </svg>
+              <div class="ring-label"><span class="pct">--</span><small>%</small></div>
+            </div>
+            <div class="hw-info">
+              <div class="big mem"></div>
+              <div class="detail">em uso</div>
+              <ul class="rows hw-rows" id="ram-rows"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 2: Claude -->
+    <section class="screen" data-name="claude" data-title="Claude">
+      <div class="cl-grid">
+        <div class="card limits">
+          <div class="limit" id="lim-5h">
+            <div class="limit-head"><svg class="icon"><use xlink:href="#i-clock"></use></svg><span class="limit-name">5 horas</span><span class="limit-pct">--</span></div>
+            <div class="bar"><div class="bar-fill"></div></div>
+            <div class="detail limit-reset"></div>
+          </div>
+          <div class="limit" id="lim-week">
+            <div class="limit-head"><svg class="icon"><use xlink:href="#i-calendar"></use></svg><span class="limit-name">Semana</span><span class="limit-pct">--</span></div>
+            <div class="bar"><div class="bar-fill"></div></div>
+            <div class="detail limit-reset"></div>
+          </div>
+          <div class="limit" id="lim-fable">
+            <div class="limit-head"><svg class="icon"><use xlink:href="#i-book"></use></svg><span class="limit-name">Fable · semana</span><span class="limit-pct" id="fable-tokens">--</span></div>
+            <div class="detail" id="fable-detail"></div>
+          </div>
+          <div id="lim-updated" class="detail small updated"></div>
+        </div>
+
+        <div class="card sessions-card">
+          <h2><svg class="icon"><use xlink:href="#i-terminal"></use></svg>SESSÕES<span class="h2-right"><span id="cl-today">--</span> tokens hoje</span></h2>
+          <ul id="cl-sessions" class="sessions"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 3: o que está rolando no PC -->
+    <section class="screen" data-name="pc" data-title="PC">
+      <div class="pc-grid">
+        <div class="card now">
+          <div class="now-block">
+            <h2><svg class="icon"><use xlink:href="#i-game"></use></svg>JOGO</h2>
+            <div id="game-name" class="now-name"></div>
+            <div id="game-meta" class="detail"></div>
+          </div>
+          <div class="now-block">
+            <h2><svg class="icon"><use xlink:href="#i-window"></use></svg>EM FOCO</h2>
+            <div id="focus-name" class="now-name small"></div>
+            <div id="focus-meta" class="detail"></div>
+          </div>
+          <div class="now-block grow">
+            <h2><svg class="icon"><use xlink:href="#i-list"></use></svg>MAIS PESADOS</h2>
+            <ul id="top-list" class="rows"></ul>
+          </div>
+          <div id="uptime" class="detail small"></div>
+        </div>
+        <div class="pc-side">
+          <div class="card fans">
+            <h2><svg class="icon"><use xlink:href="#i-fan"></use></svg>VENTOINHAS</h2>
+            <ul id="fan-list" class="rows"></ul>
+          </div>
+          <div class="card io">
+            <h2><svg class="icon"><use xlink:href="#i-net"></use></svg>REDE</h2>
+            <div class="net"><span>↓ <b id="net-down">--</b></span><span>↑ <b id="net-up">--</b></span></div>
+            <h2 class="sub-h2"><svg class="icon"><use xlink:href="#i-disk"></use></svg>DISCOS</h2>
+            <ul id="disk-list" class="rows"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Aviso que aparece por cima (sessão terminou, tema trocado...) -->
+  <div id="toast" class="toast">
+    <svg class="icon toast-icon"><use id="toast-icon" xlink:href="#i-check"></use></svg>
+    <div class="toast-text">
+      <div id="toast-title" class="toast-title"></div>
+      <div id="toast-sub" class="toast-sub"></div>
+    </div>
+  </div>
+
+  <!-- Configurações (engrenagem no canto de cima). Ficam salvas no PC. -->
+  <div id="settings" class="settings">
+    <div class="settings-panel">
+      <h2><svg class="icon"><use xlink:href="#i-sliders"></use></svg>CONFIGURAÇÕES</h2>
+      <div class="set-row"><span class="set-label">Tema</span><div id="set-theme" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Telas</span><div id="set-screens" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Trocar de tela</span><div id="set-rotate" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Avisos do Claude</span><div id="set-notify" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Som dos avisos</span><div id="set-sound" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Nomes das ventoinhas</span><div id="set-fans" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Ventoinha no card da CPU</span><div id="set-cpu-fan" class="chips"></div></div>
+      <button id="set-close" class="set-close">Fechar</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

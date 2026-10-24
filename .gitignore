@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Configuração local de quem desenvolve (preview do editor, caminhos da máquina)
+.claude/
