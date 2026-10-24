@@ -73,6 +73,8 @@ and with no mandatory app. That's this project's niche.
 - `--dev` mode: restarts the agent and reloads the page, without leaving full screen.
 - MIT license, public repository, everything in English.
 - Pairing: a 6-digit code for new devices on the network; the PC and USB are trusted.
+- AI screen: one card per installed tool (Claude Code, Codex), with limits, tokens and
+  sessions; Codex limits come straight from its session files.
 
 ## Gaps, by priority
 
@@ -80,14 +82,18 @@ and with no mandatory app. That's this project's niche.
    get any data or can change settings (done after 0.1.0).
 2. **Install for non-programmers.** Today it needs Python + venv. Idea: one executable
    per OS (PyInstaller) and start with the system.
-3. **Generic Claude data.** Replace "Fable · week" with "tokens this week per model";
-   a status line that coexists with one the user already has.
+3. **Generic AI data.** ✅ "Tokens this week per model" replaced the Fable-only row, and
+   the AI screen shows Claude Code and Codex. Still to do: a status line that coexists
+   with one the user already has; more tools that keep local data (e.g. Gemini CLI).
 4. **Complete macOS and Linux.** Temperature/fans on macOS; "app in focus" on Linux;
    Intel GPUs on Linux.
 5. **Translations.** The interface is English only; maybe add other languages later.
 6. **Test real devices:** iPhone/iPad over Wi-Fi, very old Android, tablets; USB with a
    data cable; AMD and Intel GPUs on real machines.
 7. **More widgets:** photos and scrolling text (the original idea), history charts, FPS.
+   - **Now playing:** whatever the PC is playing (Spotify, YouTube, any player), not tied
+     to one app: Windows' media controls (the ones in the volume flyout), MPRIS on Linux,
+     the Now Playing info on macOS.
 8. Optional: a tiny Android app (WebView kiosk, minSdk 23) that opens by itself, full
    screen, screen always on.
 

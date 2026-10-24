@@ -69,27 +69,39 @@ class ClaudeSourceTest(unittest.TestCase):
         self.assertEqual(today["cache_read"], 2000)
         self.assertEqual(today["models"], {"claude-opus-test": 2})
 
-    def test_fable_week_uses_the_weekly_window(self):
+    def test_week_models_use_the_weekly_window(self):
         limits = {"updated_at": self.now,
                   "rate_limits": {"seven_day": {"used_percentage": 40, "resets_at": self.now + 2 * DAY}}}
-        week = self.source(limits).read()["fable_week"]
-        self.assertEqual(week["responses"], 1)
-        self.assertEqual(week["output"], 7)
-        self.assertAlmostEqual(week["since"], self.now - 5 * DAY, delta=1)
+        models = {m["model"]: m for m in self.source(limits).read()["week_models"]}
+        self.assertEqual(set(models), {"claude-opus-test", "claude-fable-test"})
+        self.assertEqual(models["claude-fable-test"]["tokens"], 10 + 5 + 1000 + 7)
 
     def test_limits_and_renewed_windows(self):
         saved = {"updated_at": self.now - 30, "rate_limits": {
-            "five_hour": {"used_percentage": 23.5, "resets_at": self.now + 3600},
             "seven_day": {"used_percentage": 80, "resets_at": self.now - 10},
+            "five_hour": {"used_percentage": 23.5, "resets_at": self.now + 3600},
         }}
-        limits = self.source(saved).read()["limits"]
-        self.assertEqual(limits["five_hour"]["percent"], 23.5)
-        self.assertFalse(limits["five_hour"]["renewed"])
-        self.assertTrue(limits["seven_day"]["renewed"])
-        self.assertIsNone(limits["seven_day"]["percent"])
+        data = self.source(saved).read()
+        five, week = data["limits"]  # 5 hours first
+        self.assertEqual((five["label"], five["percent"], five["renewed"], five["weekly"]), ("5 hours", 23.5, False, False))
+        self.assertEqual((week["label"], week["percent"], week["renewed"], week["weekly"]), ("Week", None, True, True))
+        self.assertEqual(data["limits_updated"], self.now - 30)
+        self.assertIsNone(data["limits_hint"])
 
     def test_no_limits_file(self):
-        self.assertIsNone(self.source(None).read()["limits"])
+        data = self.source(None).read()
+        self.assertEqual(data["limits"], [])
+        self.assertIn("status line", data["limits_hint"])
+
+    def test_not_installed(self):
+        self.assertEqual(claude.ClaudeSource(home=self.home / "missing").read(), {"installed": False})
+
+    def test_labels(self):
+        self.assertEqual(claude.model_label("claude-opus-5-5"), "Opus 5.5")
+        self.assertEqual(claude.model_label("gpt-5-codex"), "gpt-5-codex")
+        self.assertEqual(claude.window_label(299), "5 hours")
+        self.assertEqual(claude.window_label(10079), "Week")
+        self.assertEqual(claude.window_label(1440), "1 day")
 
     def test_open_sessions_skip_closed_processes(self):
         live, dead = os.getpid(), os.getpid() + 1

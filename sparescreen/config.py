@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 
 THEMES = ("graphite", "oled", "terracotta", "neon", "terminal", "light")
-SCREENS = ("hardware", "claude", "pc")
+SCREENS = ("hardware", "ai", "pc")
 ROTATE = (0, 10, 20, 30, 60)  # seconds; 0 = does not switch by itself
 
 DEFAULTS = {
@@ -34,7 +34,8 @@ def clean(data):
     if data.get("theme") in THEMES:
         out["theme"] = data["theme"]
     if isinstance(data.get("screens"), list):
-        screens = [s for s in SCREENS if s in data["screens"]]
+        wanted = ["ai" if s == "claude" else s for s in data["screens"]]  # "claude" was renamed to "ai"
+        screens = [s for s in SCREENS if s in wanted]
         if screens:  # at least one screen
             out["screens"] = screens
     if data.get("rotate") in ROTATE:

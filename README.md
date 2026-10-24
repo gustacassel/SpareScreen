@@ -17,7 +17,7 @@
 
 <p align="center">
   <img src="docs/screenshots/hardware.png" width="32%" alt="Hardware screen: CPU, GPU and RAM usage, temperature and clocks">
-  <img src="docs/screenshots/claude.png" width="32%" alt="Claude screen: usage limits and open sessions">
+  <img src="docs/screenshots/ai.png" width="32%" alt="AI screen: Claude Code and Codex usage limits and sessions">
   <img src="docs/screenshots/pc.png" width="32%" alt="PC screen: running game, top apps, fans, network and disks">
 </p>
 
@@ -29,13 +29,14 @@ The page has three screens that rotate on their own (or with a tap):
 
 - **Hardware:** CPU and GPU usage, temperature, power and clock, per-core load,
   VRAM, RAM and swap.
-- **Claude:** Claude Code usage limits (5-hour and weekly windows), Fable tokens this
-  week, tokens used today and your open sessions (and which ones are working).
+- **AI:** for each AI coding tool installed on the PC (Claude Code and Codex for now):
+  usage limits (5-hour and weekly windows), tokens used today and this week per model,
+  and your sessions (and which ones are working).
 - **PC:** the game you're playing (and for how long), the app in focus, the heaviest
   apps, fans, network, free disk space and drive temperatures.
 
-When a Claude Code session finishes, the page jumps to the Claude screen, shows the
-session name and plays a short chime (sound only works after the first tap on the
+When a Claude Code or Codex session finishes, the page jumps to the AI screen, shows
+the session name and plays a short chime (sound only works after the first tap on the
 screen, a browser rule).
 
 Runs on Windows, Linux and macOS, with any device that has a browser.
@@ -140,7 +141,7 @@ Themes: Graphite, OLED, Terracotta, Neon, Terminal and Light.
 </p>
 
 For testing you can force things in the address: `…:8765/?screen=pc` pins one screen
-(`hardware`, `claude` or `pc`) and `…:8765/?theme=neon` forces a theme.
+(`hardware`, `ai` or `pc`) and `…:8765/?theme=neon` forces a theme.
 
 ## Games and apps
 
@@ -178,7 +179,23 @@ For testing you can force things in the address: `…:8765/?screen=pc` pins one 
   SpareScreen doesn't guess which fan is which: in *settings* you can name them
   (e.g. "Fan 2" → "Radiator") and pick which one shows on the CPU card (none by default).
 
-## Claude Code limits (5-hour and weekly)
+## AI tools: Claude Code and Codex
+
+The AI screen shows a card for each tool it finds on the PC, and nothing for the ones
+that aren't installed. Everything is read from the tools' own local files; nothing is
+sent anywhere.
+
+| | Claude Code | Codex CLI |
+|---|---|---|
+| Found at | `~/.claude` (or `CLAUDE_CONFIG_DIR`) | `~/.codex` (or `CODEX_HOME`) |
+| Sessions and status | open sessions, working or idle | sessions from the last 12 h, working or idle |
+| Tokens today / this week per model | ✅ | ✅ |
+| 5-hour and weekly limits | through a status line (see below) | ✅ read from its session files |
+
+Codex writes its plan's usage limits into its session files after each message, so they
+need no setup. They show up after your first Codex message of the day.
+
+### Claude Code limits
 
 Claude Code only hands these numbers to its **status line**, so SpareScreen ships a
 status line command that saves the limits to a file (`~/.sparescreen/claude-limits.json`)
@@ -199,9 +216,9 @@ Limitations:
 - Only on Pro and Max plans, and the numbers only update while a Claude Code session is
   open **in a terminal**. The desktop app doesn't run status lines.
 - It replaces any status line you already have.
-- The model-specific weekly limit isn't in the status line. Instead, SpareScreen shows
-  how many tokens Fable used inside the weekly window, counted from this PC's Claude
-  Code history (usage on claude.ai or other computers is not included).
+- Model-specific weekly limits aren't in the status line. Instead, SpareScreen shows the
+  tokens used this week per model, counted from this PC's history (usage on claude.ai
+  or other computers is not included).
 
 ## Development
 
@@ -246,6 +263,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   from `sessions/*.json`; tokens come from the last 8 days of `projects/**/*.jsonl`
   history, reading only the new part every 5 seconds and adding up 15-minute buckets.
   These are Claude Code's internal formats and may change between versions.
+- `sparescreen/codex.py`: reads `~/.codex/sessions/**/rollout-*.jsonl` (or `CODEX_HOME`):
+  sessions, cumulative token counts turned into per-day usage, and the usage limits Codex
+  stores with them. Same output shape as `claude.py`, so the page draws both the same way.
 - `sparescreen/statusline.py`: the status line that saves the limits for the agent.
 - `sparescreen/server.py`: standard-library HTTP server. The page gets the data through
   Server-Sent Events on `/events`, once per second.

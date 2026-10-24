@@ -60,6 +60,7 @@ class ConfigTest(unittest.TestCase):
     def test_screens_keep_order_and_need_at_least_one(self):
         self.assertEqual(clean({"screens": ["pc", "hardware", "nope"]})["screens"], ["hardware", "pc"])
         self.assertNotIn("screens", clean({"screens": []}))
+        self.assertEqual(clean({"screens": ["claude", "pc"]})["screens"], ["ai", "pc"])  # old name
 
     def test_fan_names_and_cpu_fan(self):
         out = clean({"fan_names": {"Fan 2": "  Radiator  ", "Fan 3": "   "}, "cpu_fan": "Fan 2"})

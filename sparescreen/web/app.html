@@ -107,32 +107,9 @@
       </div>
     </section>
 
-    <!-- Screen 2: Claude -->
-    <section class="screen" data-name="claude" data-title="Claude">
-      <div class="cl-grid">
-        <div class="card limits">
-          <div class="limit" id="lim-5h">
-            <div class="limit-head"><svg class="icon"><use xlink:href="#i-clock"></use></svg><span class="limit-name">5 hours</span><span class="limit-pct">--</span></div>
-            <div class="bar"><div class="bar-fill"></div></div>
-            <div class="detail limit-reset"></div>
-          </div>
-          <div class="limit" id="lim-week">
-            <div class="limit-head"><svg class="icon"><use xlink:href="#i-calendar"></use></svg><span class="limit-name">Week</span><span class="limit-pct">--</span></div>
-            <div class="bar"><div class="bar-fill"></div></div>
-            <div class="detail limit-reset"></div>
-          </div>
-          <div class="limit" id="lim-fable">
-            <div class="limit-head"><svg class="icon"><use xlink:href="#i-book"></use></svg><span class="limit-name">Fable · week</span><span class="limit-pct" id="fable-tokens">--</span></div>
-            <div class="detail" id="fable-detail"></div>
-          </div>
-          <div id="lim-updated" class="detail small updated"></div>
-        </div>
-
-        <div class="card sessions-card">
-          <h2><svg class="icon"><use xlink:href="#i-terminal"></use></svg>SESSIONS<span class="h2-right"><span id="cl-today">--</span> tokens today</span></h2>
-          <ul id="cl-sessions" class="sessions"></ul>
-        </div>
-      </div>
+    <!-- Screen 2: AI coding tools (one card per installed tool, built by app.js) -->
+    <section class="screen" data-name="ai" data-title="AI">
+      <div id="ai-grid" class="ai-grid"></div>
     </section>
 
     <!-- Screen 3: what is going on on the PC -->

@@ -11,6 +11,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 - Pairing: devices on the network type a 6-digit code once before they get any data or
   can change settings. The PC itself and phones on USB are trusted. New options
   `--no-pairing` and `--reset-pairing`.
+- AI screen (formerly "Claude"): one card per AI coding tool installed on the PC.
+  Codex CLI support: sessions, tokens and its 5-hour and weekly usage limits, read from
+  `~/.codex/sessions`. Saved settings that used the old `claude` screen name keep working.
+
+### Changed
+
+- "Fable · week" became "This week" tokens per model, for every tool.
 
 ## [0.1.0] - 2026-10-24
 

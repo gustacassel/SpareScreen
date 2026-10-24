@@ -4,7 +4,7 @@
 // Preferences (theme, screens, auto-switch, alerts, sound) are saved on the PC
 // and arrive with the data; the gear in the top corner opens the screen to change them.
 //
-// URL parameters (for testing): ?screen=hardware|claude|pc pins a screen; ?theme=neon forces a theme.
+// URL parameters (for testing): ?screen=hardware|ai|pc pins a screen; ?theme=neon forces a theme.
 // Gestures: tap = next screen; long press = next theme.
 (function () {
   "use strict";
@@ -19,7 +19,7 @@
     terminal: ["Terminal", "#04110a", "#39ff7a"],
     light: ["Light", "#ffffff", "#2f80ed"]
   };
-  var SCREEN_NAMES = { hardware: "Hardware", claude: "Claude", pc: "PC" };
+  var SCREEN_NAMES = { hardware: "Hardware", ai: "AI", pc: "PC" };
   var ROTATE_OPTIONS = [[0, "Off"], [10, "10 s"], [20, "20 s"], [30, "30 s"], [60, "1 min"]];
 
   function $(id) { return document.getElementById(id); }
@@ -129,7 +129,7 @@
 
   // ---- Configuration (comes from the PC) -----------------------------------
 
-  var cfg = { theme: "graphite", screens: ["hardware", "claude", "pc"], rotate: 20, notify: true, sound: true,
+  var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc"], rotate: 20, notify: true, sound: true,
               fan_names: {}, cpu_fan: null };
   var fanKeys = [];  // original fan names from the last reading ("Fan 1", "GPU"...)
 
@@ -328,7 +328,7 @@
       var info = THEME_INFO[name];
       return chip(info[0], name === cfg.theme, function () { saveConfig({ theme: name }); }, [info[1], info[2]]);
     }));
-    fillChips("set-screens", ["hardware", "claude", "pc"].map(function (name) {
+    fillChips("set-screens", ["hardware", "ai", "pc"].map(function (name) {
       var on = cfg.screens.indexOf(name) >= 0;
       return chip(SCREEN_NAMES[name], on, function () {
         var list = cfg.screens.filter(function (s) { return s !== name; });
@@ -637,51 +637,59 @@
     fillList($("disk-list"), rows, "--");
   }
 
-  // ---- Claude --------------------------------------------------------------
+  // ---- AI tools (Claude Code, Codex...) -------------------------------------
+  // Each tool's source sends the same shape; only the installed ones get a card.
 
-  function renderLimit(id, win, now, weekly) {
-    var box = $(id);
-    var pct = q(box, ".limit-pct");
-    var fill = q(box, ".bar-fill");
-    var reset = q(box, ".limit-reset");
-    if (!win) {
-      pct.textContent = "--";
-      pct.className = "limit-pct na";
-      fill.style.width = "0";
-      reset.textContent = "no data";
-      return;
+  var AI_TOOLS = ["claude", "codex"];
+
+  function limitBlock(win, now) {
+    var box = el("div", "limit");
+    var head = el("div", "limit-head");
+    head.appendChild(icon(win.weekly ? "calendar" : "clock"));
+    head.appendChild(el("span", "limit-name", win.label));
+    // Short reset time next to the name, used when two tools share the screen.
+    if (win.resets_at) {
+      head.appendChild(el("small", "limit-when", win.renewed ? "renewed" : duration(win.resets_at - now)));
     }
-    if (win.renewed) {
-      pct.textContent = "renewed";
-      pct.className = "limit-pct na";
-      fill.style.width = "0";
-      reset.textContent = "renewed " + (weekly ? weekdayTime(win.resets_at) : "at " + clockTime(win.resets_at));
-      return;
+    head.appendChild(el("span", "limit-pct" + (win.renewed ? " na" : ""),
+                        win.renewed ? "renewed" : Math.round(win.percent) + "%"));
+    box.appendChild(head);
+    var bar = el("div", "bar");
+    var fill = el("div", "bar-fill");
+    fill.style.transition = "none";  // rebuilt every second: no animation from zero
+    if (!win.renewed) {
+      fill.style.width = Math.min(win.percent, 100) + "%";
+      fill.style.background = levelColor(win.percent);
     }
-    pct.textContent = Math.round(win.percent) + "%";
-    pct.className = "limit-pct";
-    fill.style.width = Math.min(win.percent, 100) + "%";
-    fill.style.background = levelColor(win.percent);
-    var left = win.resets_at - now;
-    reset.textContent = "resets in " + duration(left) +
-      (weekly && left > 86400 ? " (" + weekdayTime(win.resets_at) + ")" : " (" + clockTime(win.resets_at) + ")");
+    bar.appendChild(fill);
+    box.appendChild(bar);
+    var reset = "";
+    if (win.resets_at && win.renewed) {
+      reset = "renewed " + (win.weekly ? weekdayTime(win.resets_at) : "at " + clockTime(win.resets_at));
+    } else if (win.resets_at) {
+      var left = win.resets_at - now;
+      reset = "resets in " + duration(left) +
+        (win.weekly && left > 86400 ? " (" + weekdayTime(win.resets_at) + ")" : " (" + clockTime(win.resets_at) + ")");
+    }
+    box.appendChild(el("div", "detail limit-reset", reset));
+    return box;
   }
 
   // Alerts: compare each session's status with the previous reading.
   var lastStatus = {};
   var justDone = {};  // session id -> highlight until (ms)
 
-  function watchSessions(sessions) {
+  function watchSessions(tool, sessions) {
     for (var i = 0; i < sessions.length; i++) {
       var s = sessions[i];
       if (lastStatus[s.id] === "busy" && s.status !== "busy") {
         var done = s.status === "idle";
         justDone[s.id] = Date.now() + 20000;
         if (cfg.notify) {
-          showNamed("claude");
+          showNamed("ai");
           chime();
           toast(done ? "done" : "attention",
-                done ? "Session finished" : "Session needs you",
+                tool.name + (done ? " · session finished" : " · session needs you"),
                 s.name, done ? "check" : "alert");
         }
       }
@@ -689,12 +697,11 @@
     }
   }
 
-  function renderSessions(sessions, now) {
-    var list = $("cl-sessions");
-    list.innerHTML = "";
+  function sessionList(sessions, now) {
+    var list = el("ul", "sessions");
     if (!sessions.length) {
       list.appendChild(el("li", "empty", "No open sessions"));
-      return;
+      return list;
     }
     var STATUS = { busy: "working", idle: "idle" };
     for (var i = 0; i < sessions.length; i++) {
@@ -710,26 +717,57 @@
       li.appendChild(text);
       list.appendChild(li);
     }
+    return list;
   }
 
-  function renderClaude(cl, now) {
-    if (!cl || cl.error) return;
-    var limits = cl.limits;
-    renderLimit("lim-5h", limits && limits.five_hour, now, false);
-    renderLimit("lim-week", limits && limits.seven_day, now, true);
-    var age = limits && limits.updated_at ? now - limits.updated_at : null;
-    $("lim-updated").textContent = age === null
-      ? "Limits come from the status line: open Claude Code in a terminal."
-      : "limits updated " + (age < 60 ? "just now" : ago(age) + " ago");
+  function toolCard(tool, now) {
+    var card = el("div", "card ai-card");
+    var t = tool.today;
+    var h2 = el("h2");
+    h2.appendChild(icon("terminal"));
+    h2.appendChild(document.createTextNode(tool.name.toUpperCase()));
+    h2.appendChild(el("span", "h2-right", shortNumber(t.input + t.output + t.cache_read) + " tokens today"));
+    card.appendChild(h2);
 
-    var f = cl.fable_week;
-    $("fable-tokens").textContent = shortNumber(f.input + f.output + f.cache_read);
-    $("fable-detail").textContent = "tokens · " + f.responses + " responses · Claude Code on this PC";
+    var body = el("div", "ai-body");
+    var limits = el("div", "ai-limits");
+    for (var i = 0; i < tool.limits.length; i++) limits.appendChild(limitBlock(tool.limits[i], now));
+    if (tool.limits_hint) limits.appendChild(el("div", "detail small", tool.limits_hint));
+    if (tool.week_models && tool.week_models.length) {
+      var parts = tool.week_models.map(function (m) { return m.label + " " + shortNumber(m.tokens); });
+      limits.appendChild(el("div", "detail small", "This week: " + parts.join(" · ")));
+    }
+    if (tool.limits_updated) {
+      var age = now - tool.limits_updated;
+      limits.appendChild(el("div", "detail small ai-updated", "limits updated " + (age < 60 ? "just now" : ago(age) + " ago")));
+    }
+    body.appendChild(limits);
+    body.appendChild(sessionList(tool.sessions, now));
+    card.appendChild(body);
+    return card;
+  }
 
-    var t = cl.today;
-    $("cl-today").textContent = shortNumber(t.input + t.output + t.cache_read);
-    watchSessions(cl.sessions);
-    renderSessions(cl.sessions, now);
+  function renderAi(data, now) {
+    var tools = [];
+    for (var i = 0; i < AI_TOOLS.length; i++) {
+      var tool = data[AI_TOOLS[i]];
+      if (tool && tool.installed) tools.push(tool);
+    }
+    var grid = $("ai-grid");
+    grid.className = "ai-grid " + (tools.length > 1 ? "dual" : "single");
+    grid.innerHTML = "";
+    if (!tools.length) {
+      var empty = el("div", "card ai-card");
+      empty.appendChild(el("h2", "", "AI TOOLS"));
+      empty.appendChild(el("div", "detail", "No AI coding tool found on this PC. SpareScreen shows " +
+                                            "Claude Code and Codex usage when they are installed."));
+      grid.appendChild(empty);
+      return;
+    }
+    for (var j = 0; j < tools.length; j++) {
+      watchSessions(tools[j], tools[j].sessions);
+      grid.appendChild(toolCard(tools[j], now));
+    }
   }
 
   // ---- Data from the PC ----------------------------------------------------
@@ -746,7 +784,7 @@
     checkDev(data.dev);
     onServerConfig(data.config);
     renderHardware(data.system);
-    renderClaude(data.claude, data.time);
+    renderAi(data, data.time);
     renderPc(data.system, data.activity, data.time);
   }
 

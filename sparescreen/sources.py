@@ -92,5 +92,6 @@ class SystemSource:
 def default_sources():
     from .activity import ActivitySource
     from .claude import ClaudeSource
+    from .codex import CodexSource
 
-    return [SystemSource(), ClaudeSource(), ActivitySource()]
+    return [SystemSource(), ClaudeSource(), CodexSource(), ActivitySource()]

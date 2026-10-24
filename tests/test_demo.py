@@ -1,12 +1,14 @@
 """Demo data must keep the same shape as the real sources, or the page breaks in --demo."""
 
+import os
 import tempfile
 import unittest
 from unittest import mock
 
 from sparescreen import claude
 from sparescreen.activity import ActivitySource
-from sparescreen.demo import DemoActivity, DemoClaude, DemoSystem
+from sparescreen.codex import CodexSource
+from sparescreen.demo import DemoActivity, DemoClaude, DemoCodex, DemoSystem
 from sparescreen.sources import SystemSource
 
 
@@ -20,13 +22,13 @@ class DemoShapeTest(unittest.TestCase):
         for key in ("cpu", "ram", "net"):
             self.assertEqual(set(demo[key]), set(real_data[key]), key)
 
-    def test_claude(self):
+    def test_ai_tools(self):
         with tempfile.TemporaryDirectory() as home, mock.patch.object(claude, "load_limits", return_value=None):
-            real = claude.ClaudeSource(home=home).read()
-        demo = DemoClaude().read()
-        self.assertEqual(set(demo), set(real))
-        self.assertEqual(set(demo["today"]), set(real["today"]))
-        self.assertEqual(set(demo["fable_week"]), set(real["fable_week"]))
+            os.mkdir(os.path.join(home, "sessions"))
+            real = {"claude": claude.ClaudeSource(home=home).read(), "codex": CodexSource(home=home).read()}
+        for name, demo in (("claude", DemoClaude().read()), ("codex", DemoCodex().read())):
+            self.assertEqual(set(demo), set(real[name]), name)
+            self.assertEqual(set(demo["today"]), set(real[name]["today"]), name)
 
     def test_activity(self):
         self.assertEqual(set(DemoActivity().read()), set(ActivitySource().read()))

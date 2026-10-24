@@ -144,6 +144,17 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .limits .bar { height: 12px; margin: 6px 0 4px; }
 .updated { margin-top: -4px; }
 
+/* AI screen: one card per installed tool; in portrait they stack */
+.ai-grid { display: flex; flex-direction: column; height: 100%; }
+.ai-card { flex: 1; display: flex; flex-direction: column; margin-top: 10px; }
+.ai-card:first-child { margin-top: 0; }
+.ai-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.ai-limits { flex-shrink: 0; }
+.ai-limits .detail.small { margin-top: 2px; }
+.ai-card .sessions { margin-top: 8px; }
+.ai-card .limit { margin-bottom: 8px; }
+.limit-when { display: none; margin-left: 6px; font-size: 12px; }
+
 .sessions { flex: 1; min-height: 0; margin: 0; padding: 0; list-style: none; overflow: hidden; }
 .sessions li { display: flex; align-items: center; padding: 5px 0; font-size: 15px; }
 .sessions .empty { color: var(--muted); }
@@ -264,6 +275,18 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
   .now-name.small { font-size: 5vh; }
 
   .set-label { width: 150px; }
+
+  .ai-grid { flex-direction: row; }
+  .ai-card { margin: 0 0 0 10px; }
+  .ai-card:first-child { margin-left: 0; }
+  .ai-grid.single .ai-body { flex-direction: row; }
+  .ai-grid.single .ai-limits { width: 55%; margin-right: 14px; }
+  .ai-grid.single .ai-card .sessions { margin-top: 0; }
+  .ai-grid.dual .limit { margin-bottom: 1.5vh; }
+  .ai-grid.dual .limit-pct { font-size: 5.5vh; }
+  .ai-grid.dual .bar { height: 8px; margin-bottom: 0; }
+  .ai-grid.dual .limit-reset, .ai-grid.dual .ai-updated { display: none; }
+  .ai-grid.dual .limit-when { display: inline; }
 }
 
 /* Icons */

@@ -81,6 +81,11 @@ class DemoSystem:
         }
 
 
+def _window(label, percent, resets_in, weekly):
+    return {"label": label, "percent": percent, "resets_at": time.time() + resets_in,
+            "renewed": False, "weekly": weekly}
+
+
 class DemoClaude:
     name = "claude"
     CYCLE = 90  # every 90 s one session goes busy -> idle, showing the "finished" alert
@@ -90,16 +95,18 @@ class DemoClaude:
         busy = (now % self.CYCLE) < self.CYCLE * 0.6
         hour = 3600
         return {
-            "limits": {
-                "five_hour": {"percent": round(_wave(300, 30, 45), 1), "resets_at": now + 2 * hour + 13 * 60,
-                              "renewed": False},
-                "seven_day": {"percent": 58.0, "resets_at": now + 3 * 24 * hour + 9 * hour, "renewed": False},
-                "updated_at": now - 40,
-            },
+            "installed": True,
+            "name": "Claude Code",
+            "limits": [
+                _window("5 hours", round(_wave(300, 30, 45), 1), 2 * hour + 13 * 60, False),
+                _window("Week", 58.0, 3 * 24 * hour + 9 * hour, True),
+            ],
+            "limits_updated": now - 40,
+            "limits_hint": None,
             "today": {"input": 2.1e6, "output": 4.6e5, "cache_read": 3.84e7, "responses": 412,
-                      "models": {"claude-opus": 300, "claude-sonnet": 112}},
-            "fable_week": {"input": 6.0e5, "output": 1.2e5, "cache_read": 9.1e6, "responses": 96,
-                           "models": {"claude-fable": 96}, "since": now - 4 * 24 * hour},
+                      "models": {"claude-opus-demo": 300, "claude-sonnet-demo": 112}},
+            "week_models": [{"model": "claude-opus-demo", "label": "Opus", "tokens": 1.42e8},
+                            {"model": "claude-sonnet-demo", "label": "Sonnet", "tokens": 3.1e7}],
             "sessions": [
                 {"id": "demo-1", "name": "Fix flaky integration tests", "project": "backend",
                  "status": "busy" if busy else "idle", "since": now - (now % self.CYCLE if busy else 5)},
@@ -107,8 +114,33 @@ class DemoClaude:
                  "status": "busy", "since": now - 160},
                 {"id": "demo-3", "name": "Write release notes", "project": "docs",
                  "status": "idle", "since": now - 25 * 60},
-                {"id": "demo-4", "name": "Explore caching strategy", "project": "api",
-                 "status": "idle", "since": now - 2 * hour},
+            ],
+        }
+
+
+class DemoCodex:
+    name = "codex"
+
+    def read(self):
+        now = time.time()
+        hour = 3600
+        return {
+            "installed": True,
+            "name": "Codex",
+            "limits": [
+                _window("5 hours", round(_wave(400, 10, 20), 1), 4 * hour + 2 * 60, False),
+                _window("Week", 22.0, 5 * 24 * hour + 2 * hour, True),
+            ],
+            "limits_updated": now - 300,
+            "limits_hint": None,
+            "today": {"input": 6.2e5, "output": 1.1e5, "cache_read": 4.4e6, "responses": 58,
+                      "models": {"gpt-codex-demo": 58}},
+            "week_models": [{"model": "gpt-codex-demo", "label": "gpt-codex", "tokens": 2.3e7}],
+            "sessions": [
+                {"id": "codex:demo-1", "name": "Port CSV export to the new API", "project": "reports",
+                 "status": "idle", "since": now - 12 * 60},
+                {"id": "codex:demo-2", "name": "Review database migrations", "project": "backend",
+                 "status": "idle", "since": now - 3 * hour},
             ],
         }
 
@@ -133,4 +165,4 @@ class DemoActivity:
 
 
 def demo_sources():
-    return [DemoSystem(), DemoClaude(), DemoActivity()]
+    return [DemoSystem(), DemoClaude(), DemoCodex(), DemoActivity()]
