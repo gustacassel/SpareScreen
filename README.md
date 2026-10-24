@@ -12,6 +12,10 @@
 </p>
 
 <p align="center">
+  <img src="docs/photo.jpg" width="720" alt="SpareScreen running on an old Samsung phone on top of a PC">
+</p>
+
+<p align="center">
   <img src="docs/screenshots/hardware.png" width="32%" alt="Hardware screen: CPU, GPU and RAM usage, temperature and clocks">
   <img src="docs/screenshots/claude.png" width="32%" alt="Claude screen: usage limits and open sessions">
   <img src="docs/screenshots/pc.png" width="32%" alt="PC screen: running game, top apps, fans, network and disks">
