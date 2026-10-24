@@ -7,6 +7,7 @@ import sys
 from . import dev
 from .config import ConfigStore
 from .demo import demo_sources
+from .pairing import Pairing
 from .server import serve
 from .sources import default_sources
 from .usb import UsbBridge, find_adb
@@ -35,6 +36,11 @@ def main():
                      help="turn on the phone's keep-screen-on option while it is on USB")
     parser.add_argument("--dev", action="store_true",
                         help="dev mode: restart when the code changes and reload the page")
+    pairing = parser.add_argument_group("pairing")
+    pairing.add_argument("--no-pairing", action="store_true",
+                         help="let any device on the network see the data without a code (trusted networks only)")
+    pairing.add_argument("--reset-pairing", action="store_true",
+                         help="forget every paired device before starting")
     parser.add_argument("--demo", action="store_true",
                         help="show made-up data instead of this PC's (for screenshots and trying it out)")
     args = parser.parse_args()
@@ -50,10 +56,15 @@ def main():
     sources = (demo_sources() if args.demo else default_sources()) + [config]
     if args.dev:
         sources.append(dev.DevSource())
-    server = serve(args.host, args.port, sources, args.interval, config)
+    pairing = None if args.no_pairing else Pairing()
+    if pairing and args.reset_pairing:
+        pairing.reset()
+    server = serve(args.host, args.port, sources, args.interval, config, pairing)
     print(f"SpareScreen running on port {args.port}." + (" Demo mode: showing made-up data." if args.demo else ""))
     if args.host in ("0.0.0.0", "::"):
         print(f"  Wi-Fi: on your phone, open http://{lan_ip()}:{args.port}")
+        if pairing:
+            print(f"         pairing code for new devices: {pairing.code}")
 
     if not args.no_usb:
         adb = find_adb(args.adb)

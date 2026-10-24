@@ -7,6 +7,8 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from .pairing import LOCAL_ADDRESSES
+
 WEB_DIR = Path(__file__).parent / "web"
 
 
@@ -46,31 +48,68 @@ def start_sampler(hub, sources, interval):
     threading.Thread(target=loop, name="sampler", daemon=True).start()
 
 
-def make_handler(hub, config):
+def make_handler(hub, config, pairing):
     class Handler(BaseHTTPRequestHandler):
+        def _trusted(self):
+            return pairing is None or pairing.is_trusted(self.client_address[0], self.headers.get("Cookie"))
+
+        def _send_json(self, status, data, headers=()):
+            body = json.dumps(data).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-cache")
+            for name, value in headers:
+                self.send_header(name, value)
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _read_json(self):
+            size = min(int(self.headers.get("Content-Length") or 0), 10_000)
+            return json.loads(self.rfile.read(size) or b"{}")
+
         def do_GET(self):
             path = self.path.split("?", 1)[0]
             if path == "/events":
-                self._stream_events()
+                if self._trusted():
+                    self._stream_events()
+                else:
+                    self.send_error(401)
+            elif path == "/auth":
+                self._send_json(200, {"paired": self._trusted(), "pairing": pairing is not None})
+            elif path == "/pair-code":
+                # Only this PC may read the code (the page on the PC can show it).
+                local = pairing is not None and self.client_address[0] in LOCAL_ADDRESSES
+                self._send_json(200 if local else 403, {"code": pairing.code} if local else {})
             else:
                 self._serve_static("index.html" if path == "/" else path.lstrip("/"))
 
         def do_POST(self):
-            if self.path.split("?", 1)[0] != "/config" or config is None:
-                self.send_error(404)
-                return
+            path = self.path.split("?", 1)[0]
             try:
-                size = min(int(self.headers.get("Content-Length") or 0), 10_000)
-                changes = json.loads(self.rfile.read(size) or b"{}")
+                data = self._read_json()
             except ValueError:
                 self.send_error(400)
                 return
-            body = json.dumps(config.update(changes)).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            if path == "/pair" and pairing is not None:
+                self._pair(data)
+            elif path == "/config" and config is not None:
+                if not self._trusted():
+                    self.send_error(401)
+                    return
+                self._send_json(200, config.update(data))
+            else:
+                self.send_error(404)
+
+        def _pair(self, data):
+            code = data.get("code", "") if isinstance(data, dict) else ""
+            token, error = pairing.pair(code, self.headers.get("User-Agent") or "")
+            if token:
+                self._send_json(200, {"paired": True}, [("Set-Cookie", pairing.cookie_header(token))])
+            elif error[0] == "locked":
+                self._send_json(429, {"error": "locked", "retry_in": error[1]})
+            else:
+                self._send_json(403, {"error": "wrong", "attempts_left": error[1]})
 
         def _serve_static(self, name):
             file = (WEB_DIR / name).resolve()
@@ -113,10 +152,11 @@ def make_handler(hub, config):
     return Handler
 
 
-def serve(host, port, sources, interval, config=None):
-    """`config` (ConfigStore) receives the changes made on the settings screen."""
+def serve(host, port, sources, interval, config=None, pairing=None):
+    """`config` (ConfigStore) receives the changes made on the settings screen.
+    `pairing` (Pairing), when given, restricts the data to paired devices."""
     hub = Hub()
     start_sampler(hub, sources, interval)
-    server = ThreadingHTTPServer((host, port), make_handler(hub, config))
+    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing))
     server.daemon_threads = True
     return server

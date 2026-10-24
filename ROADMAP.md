@@ -72,11 +72,12 @@ and with no mandatory app. That's this project's niche.
 - User-defined fan names and CPU-card fan, CPU/GPU clocks, per-core grid.
 - `--dev` mode: restarts the agent and reloads the page, without leaving full screen.
 - MIT license, public repository, everything in English.
+- Pairing: a 6-digit code for new devices on the network; the PC and USB are trusted.
 
 ## Gaps, by priority
 
-1. **Local network security.** Anyone on the Wi-Fi can see sessions and apps and change
-   the settings. Idea: a pairing code/token, or USB-only by default.
+1. ✅ **Local network security.** Devices must pair with a 6-digit code before they
+   get any data or can change settings (done after 0.1.0).
 2. **Install for non-programmers.** Today it needs Python + venv. Idea: one executable
    per OS (PyInstaller) and start with the system.
 3. **Generic Claude data.** Replace "Fable · week" with "tokens this week per model";

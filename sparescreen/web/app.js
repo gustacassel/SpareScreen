@@ -279,7 +279,7 @@
 
   function startRotation() {
     stopRotation();
-    if (!fixed && cfg.rotate > 0 && !toastBusy && !settingsOpen && enabledScreens().length > 1) {
+    if (!fixed && cfg.rotate > 0 && !toastBusy && !settingsOpen && !pairingOpen && enabledScreens().length > 1) {
       rotateTimer = setInterval(function () { show(current + 1); }, cfg.rotate * 1000);
     }
   }
@@ -409,7 +409,7 @@
   var longPressed = false;
 
   function pressStart() {
-    if (settingsOpen) return;
+    if (settingsOpen || pairingOpen) return;
     longPressed = false;
     clearTimeout(pressTimer);
     pressTimer = setTimeout(function () { longPressed = true; nextTheme(); }, 700);
@@ -750,11 +750,79 @@
     renderPc(data.system, data.activity, data.time);
   }
 
+  function request(method, url, body, done) {
+    var xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    xhr.onload = function () {
+      var data = {};
+      try { data = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
+      done(xhr.status, data);
+    };
+    xhr.onerror = function () { done(0, {}); };
+    if (body) xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.send(body ? JSON.stringify(body) : null);
+  }
+
+  // ---- Pairing ---------------------------------------------------------------
+  // Devices on the network must type the code shown by the agent once; the PC
+  // itself and phones on USB are trusted automatically.
+
+  var pairingOpen = false;
+  var events = null;
+
+  function showPairing() {
+    pairingOpen = true;
+    stopRotation();
+    $("pairing").className = "settings open";
+  }
+
+  function sendCode() {
+    var code = $("pair-code").value.replace(/\D/g, "");
+    if (code.length !== 6) { $("pair-msg").textContent = "The code has 6 digits."; return; }
+    $("pair-msg").textContent = "";
+    request("POST", "pair", { code: code }, function (status, data) {
+      if (status === 200) {
+        pairingOpen = false;
+        $("pairing").className = "settings";
+        $("pair-code").value = "";
+        startEvents();
+        startRotation();
+      } else if (status === 429) {
+        $("pair-msg").textContent = "Too many attempts. Try again in " + data.retry_in + " s.";
+      } else if (status === 403) {
+        $("pair-msg").textContent = "Wrong code. " + data.attempts_left + " attempts left.";
+      } else {
+        $("pair-msg").textContent = "Can't reach the PC. Is SpareScreen running?";
+      }
+    });
+  }
+
+  $("pair-send").addEventListener("click", function (e) { e.stopPropagation(); sendCode(); });
+  $("pair-code").addEventListener("keydown", function (e) { if (e.keyCode === 13) sendCode(); });
+  $("pairing").addEventListener("click", function (e) { e.stopPropagation(); });
+
   // EventSource reconnects on its own if the PC drops or the Wi-Fi flickers.
-  var events = new EventSource("events");
-  events.onopen = function () { $("status").className = "dot on"; };
-  events.onerror = function () { $("status").className = "dot"; };
-  events.onmessage = function (e) { render(JSON.parse(e.data)); };
+  // If the stream is refused, check whether this device still needs pairing.
+  function startEvents() {
+    if (events) events.close();
+    events = new EventSource("events");
+    events.onopen = function () { $("status").className = "dot on"; };
+    events.onmessage = function (e) { render(JSON.parse(e.data)); };
+    events.onerror = function () {
+      $("status").className = "dot";
+      request("GET", "auth", null, function (status, data) {
+        if (status === 200 && !data.paired) {
+          events.close();
+          showPairing();
+        }
+      });
+    };
+  }
+
+  request("GET", "auth", null, function (status, data) {
+    if (status === 200 && !data.paired) showPairing();
+    else startEvents();
+  });
 
   // Keep the screen on: only exists in newer browsers (Chrome 84+) and
   // only in a secure context, such as http://localhost over USB. Old devices lack it;

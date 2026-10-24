@@ -220,6 +220,15 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
   border: 1px solid var(--track); border-radius: 8px;
   background: var(--bg); color: var(--text); font: inherit; font-size: 14px;
 }
+.pairing-panel { text-align: center; height: auto; max-width: 420px; margin: 0 auto; }
+.pair-help { color: var(--muted); font-size: 14px; margin: 6px 0 12px; }
+.pair-input {
+  display: block; width: 100%; padding: 10px; text-align: center;
+  font: inherit; font-size: 30px; letter-spacing: .3em; font-variant-numeric: tabular-nums;
+  border: 1px solid var(--track); border-radius: 10px; background: var(--bg); color: var(--text);
+}
+.set-close.pair-send { background: var(--accent); color: var(--bg); }
+.pair-msg { min-height: 1.2em; margin: 10px 0 0; font-size: 14px; color: var(--warn); }
 .set-close {
   display: block; width: 100%; margin-top: 12px; padding: 11px;
   border: 0; border-radius: 10px;

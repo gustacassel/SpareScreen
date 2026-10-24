@@ -74,9 +74,13 @@ You can connect the phone in two ways: over Wi-Fi or with a USB cable.
 
 ### Over Wi-Fi
 
-The agent prints the address to open on the phone, something like `http://192.168.0.10:8765`.
-The phone must be on the same Wi-Fi network as the PC. Any device with a browser works:
-Android, iPhone, iPad, a tablet, another computer.
+The agent prints the address to open on the phone, something like `http://192.168.0.10:8765`,
+and a 6-digit **pairing code**. The phone must be on the same Wi-Fi network as the PC.
+Any device with a browser works: Android, iPhone, iPad, a tablet, another computer.
+
+The first time, the page asks for the pairing code: type it once and that device is
+remembered (even after the agent restarts). Devices that haven't paired can't see any
+data or change settings. The PC itself and phones on USB don't need the code.
 
 ### With a USB cable (Android)
 
@@ -109,6 +113,8 @@ The cable must carry data (some cheap cables only charge). If the agent can't fi
 | `--adb` | auto | Path to `adb` |
 | `--no-open` | | Don't open the page on the phone when it connects |
 | `--stay-awake` | | Turns on the phone's "stay awake while plugged in" setting (saved on the phone) |
+| `--no-pairing` | | Let any device on the network see the data without a code (trusted networks only) |
+| `--reset-pairing` | | Forget every paired device before starting |
 | `--dev` | | Development mode (see below) |
 | `--demo` | | Show made-up data instead of this PC's (for screenshots, demos or trying it out) |
 
@@ -223,9 +229,12 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - **The phone can't open the page (Windows):** the first time, Windows asks whether
   Python may accept connections. Allow it on *private networks*. If your Wi-Fi is set
   as *public*, switch it to *private* or allow port 8765 in the firewall.
-- **Privacy on Wi-Fi:** any device on the same network can open the page and see your
-  Claude session names and running apps. On a network that isn't yours, use USB only
-  with `--host 127.0.0.1`.
+- **Privacy on Wi-Fi:** only paired devices get data, but the connection itself is plain
+  HTTP on your local network. On a network you don't trust, use USB only with
+  `--host 127.0.0.1`.
+- **Lost the pairing code?** It's printed when the agent starts, and a new one is made
+  every time it starts. Paired devices keep working; `--reset-pairing` forgets them all.
+- **"Too many attempts":** after 5 wrong codes, pairing pauses for a minute.
 - **Red dot in the top corner:** the phone lost its connection to the agent.
   The page reconnects by itself when the agent is back.
 
@@ -244,6 +253,8 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   connected phones and opens the page on them.
 - `sparescreen/activity.py`: running game, app in focus and top apps.
 - `sparescreen/config.py`: preferences saved in `~/.sparescreen/config.json` (POST `/config`).
+- `sparescreen/pairing.py`: pairing code, device tokens (only their hashes are stored, in
+  `~/.sparescreen/devices.json`) and the lockout after wrong codes.
 - `sparescreen/dev.py`: `--dev` mode (a supervisor that restarts the agent, plus the code version).
 - `sparescreen/hwinfo.py`: short CPU, GPU and memory names.
 - `sparescreen/demo.py`: made-up data for `--demo`, same shape as the real sources.

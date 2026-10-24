@@ -4,6 +4,14 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Pairing: devices on the network type a 6-digit code once before they get any data or
+  can change settings. The PC itself and phones on USB are trusted. New options
+  `--no-pairing` and `--reset-pairing`.
+
 ## [0.1.0] - 2026-10-24
 
 First public version.
