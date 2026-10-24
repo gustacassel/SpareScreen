@@ -222,9 +222,9 @@ def _current_dpm_clock(path):
     return None
 
 
-def linux_amd_gpu():
+def linux_amd_gpu(drm="/sys/class/drm"):
     """AMD GPU on Linux via the amdgpu driver's sysfs files (no root needed)."""
-    for card in sorted(glob.glob("/sys/class/drm/card[0-9]*")):
+    for card in sorted(glob.glob(os.path.join(drm, "card[0-9]*"))):
         dev = os.path.join(card, "device")
         busy = _read_file(os.path.join(dev, "gpu_busy_percent"))
         if busy is None:

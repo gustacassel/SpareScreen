@@ -1,0 +1,89 @@
+{
+  "id": 0, "Text": "Sensor", "Children": [
+    {
+      "id": 1, "Text": "TEST-PC", "Children": [
+        {
+          "id": 2, "Text": "Example Motherboard", "HardwareId": "/motherboard", "ImageURL": "images_icon/mainboard.png", "Children": [
+            {
+              "id": 3, "Text": "Example Super I/O", "HardwareId": "/lpc/example/0", "ImageURL": "images_icon/chip.png", "Children": [
+                {"id": 4, "Text": "Fans", "Children": [
+                  {"id": 5, "Text": "Fan #1", "Value": "1200 RPM", "SensorId": "/lpc/example/0/fan/0"},
+                  {"id": 6, "Text": "Fan #2", "Value": "0 RPM", "SensorId": "/lpc/example/0/fan/1"},
+                  {"id": 7, "Text": "Fan #3", "Value": "2450 RPM", "SensorId": "/lpc/example/0/fan/2"}
+                ]},
+                {"id": 8, "Text": "Controls", "Children": [
+                  {"id": 9, "Text": "Fan #1", "Value": "-", "SensorId": "/lpc/example/0/control/0"},
+                  {"id": 10, "Text": "Fan #3", "Value": "65,0 %", "SensorId": "/lpc/example/0/control/2"}
+                ]}
+              ]
+            }
+          ]
+        },
+        {
+          "id": 11, "Text": "AMD Ryzen 7 7700X 8-Core Processor", "HardwareId": "/amdcpu/0", "ImageURL": "images_icon/cpu.png", "Children": [
+            {"id": 12, "Text": "Temperatures", "Children": [
+              {"id": 13, "Text": "Core (Tctl/Tdie)", "Value": "61,5 °C", "SensorId": "/amdcpu/0/temperature/2"},
+              {"id": 14, "Text": "CCD1 (Tdie)", "Value": "55,0 °C", "SensorId": "/amdcpu/0/temperature/3"}
+            ]},
+            {"id": 15, "Text": "Powers", "Children": [
+              {"id": 16, "Text": "Package", "Value": "72,4 W", "SensorId": "/amdcpu/0/power/0"}
+            ]},
+            {"id": 17, "Text": "Clocks", "Children": [
+              {"id": 18, "Text": "Cores (Average)", "Value": "4500,0 MHz", "SensorId": "/amdcpu/0/clock/1"},
+              {"id": 19, "Text": "Core #1", "Value": "5400,0 MHz", "SensorId": "/amdcpu/0/clock/3"},
+              {"id": 20, "Text": "Core #1 (Effective)", "Value": "900,0 MHz", "SensorId": "/amdcpu/0/clock/4"},
+              {"id": 21, "Text": "Core #2", "Value": "4100,0 MHz", "SensorId": "/amdcpu/0/clock/5"}
+            ]}
+          ]
+        },
+        {
+          "id": 22, "Text": "AMD Radeon RX 7800 XT", "HardwareId": "/gpu-amd/0", "ImageURL": "images_icon/ati.png", "Children": [
+            {"id": 23, "Text": "Temperatures", "Children": [
+              {"id": 24, "Text": "GPU Core", "Value": "58,0 °C", "SensorId": "/gpu-amd/0/temperature/0"},
+              {"id": 25, "Text": "GPU Hot Spot", "Value": "70,0 °C", "SensorId": "/gpu-amd/0/temperature/1"}
+            ]},
+            {"id": 26, "Text": "Load", "Children": [
+              {"id": 27, "Text": "GPU Core", "Value": "88,0 %", "SensorId": "/gpu-amd/0/load/0"}
+            ]},
+            {"id": 28, "Text": "Powers", "Children": [
+              {"id": 29, "Text": "GPU Package", "Value": "210,5 W", "SensorId": "/gpu-amd/0/power/0"}
+            ]},
+            {"id": 30, "Text": "Clocks", "Children": [
+              {"id": 31, "Text": "GPU Core", "Value": "2430,0 MHz", "SensorId": "/gpu-amd/0/clock/0"},
+              {"id": 32, "Text": "GPU Memory", "Value": "2425,0 MHz", "SensorId": "/gpu-amd/0/clock/1"}
+            ]},
+            {"id": 33, "Text": "Data", "Children": [
+              {"id": 34, "Text": "GPU Memory Used", "Value": "6144,0 MB", "SensorId": "/gpu-amd/0/smalldata/0"},
+              {"id": 35, "Text": "GPU Memory Total", "Value": "16368,0 MB", "SensorId": "/gpu-amd/0/smalldata/1"}
+            ]},
+            {"id": 36, "Text": "Fans", "Children": [
+              {"id": 37, "Text": "GPU Fan", "Value": "1650 RPM", "SensorId": "/gpu-amd/0/fan/0"}
+            ]},
+            {"id": 38, "Text": "Controls", "Children": [
+              {"id": 39, "Text": "GPU Fan", "Value": "42,0 %", "SensorId": "/gpu-amd/0/control/0"}
+            ]}
+          ]
+        },
+        {
+          "id": 40, "Text": "Intel(R) UHD Graphics 770", "HardwareId": "/gpu-intel-integrated/0", "ImageURL": "images_icon/intel.png", "Children": [
+            {"id": 41, "Text": "Load", "Children": [
+              {"id": 42, "Text": "D3D 3D", "Value": "3,0 %", "SensorId": "/gpu-intel-integrated/0/load/0"}
+            ]}
+          ]
+        },
+        {
+          "id": 43, "Text": "Example NVMe SSD", "HardwareId": "/nvme/0", "ImageURL": "images_icon/hdd.png", "Children": [
+            {"id": 44, "Text": "Temperatures", "Children": [
+              {"id": 45, "Text": "Composite Temperature", "Value": "39,0 °C", "SensorId": "/nvme/0/temperature/0"},
+              {"id": 46, "Text": "Warning Temperature", "Value": "84,0 °C", "SensorId": "/nvme/0/temperature/10"}
+            ]},
+            {"id": 47, "Text": "Throughput", "Children": [
+              {"id": 48, "Text": "Read Rate", "Value": "1,5 MB/s", "SensorId": "/nvme/0/throughput/54"},
+              {"id": 49, "Text": "Write Rate", "Value": "512,0 KB/s", "SensorId": "/nvme/0/throughput/55"}
+            ]}
+          ]
+        }
+      ]
+    }
+  ]
+}

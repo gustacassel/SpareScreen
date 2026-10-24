@@ -6,6 +6,17 @@
 
 <p align="center">Turn an old phone (or any device with a browser) into a live dashboard for your PC.</p>
 
+<p align="center">
+  <a href="https://github.com/gustacassel/SpareScreen/actions/workflows/ci.yml"><img src="https://github.com/gustacassel/SpareScreen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/hardware.png" width="32%" alt="Hardware screen: CPU, GPU and RAM usage, temperature and clocks">
+  <img src="docs/screenshots/claude.png" width="32%" alt="Claude screen: usage limits and open sessions">
+  <img src="docs/screenshots/pc.png" width="32%" alt="PC screen: running game, top apps, fans, network and disks">
+</p>
+
 Turn that old phone in your drawer into a live dashboard for your computer.
 Your PC runs a small Python agent that collects the data and serves a web page;
 the phone (or any device with a browser) just opens that page.
@@ -95,6 +106,7 @@ The cable must carry data (some cheap cables only charge). If the agent can't fi
 | `--no-open` | | Don't open the page on the phone when it connects |
 | `--stay-awake` | | Turns on the phone's "stay awake while plugged in" setting (saved on the phone) |
 | `--dev` | | Development mode (see below) |
+| `--demo` | | Show made-up data instead of this PC's (for screenshots, demos or trying it out) |
 
 ## On the phone
 
@@ -110,6 +122,13 @@ The cable must carry data (some cheap cables only charge). If the agent can't fi
    turn on *Developer options > Stay awake*.
 
 Themes: Graphite, OLED, Terracotta, Neon, Terminal and Light.
+
+<p align="center">
+  <img src="docs/screenshots/theme-neon.png" width="32%" alt="Neon theme">
+  <img src="docs/screenshots/theme-terracotta.png" width="32%" alt="Terracotta theme">
+  <img src="docs/screenshots/theme-light.png" width="32%" alt="Light theme">
+</p>
+
 For testing you can force things in the address: `…:8765/?screen=pc` pins one screen
 (`hardware`, `claude` or `pc`) and `…:8765/?theme=neon` forces a theme.
 
@@ -183,8 +202,17 @@ agent restarts. No need to touch the phone.
 The page is a frame (`index.html`) that stays full screen and loads the dashboard
 (`app.html`) inside it. Only the inner page reloads, so the phone stays full screen.
 
+Run the tests (standard library only, no extra install):
+
+```bash
+python -m unittest discover -s tests -t .
+```
+
+They also run on GitHub Actions on Windows, Linux and macOS for every push.
+`sparescreen --demo` shows made-up data, handy when working on the page.
+
 The page must keep working on old browsers (Chrome 49 / iOS 10): plain JavaScript,
-no modern syntax. See [CLAUDE.md](CLAUDE.md) for the project guidelines.
+no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the project guidelines.
 
 ## Troubleshooting
 
@@ -214,6 +242,7 @@ no modern syntax. See [CLAUDE.md](CLAUDE.md) for the project guidelines.
 - `sparescreen/config.py`: preferences saved in `~/.sparescreen/config.json` (POST `/config`).
 - `sparescreen/dev.py`: `--dev` mode (a supervisor that restarts the agent, plus the code version).
 - `sparescreen/hwinfo.py`: short CPU, GPU and memory names.
+- `sparescreen/demo.py`: made-up data for `--demo`, same shape as the real sources.
 - `sparescreen/web/`: the page (plain HTML, CSS and JS, built for old browsers).
   `index.html` is just the frame; the dashboard is `app.html`, `app.js` and `style.css`.
 

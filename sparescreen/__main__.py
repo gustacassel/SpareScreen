@@ -6,6 +6,7 @@ import sys
 
 from . import dev
 from .config import ConfigStore
+from .demo import demo_sources
 from .server import serve
 from .sources import default_sources
 from .usb import UsbBridge, find_adb
@@ -34,6 +35,8 @@ def main():
                      help="turn on the phone's keep-screen-on option while it is on USB")
     parser.add_argument("--dev", action="store_true",
                         help="dev mode: restart when the code changes and reload the page")
+    parser.add_argument("--demo", action="store_true",
+                        help="show made-up data instead of this PC's (for screenshots and trying it out)")
     args = parser.parse_args()
 
     # When output goes to a file/pipe, Windows would use cp1252 and mangle non-ASCII characters.
@@ -44,11 +47,11 @@ def main():
         return
 
     config = ConfigStore()
-    sources = default_sources() + [config]
+    sources = (demo_sources() if args.demo else default_sources()) + [config]
     if args.dev:
         sources.append(dev.DevSource())
     server = serve(args.host, args.port, sources, args.interval, config)
-    print(f"SpareScreen running on port {args.port}.")
+    print(f"SpareScreen running on port {args.port}." + (" Demo mode: showing made-up data." if args.demo else ""))
     if args.host in ("0.0.0.0", "::"):
         print(f"  Wi-Fi: on your phone, open http://{lan_ip()}:{args.port}")
 

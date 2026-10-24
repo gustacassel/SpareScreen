@@ -598,6 +598,8 @@
         ? "running for " + duration(now - game.since) + " · CPU " + Math.round(game.cpu) + "% · " + size(game.mem)
         : "";
       var focus = act.focus;
+      // While playing, the app in focus is usually the game itself: skip the repeat to make room.
+      $("focus-block").style.display = game && focus && focus.name === game.name ? "none" : "";
       $("focus-name").textContent = focus ? focus.name : "--";
       $("focus-meta").textContent = focus ? "CPU " + Math.round(focus.cpu) + "% · " + size(focus.mem) : "";
       fillList($("top-list"), act.top.map(function (p) {
