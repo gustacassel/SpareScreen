@@ -1,7 +1,7 @@
 <!doctype html>
-<!-- Moldura: fica em tela cheia e carrega o painel (app.html) por dentro.
-     Assim o painel pode recarregar (modo dev) sem o navegador sair da tela cheia. -->
-<html lang="pt-BR">
+<!-- Frame: stays fullscreen and loads the dashboard (app.html) inside it.
+     This way the dashboard can reload (dev mode) without the browser leaving fullscreen. -->
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -17,7 +17,7 @@
 <body>
   <iframe id="app" allowfullscreen></iframe>
   <script>
-    // Repassa os parâmetros (?tela=, ?tema=...) para o painel.
+    // Pass the parameters (?screen=, ?theme=...) on to the dashboard.
     document.getElementById("app").src = "app.html" + location.search;
   </script>
 </body>

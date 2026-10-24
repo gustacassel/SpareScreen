@@ -1,8 +1,8 @@
-"""O que está rodando no PC: jogo aberto, programa em foco e os processos mais pesados.
+"""What is running on the PC: open game, focused program and the heaviest processes.
 
-Jogo é detectado pelo caminho do executável: tudo que roda de dentro das pastas
-de biblioteca das lojas (Steam, Epic, GOG, Xbox, Riot, EA, Ubisoft...). O nome
-do jogo é o da pasta, que nessas lojas costuma ser o nome bonito.
+A game is detected by its executable path: anything running from inside the store
+library folders (Steam, Epic, GOG, Xbox, Riot, EA, Ubisoft...). The game name is
+the folder name, which in these stores is usually the pretty name.
 """
 
 import ctypes
@@ -13,7 +13,7 @@ import time
 
 import psutil
 
-# (trecho do caminho, em minúsculas e com "/") -> o nome do jogo é a pasta logo depois
+# (path fragment, lowercase with "/") -> the game name is the folder right after it
 GAME_DIRS = (
     "/steamapps/common/",
     "/epic games/",
@@ -25,9 +25,9 @@ GAME_DIRS = (
     "/ubisoft game launcher/games/",
     "/battle.net/games/",
 )
-# Pastas que ficam dentro desses lugares, mas não são jogos.
+# Folders that live inside those places but are not games.
 NOT_GAMES = {"launcher", "directxredist", "steamworks shared", "riot client", "epic online services"}
-# Processos auxiliares que rodam da pasta do jogo.
+# Helper processes that run from the game folder.
 HELPERS = re.compile(r"crash|report|easyanticheat|battleye|unitycrashhandler|redist|setup|launcher", re.I)
 
 
@@ -44,13 +44,13 @@ def game_name(exe):
     return None
 
 
-# ---- Nome amigável do programa (Windows: "Descrição do arquivo" do .exe) -----
+# ---- Friendly program name (Windows: the .exe "File description") -----------
 
 _descriptions = {}
 
 
 def _file_description(exe):
-    """'C:/.../chrome.exe' -> 'Google Chrome', lendo o recurso de versão do executável."""
+    """'C:/.../chrome.exe' -> 'Google Chrome', read from the executable's version resource."""
     version = ctypes.windll.version
     size = version.GetFileVersionInfoSizeW(exe, None)
     if not size:
@@ -83,7 +83,7 @@ def friendly_name(name, exe):
 
 
 def foreground_pid():
-    """PID da janela em foco (só Windows, por enquanto)."""
+    """PID of the focused window (Windows only, for now)."""
     if sys.platform != "win32":
         return None
     user32 = ctypes.windll.user32
@@ -96,7 +96,7 @@ def foreground_pid():
 
 
 class ActivitySource:
-    """Jogo aberto, programa em foco e top processos (somados por programa)."""
+    """Open game, focused program and top processes (summed per program)."""
 
     name = "activity"
     IGNORE = {"system idle process", "idle", "system", "registry", "memory compression"}
@@ -114,7 +114,7 @@ class ActivitySource:
         self._at = time.time()
 
         focus_pid = foreground_pid()
-        programs = {}  # exe (ou nome) -> totais
+        programs = {}  # exe (or name) -> totals
         game = None
         focus = None
         for proc in psutil.process_iter(["name", "exe", "memory_info", "create_time"]):
@@ -123,7 +123,7 @@ class ActivitySource:
             if name.lower() in self.IGNORE or proc.pid == 0:
                 continue
             try:
-                cpu = proc.cpu_percent(None) / self.cores  # 1ª leitura de cada processo volta 0
+                cpu = proc.cpu_percent(None) / self.cores  # the first reading of each process returns 0
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
             mem = info["memory_info"].rss if info["memory_info"] else 0

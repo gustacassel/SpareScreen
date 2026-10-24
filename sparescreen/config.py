@@ -1,7 +1,7 @@
-"""Preferências da página, salvas no PC em ~/.sparescreen/config.json.
+"""Page preferences, saved on the PC in ~/.sparescreen/config.json.
 
-A tela de configurações no celular manda as mudanças por POST /config; o agente
-valida, grava e devolve a configuração junto com os dados (campo `config`).
+The settings screen on the phone sends changes via POST /config; the agent
+validates, saves and sends the config back along with the data (`config` field).
 """
 
 import json
@@ -9,25 +9,25 @@ import os
 import threading
 from pathlib import Path
 
-THEMES = ("grafite", "oled", "terracota", "neon", "terminal", "claro")
+THEMES = ("graphite", "oled", "terracotta", "neon", "terminal", "light")
 SCREENS = ("hardware", "claude", "pc")
-ROTATE = (0, 10, 20, 30, 60)  # segundos; 0 = não troca sozinho
+ROTATE = (0, 10, 20, 30, 60)  # seconds; 0 = does not switch by itself
 
 DEFAULTS = {
-    "theme": "grafite",
+    "theme": "graphite",
     "screens": list(SCREENS),
     "rotate": 20,
     "notify": True,
     "sound": True,
-    "fan_names": {},  # nome original -> nome dado pelo usuário (ex.: "Fan 2" -> "Radiador")
-    "cpu_fan": None,  # qual ventoinha aparece no card da CPU (escolha do usuário; nenhuma por padrão)
+    "fan_names": {},  # original name -> user-given name (e.g. "Fan 2" -> "Radiator")
+    "cpu_fan": None,  # which fan shows on the CPU card (user's choice; none by default)
 }
 
 CONFIG_FILE = Path.home() / ".sparescreen" / "config.json"
 
 
 def clean(data):
-    """Fica só com as chaves e valores válidos; o resto é ignorado."""
+    """Keeps only valid keys and values; the rest is ignored."""
     if not isinstance(data, dict):
         return {}
     out = {}
@@ -35,7 +35,7 @@ def clean(data):
         out["theme"] = data["theme"]
     if isinstance(data.get("screens"), list):
         screens = [s for s in SCREENS if s in data["screens"]]
-        if screens:  # pelo menos uma tela
+        if screens:  # at least one screen
             out["screens"] = screens
     if data.get("rotate") in ROTATE:
         out["rotate"] = data["rotate"]
@@ -45,7 +45,7 @@ def clean(data):
     if "cpu_fan" in data and (data["cpu_fan"] is None or isinstance(data["cpu_fan"], str)):
         out["cpu_fan"] = data["cpu_fan"][:20] if data["cpu_fan"] else None
     names = data.get("fan_names")
-    if isinstance(names, dict):  # nome vazio = volta ao nome original
+    if isinstance(names, dict):  # empty name = back to the original name
         out["fan_names"] = {
             str(fan)[:20]: name.strip()[:16]
             for fan, name in names.items()
@@ -55,7 +55,7 @@ def clean(data):
 
 
 class ConfigStore:
-    """Também serve de fonte de dados: a página recebe a config a cada leitura."""
+    """Also works as a data source: the page gets the config on every reading."""
 
     name = "config"
 

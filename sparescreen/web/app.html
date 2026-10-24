@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Ícones (traço de 2px, cor do texto). Alguns baseados no Feather Icons, licença MIT. -->
+  <!-- Icons (2px stroke, text color). Some based on Feather Icons, MIT license. -->
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
     <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol>
     <symbol id="i-gpu" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="12" rx="2"/><circle cx="8.5" cy="11" r="3"/><path d="M15 9h4M15 13h4M5 17v3"/></symbol>
@@ -39,12 +39,12 @@
     <span id="date" class="date"></span>
     <span id="screen-title" class="screen-title"></span>
     <span id="tabs" class="tabs"></span>
-    <span id="status" class="dot" title="conexão com o PC"></span>
-    <span id="gear" class="gear" title="configurações"><svg class="icon"><use xlink:href="#i-sliders"></use></svg></span>
+    <span id="status" class="dot" title="connection to the PC"></span>
+    <span id="gear" class="gear" title="settings"><svg class="icon"><use xlink:href="#i-sliders"></use></svg></span>
   </header>
 
   <main>
-    <!-- Tela 1: hardware -->
+    <!-- Screen 1: hardware -->
     <section class="screen" data-name="hardware" data-title="Hardware">
       <div class="hw-grid">
         <div class="card hw" id="cpu">
@@ -98,7 +98,7 @@
             </div>
             <div class="hw-info">
               <div class="big mem"></div>
-              <div class="detail">em uso</div>
+              <div class="detail">in use</div>
               <ul class="rows hw-rows" id="ram-rows"></ul>
             </div>
           </div>
@@ -106,63 +106,63 @@
       </div>
     </section>
 
-    <!-- Tela 2: Claude -->
+    <!-- Screen 2: Claude -->
     <section class="screen" data-name="claude" data-title="Claude">
       <div class="cl-grid">
         <div class="card limits">
           <div class="limit" id="lim-5h">
-            <div class="limit-head"><svg class="icon"><use xlink:href="#i-clock"></use></svg><span class="limit-name">5 horas</span><span class="limit-pct">--</span></div>
+            <div class="limit-head"><svg class="icon"><use xlink:href="#i-clock"></use></svg><span class="limit-name">5 hours</span><span class="limit-pct">--</span></div>
             <div class="bar"><div class="bar-fill"></div></div>
             <div class="detail limit-reset"></div>
           </div>
           <div class="limit" id="lim-week">
-            <div class="limit-head"><svg class="icon"><use xlink:href="#i-calendar"></use></svg><span class="limit-name">Semana</span><span class="limit-pct">--</span></div>
+            <div class="limit-head"><svg class="icon"><use xlink:href="#i-calendar"></use></svg><span class="limit-name">Week</span><span class="limit-pct">--</span></div>
             <div class="bar"><div class="bar-fill"></div></div>
             <div class="detail limit-reset"></div>
           </div>
           <div class="limit" id="lim-fable">
-            <div class="limit-head"><svg class="icon"><use xlink:href="#i-book"></use></svg><span class="limit-name">Fable · semana</span><span class="limit-pct" id="fable-tokens">--</span></div>
+            <div class="limit-head"><svg class="icon"><use xlink:href="#i-book"></use></svg><span class="limit-name">Fable · week</span><span class="limit-pct" id="fable-tokens">--</span></div>
             <div class="detail" id="fable-detail"></div>
           </div>
           <div id="lim-updated" class="detail small updated"></div>
         </div>
 
         <div class="card sessions-card">
-          <h2><svg class="icon"><use xlink:href="#i-terminal"></use></svg>SESSÕES<span class="h2-right"><span id="cl-today">--</span> tokens hoje</span></h2>
+          <h2><svg class="icon"><use xlink:href="#i-terminal"></use></svg>SESSIONS<span class="h2-right"><span id="cl-today">--</span> tokens today</span></h2>
           <ul id="cl-sessions" class="sessions"></ul>
         </div>
       </div>
     </section>
 
-    <!-- Tela 3: o que está rolando no PC -->
+    <!-- Screen 3: what is going on on the PC -->
     <section class="screen" data-name="pc" data-title="PC">
       <div class="pc-grid">
         <div class="card now">
           <div class="now-block">
-            <h2><svg class="icon"><use xlink:href="#i-game"></use></svg>JOGO</h2>
+            <h2><svg class="icon"><use xlink:href="#i-game"></use></svg>GAME</h2>
             <div id="game-name" class="now-name"></div>
             <div id="game-meta" class="detail"></div>
           </div>
           <div class="now-block">
-            <h2><svg class="icon"><use xlink:href="#i-window"></use></svg>EM FOCO</h2>
+            <h2><svg class="icon"><use xlink:href="#i-window"></use></svg>IN FOCUS</h2>
             <div id="focus-name" class="now-name small"></div>
             <div id="focus-meta" class="detail"></div>
           </div>
           <div class="now-block grow">
-            <h2><svg class="icon"><use xlink:href="#i-list"></use></svg>MAIS PESADOS</h2>
+            <h2><svg class="icon"><use xlink:href="#i-list"></use></svg>TOP APPS</h2>
             <ul id="top-list" class="rows"></ul>
           </div>
           <div id="uptime" class="detail small"></div>
         </div>
         <div class="pc-side">
           <div class="card fans">
-            <h2><svg class="icon"><use xlink:href="#i-fan"></use></svg>VENTOINHAS</h2>
+            <h2><svg class="icon"><use xlink:href="#i-fan"></use></svg>FANS</h2>
             <ul id="fan-list" class="rows"></ul>
           </div>
           <div class="card io">
-            <h2><svg class="icon"><use xlink:href="#i-net"></use></svg>REDE</h2>
+            <h2><svg class="icon"><use xlink:href="#i-net"></use></svg>NETWORK</h2>
             <div class="net"><span>↓ <b id="net-down">--</b></span><span>↑ <b id="net-up">--</b></span></div>
-            <h2 class="sub-h2"><svg class="icon"><use xlink:href="#i-disk"></use></svg>DISCOS</h2>
+            <h2 class="sub-h2"><svg class="icon"><use xlink:href="#i-disk"></use></svg>DISKS</h2>
             <ul id="disk-list" class="rows"></ul>
           </div>
         </div>
@@ -170,7 +170,7 @@
     </section>
   </main>
 
-  <!-- Aviso que aparece por cima (sessão terminou, tema trocado...) -->
+  <!-- Toast shown on top (session finished, theme changed...) -->
   <div id="toast" class="toast">
     <svg class="icon toast-icon"><use id="toast-icon" xlink:href="#i-check"></use></svg>
     <div class="toast-text">
@@ -179,18 +179,18 @@
     </div>
   </div>
 
-  <!-- Configurações (engrenagem no canto de cima). Ficam salvas no PC. -->
+  <!-- Settings (gear in the top corner). Saved on the PC. -->
   <div id="settings" class="settings">
     <div class="settings-panel">
-      <h2><svg class="icon"><use xlink:href="#i-sliders"></use></svg>CONFIGURAÇÕES</h2>
-      <div class="set-row"><span class="set-label">Tema</span><div id="set-theme" class="chips"></div></div>
-      <div class="set-row"><span class="set-label">Telas</span><div id="set-screens" class="chips"></div></div>
-      <div class="set-row"><span class="set-label">Trocar de tela</span><div id="set-rotate" class="chips"></div></div>
-      <div class="set-row"><span class="set-label">Avisos do Claude</span><div id="set-notify" class="chips"></div></div>
-      <div class="set-row"><span class="set-label">Som dos avisos</span><div id="set-sound" class="chips"></div></div>
-      <div class="set-row"><span class="set-label">Nomes das ventoinhas</span><div id="set-fans" class="chips"></div></div>
-      <div class="set-row"><span class="set-label">Ventoinha no card da CPU</span><div id="set-cpu-fan" class="chips"></div></div>
-      <button id="set-close" class="set-close">Fechar</button>
+      <h2><svg class="icon"><use xlink:href="#i-sliders"></use></svg>SETTINGS</h2>
+      <div class="set-row"><span class="set-label">Theme</span><div id="set-theme" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Screens</span><div id="set-screens" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Switch screens</span><div id="set-rotate" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Claude alerts</span><div id="set-notify" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Alert sound</span><div id="set-sound" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Fan names</span><div id="set-fans" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Fan on CPU card</span><div id="set-cpu-fan" class="chips"></div></div>
+      <button id="set-close" class="set-close">Close</button>
     </div>
   </div>
 

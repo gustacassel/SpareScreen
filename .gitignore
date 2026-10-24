@@ -5,5 +5,5 @@ __pycache__/
 build/
 dist/
 
-# Configuração local de quem desenvolve (preview do editor, caminhos da máquina)
+# Developer-local settings (editor preview, machine paths)
 .claude/

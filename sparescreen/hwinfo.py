@@ -1,4 +1,4 @@
-"""Nomes curtos das peças (lidos uma vez, na partida do agente)."""
+"""Short hardware names (read once, when the agent starts)."""
 
 import json
 import platform
@@ -8,7 +8,7 @@ import sys
 
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-# Códigos SMBIOS de tipo de memória (Win32_PhysicalMemory.SMBIOSMemoryType)
+# SMBIOS memory type codes (Win32_PhysicalMemory.SMBIOSMemoryType)
 _MEMORY_TYPES = {24: "DDR3", 26: "DDR4", 29: "LPDDR3", 30: "LPDDR4", 34: "DDR5", 35: "LPDDR5"}
 
 
@@ -40,12 +40,14 @@ def cpu_name():
 
 
 def short_gpu_name(raw):
-    """'NVIDIA GeForce RTX 5060' -> 'RTX 5060'."""
-    return " ".join(raw.replace("NVIDIA", "").replace("GeForce", "").split())
+    """'NVIDIA GeForce RTX 5060' -> 'RTX 5060'; 'AMD Radeon RX 7800 XT' -> 'Radeon RX 7800 XT';
+    'Intel(R) UHD Graphics 770' -> 'UHD Graphics 770'."""
+    name = re.sub(r"\((R|TM|tm)\)|\bNVIDIA\b|\bGeForce\b|\bAMD\b|\bIntel\b", "", raw)
+    return " ".join(name.split()) or raw
 
 
 def ram_name(total_bytes):
-    """'32 GB DDR5-6000' no Windows; só '32 GB' nos outros sistemas por enquanto."""
+    """'32 GB DDR5-6000' on Windows; just '32 GB' on other systems for now."""
     name = f"{round(total_bytes / 2**30)} GB"
     if sys.platform != "win32":
         return name
@@ -59,7 +61,7 @@ def ram_name(total_bytes):
         modules = json.loads(out)
     except (OSError, ValueError, subprocess.SubprocessError):
         return name
-    if isinstance(modules, dict):  # um pente só vem como objeto, não lista
+    if isinstance(modules, dict):  # a single stick comes back as an object, not a list
         modules = [modules]
     kind = _MEMORY_TYPES.get(modules[0].get("SMBIOSMemoryType"), "")
     speed = max((m.get("ConfiguredClockSpeed") or 0) for m in modules)

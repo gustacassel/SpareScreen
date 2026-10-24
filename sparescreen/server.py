@@ -1,4 +1,4 @@
-"""Servidor HTTP: entrega a página e transmite os dados por Server-Sent Events."""
+"""HTTP server: serves the page and streams the data over Server-Sent Events."""
 
 import json
 import mimetypes
@@ -11,7 +11,7 @@ WEB_DIR = Path(__file__).parent / "web"
 
 
 class Hub:
-    """Guarda o último snapshot e acorda os clientes quando chega um novo."""
+    """Holds the latest snapshot and wakes the clients when a new one arrives."""
 
     def __init__(self):
         self._cond = threading.Condition()
@@ -38,7 +38,7 @@ def start_sampler(hub, sources, interval):
             for source in sources:
                 try:
                     snapshot[source.name] = source.read()
-                except Exception as exc:  # uma fonte com erro não derruba as outras
+                except Exception as exc:  # one failing source does not take down the others
                     snapshot[source.name] = {"error": str(exc)}
             hub.publish(snapshot)
             time.sleep(interval)
@@ -104,7 +104,7 @@ def make_handler(hub, config):
                         self.wfile.write(f"data: {payload}\n\n".encode())
                     self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
-                pass  # o celular fechou a página ou perdeu a conexão
+                pass  # the phone closed the page or lost the connection
 
         def log_message(self, fmt, *args):
             if "/events" not in self.path:
@@ -114,7 +114,7 @@ def make_handler(hub, config):
 
 
 def serve(host, port, sources, interval, config=None):
-    """`config` (ConfigStore) recebe as mudanças feitas na tela de configurações."""
+    """`config` (ConfigStore) receives the changes made on the settings screen."""
     hub = Hub()
     start_sampler(hub, sources, interval)
     server = ThreadingHTTPServer((host, port), make_handler(hub, config))

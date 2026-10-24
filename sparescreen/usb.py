@@ -1,8 +1,8 @@
-"""Conexão por USB: usa o adb para o celular enxergar o agente em localhost.
+"""USB connection: uses adb so the phone can reach the agent on localhost.
 
-Com `adb reverse tcp:PORTA tcp:PORTA`, o `localhost:PORTA` do celular passa a
-apontar para a mesma porta no PC, pelo cabo. Não precisa de Wi-Fi nem de root,
-só da Depuração USB ligada no celular.
+With `adb reverse tcp:PORT tcp:PORT`, the phone's `localhost:PORT` points to
+the same port on the PC, over the cable. No Wi-Fi or root needed, just USB
+debugging turned on on the phone.
 """
 
 import glob
@@ -14,12 +14,12 @@ import threading
 import time
 from pathlib import Path
 
-# No Windows, evita abrir uma janela de console a cada chamada do adb.
+# On Windows, avoids opening a console window on every adb call.
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def find_adb(explicit=None):
-    """Procura o adb: caminho informado, PATH, SDK do Android e instalação via winget."""
+    """Looks for adb: the given path, PATH, the Android SDK and a winget install."""
     if explicit:
         return explicit if Path(explicit).is_file() else None
     found = shutil.which("adb")
@@ -53,7 +53,7 @@ def find_adb(explicit=None):
 
 
 class UsbBridge:
-    """Fica de olho nos celulares ligados por USB e mantém o `adb reverse` ativo."""
+    """Watches the phones plugged in over USB and keeps `adb reverse` active."""
 
     def __init__(self, adb, port, open_page=True, stay_awake=False, poll_interval=3):
         self.adb = adb
@@ -61,8 +61,8 @@ class UsbBridge:
         self.open_page = open_page
         self.stay_awake = stay_awake
         self.poll_interval = poll_interval
-        self._ready = set()   # celulares já configurados nesta conexão
-        self._warned = set()  # celulares para os quais já avisamos de algum problema
+        self._ready = set()   # phones already set up on this connection
+        self._warned = set()  # phones we have already warned about some problem
 
     def start(self):
         threading.Thread(target=self._loop, name="usb", daemon=True).start()
@@ -72,7 +72,7 @@ class UsbBridge:
             try:
                 self._poll()
             except Exception as exc:
-                print(f"[usb] erro: {exc}", flush=True)
+                print(f"[usb] error: {exc}", flush=True)
             time.sleep(self.poll_interval)
 
     def _run(self, *args):
@@ -81,11 +81,11 @@ class UsbBridge:
             capture_output=True, text=True, timeout=15, creationflags=_NO_WINDOW,
         )
         if result.returncode != 0:
-            raise RuntimeError((result.stderr or result.stdout).strip() or f"adb {args[0]} falhou")
+            raise RuntimeError((result.stderr or result.stdout).strip() or f"adb {args[0]} failed")
         return result.stdout
 
     def _devices(self):
-        """{serial: (estado, modelo)} a partir de `adb devices -l`."""
+        """{serial: (state, model)} from `adb devices -l`."""
         devices = {}
         for line in self._run("devices", "-l").splitlines()[1:]:
             parts = line.split()
@@ -102,18 +102,18 @@ class UsbBridge:
                 self._ensure(serial, model)
             elif state == "unauthorized" and serial not in self._warned:
                 self._warned.add(serial)
-                print(f"[usb] {model}: aceite o pedido de \"Permitir depuração USB\" na tela do celular.", flush=True)
+                print(f"[usb] {model}: accept the \"Allow USB debugging\" prompt on the phone screen.", flush=True)
 
-        # Celular desconectado: na próxima vez que ligar, configura de novo.
+        # Phone disconnected: set it up again the next time it is plugged in.
         connected = {s for s, (state, _) in devices.items() if state == "device"}
         for serial in self._ready - connected:
-            print(f"[usb] celular {serial} desconectado.", flush=True)
+            print(f"[usb] phone {serial} disconnected.", flush=True)
         self._ready &= connected
         self._warned &= set(devices)
 
     def _ensure(self, serial, model):
         rule = f"tcp:{self.port}"
-        # O reverse se perde se o servidor do adb reiniciar, então confere sempre.
+        # The reverse is lost if the adb server restarts, so always check it.
         if f"{rule} {rule}" not in self._run("-s", serial, "reverse", "--list"):
             self._run("-s", serial, "reverse", rule, rule)
 
@@ -122,12 +122,12 @@ class UsbBridge:
         self._ready.add(serial)
         self._warned.discard(serial)
         url = f"http://localhost:{self.port}"
-        print(f"[usb] {model} conectado. No celular: {url}", flush=True)
+        print(f"[usb] {model} connected. On the phone: {url}", flush=True)
 
         if self.stay_awake:
             self._run("-s", serial, "shell", "svc", "power", "stayon", "usb")
         if self.open_page:
-            # O application_id faz o Chrome reaproveitar a mesma aba a cada reconexão.
+            # The application_id makes Chrome reuse the same tab on every reconnect.
             self._run(
                 "-s", serial, "shell", "am", "start",
                 "-a", "android.intent.action.VIEW", "-d", url,

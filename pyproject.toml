@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sparescreen"
 version = "0.1.0"
-description = "Use um celular antigo (ou qualquer aparelho com navegador) como painel do seu PC."
+description = "Turn an old phone (or any device with a browser) into a live dashboard for your PC."
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = ["psutil>=5.9"]

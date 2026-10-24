@@ -1,12 +1,12 @@
-"""Uso do Claude Code, lido dos arquivos locais.
+"""Claude Code usage, read from the local files.
 
-- ~/.claude/sessions/<pid>.json: uma por sessão aberta, com nome, pasta e status.
-- ~/.claude/projects/**/*.jsonl: o histórico das conversas; cada resposta traz o uso de tokens.
-- ~/.sparescreen/claude-limits.json: janelas de 5 h e semanal, gravadas pela nossa status line
-  (sparescreen/statusline.py), porque o Claude Code só entrega esses números para ela.
+- ~/.claude/sessions/<pid>.json: one per open session, with name, folder and status.
+- ~/.claude/projects/**/*.jsonl: the conversation history; each response carries its token usage.
+- ~/.sparescreen/claude-limits.json: 5-hour and weekly windows, written by our status line
+  (sparescreen/statusline.py), because Claude Code only hands those numbers to it.
 
-Os dois primeiros são formatos internos do Claude Code e podem mudar entre
-versões, então tudo aqui é tolerante a campos ausentes.
+The first two are internal Claude Code formats and may change between
+versions, so everything here tolerates missing fields.
 """
 
 import glob
@@ -21,8 +21,8 @@ import psutil
 
 from .statusline import load_limits
 
-BUCKET = 15 * 60          # tokens são somados em blocos de 15 minutos
-KEEP = 8 * 24 * 3600      # guarda um pouco mais que a janela semanal
+BUCKET = 15 * 60          # tokens are summed in 15-minute blocks
+KEEP = 8 * 24 * 3600      # keep a bit more than the weekly window
 WEEK = 7 * 24 * 3600
 
 
@@ -31,7 +31,7 @@ def claude_home():
 
 
 class ClaudeSource:
-    """Limites de uso, tokens (hoje e Fable na semana) e sessões abertas."""
+    """Usage limits, tokens (today and Fable this week) and open sessions."""
 
     name = "claude"
 
@@ -39,9 +39,9 @@ class ClaudeSource:
         self.home = Path(home) if home else claude_home()
         self.token_refresh = token_refresh
         self._token_at = 0
-        self._offsets = {}  # arquivo -> quantos bytes já foram lidos
-        self._seen = {}     # (id da mensagem, requestId) -> bloco; a mesma resposta aparece em várias linhas
-        self._buckets = defaultdict(lambda: [0, 0, 0, 0])  # (bloco, modelo) -> entrada, saída, cache, respostas
+        self._offsets = {}  # file -> how many bytes have been read already
+        self._seen = {}     # (message id, requestId) -> block; the same response shows up on several lines
+        self._buckets = defaultdict(lambda: [0, 0, 0, 0])  # (block, model) -> input, output, cache, responses
 
     def read(self):
         now = time.time()
@@ -62,7 +62,7 @@ class ClaudeSource:
             "sessions": self._sessions(),
         }
 
-    # Limites (status line) -------------------------------------------------
+    # Limits (status line) ---------------------------------------------------
 
     @staticmethod
     def _limits(now):
@@ -73,7 +73,7 @@ class ClaudeSource:
         for key, window in (saved.get("rate_limits") or {}).items():
             if not isinstance(window, dict) or window.get("resets_at") is None:
                 continue
-            renewed = window["resets_at"] <= now  # a janela virou depois da última leitura
+            renewed = window["resets_at"] <= now  # the window rolled over after the last reading
             windows[key] = {
                 "percent": None if renewed else window.get("used_percentage"),
                 "resets_at": window["resets_at"],
@@ -112,14 +112,14 @@ class ClaudeSource:
             if st.st_mtime < cutoff:
                 continue
             offset = self._offsets.get(path, 0)
-            if st.st_size < offset:  # arquivo reescrito: lê de novo
+            if st.st_size < offset:  # file was rewritten: read it again
                 offset = 0
             if st.st_size == offset:
                 continue
             with open(path, "rb") as f:
                 f.seek(offset)
                 chunk = f.read()
-            end = chunk.rfind(b"\n")  # a última linha pode estar pela metade
+            end = chunk.rfind(b"\n")  # the last line may be half-written
             if end < 0:
                 continue
             self._offsets[path] = offset + end + 1
@@ -157,7 +157,7 @@ class ClaudeSource:
         b[2] += usage.get("cache_read_input_tokens") or 0
         b[3] += 1
 
-    # Sessões abertas --------------------------------------------------------
+    # Open sessions ----------------------------------------------------------
 
     def _sessions(self):
         sessions = []
@@ -167,7 +167,7 @@ class ClaudeSource:
             except (OSError, ValueError):
                 continue
             pid = info.get("pid")
-            if not pid or not psutil.pid_exists(pid):  # arquivo de sessão que já fechou
+            if not pid or not psutil.pid_exists(pid):  # session file for one that already closed
                 continue
             project = Path(info.get("cwd") or "").name
             since = info.get("statusUpdatedAt") or info.get("updatedAt") or info.get("startedAt") or 0
@@ -178,6 +178,6 @@ class ClaudeSource:
                 "status": info.get("status") or "?",
                 "since": since / 1000,
             })
-        # Trabalhando primeiro, depois as mais recentes.
+        # Busy ones first, then the most recent.
         sessions.sort(key=lambda s: (s["status"] != "busy", -s["since"]))
         return sessions

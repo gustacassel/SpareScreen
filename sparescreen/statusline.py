@@ -1,9 +1,9 @@
-"""Status line do Claude Code que repassa os limites de uso para o painel.
+"""Claude Code status line that passes the usage limits on to the dashboard.
 
-Configurada em ~/.claude/settings.json ("statusLine"). O Claude Code roda este
-comando a cada atualização e manda os dados da sessão em JSON pelo stdin; o
-campo `rate_limits` (janelas de 5 h e semanal) só existe nos planos Pro/Max.
-Gravamos esse campo num arquivo que o agente do painel lê.
+Configured in ~/.claude/settings.json ("statusLine"). Claude Code runs this
+command on every update and sends the session data as JSON on stdin; the
+`rate_limits` field (5-hour and weekly windows) only exists on Pro/Max plans.
+We save that field to a file that the dashboard agent reads.
 """
 
 import json
@@ -19,7 +19,7 @@ def save_limits(limits):
     LIMITS_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp = LIMITS_FILE.with_suffix(f".{os.getpid()}.tmp")
     tmp.write_text(json.dumps({"updated_at": time.time(), "rate_limits": limits}), encoding="utf-8")
-    os.replace(tmp, LIMITS_FILE)  # troca atômica: o agente nunca lê um arquivo pela metade
+    os.replace(tmp, LIMITS_FILE)  # atomic swap: the agent never reads a half-written file
 
 
 def load_limits():
@@ -35,7 +35,7 @@ def status_text(data):
     if ctx is not None:
         parts.append(f"ctx {ctx:.0f}%")
     limits = data.get("rate_limits") or {}
-    for key, label in (("five_hour", "5h"), ("seven_day", "semana")):
+    for key, label in (("five_hour", "5h"), ("seven_day", "week")):
         pct = (limits.get(key) or {}).get("used_percentage")
         if pct is not None:
             parts.append(f"{label} {pct:.0f}%")
@@ -52,7 +52,7 @@ def main():
         try:
             save_limits(data["rate_limits"])
         except OSError:
-            pass  # a status line nunca pode falhar por causa do painel
+            pass  # the status line must never fail because of the dashboard
     print(status_text(data))
 
 

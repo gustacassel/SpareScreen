@@ -1,11 +1,11 @@
-"""Modo de desenvolvimento (sparescreen --dev).
+"""Dev mode (sparescreen --dev).
 
-- Mudou um .py: o agente é reiniciado sozinho.
-- Mudou algo em web/ (ou o agente reiniciou): a página no celular recarrega sozinha.
+- A .py changed: the agent restarts by itself.
+- Something in web/ changed (or the agent restarted): the page on the phone reloads by itself.
 
-Funciona com dois processos: este supervisor, que vigia os arquivos, e o agente
-de verdade como processo filho. A página percebe a mudança pela "versão" que
-vai junto com os dados (campo `dev`).
+It works with two processes: this supervisor, which watches the files, and the
+real agent as a child process. The page notices the change through the "version"
+sent along with the data (`dev` field).
 """
 
 import os
@@ -24,7 +24,7 @@ def _python_mtimes():
 
 
 class DevSource:
-    """Versão do código: muda quando o agente reinicia ou um arquivo da página muda."""
+    """Code version: changes when the agent restarts or a page file changes."""
 
     name = "dev"
 
@@ -45,29 +45,29 @@ def is_restart():
 
 
 def supervise(argv):
-    """Roda o agente num processo filho e reinicia quando um .py muda."""
+    """Runs the agent in a child process and restarts it when a .py changes."""
     env = dict(os.environ, **{CHILD_ENV: "1"})
     snapshot = _python_mtimes()
     child = None
-    print("[dev] modo dev: o agente reinicia quando um .py muda e a página recarrega sozinha.", flush=True)
+    print("[dev] dev mode: the agent restarts when a .py file changes and the page reloads by itself.", flush=True)
     try:
         while True:
             if child is None:
                 child = subprocess.Popen([sys.executable, "-m", "sparescreen", *argv], env=env)
-                env[RESTART_ENV] = "1"  # nos próximos reinícios, não reabre a página no celular
+                env[RESTART_ENV] = "1"  # on later restarts, do not reopen the page on the phone
             time.sleep(1)
             current = _python_mtimes()
             if current != snapshot:
                 snapshot = current
-                print("[dev] código Python mudou, reiniciando o agente...", flush=True)
+                print("[dev] Python code changed, restarting the agent...", flush=True)
                 if child.poll() is None:
                     child.terminate()
                     child.wait(timeout=10)
                 child = None
             elif child.poll() is not None and not getattr(child, "_reported", False):
-                # Provavelmente um erro no código: espera a próxima alteração para tentar de novo.
+                # Probably an error in the code: wait for the next change to try again.
                 child._reported = True
-                print("[dev] o agente parou. Corrija o erro acima e salve; ele volta sozinho.", flush=True)
+                print("[dev] the agent stopped. Fix the error above and save; it will come back by itself.", flush=True)
     except KeyboardInterrupt:
         pass
     finally:

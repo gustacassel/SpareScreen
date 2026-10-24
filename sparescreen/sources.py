@@ -1,4 +1,4 @@
-"""Fontes de dados mostradas no painel."""
+"""Data sources shown on the dashboard."""
 
 import time
 
@@ -9,12 +9,12 @@ from .sensors import Sensors
 
 
 class SystemSource:
-    """Uso e temperatura de CPU, GPU e RAM, ventoinhas, discos e rede."""
+    """CPU, GPU and RAM usage and temperature, fans, disks and network."""
 
     name = "system"
 
     def __init__(self):
-        # A primeira leitura do psutil sempre volta 0%; descarta ela.
+        # psutil's first reading always returns 0%; throw it away.
         psutil.cpu_percent(percpu=True)
         self.sensors = Sensors()
         self.cpu_name = cpu_name()
@@ -67,7 +67,7 @@ class SystemSource:
         }
 
     def _partitions(self):
-        """Espaço das unidades (C:, D:...), lido a cada 30 s."""
+        """Space on each drive (C:, D:...), read every 30 s."""
         if time.time() - self._disks_at < 30:
             return self._disks
         self._disks_at = time.time()

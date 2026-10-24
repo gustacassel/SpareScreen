@@ -1,26 +1,26 @@
-// JS propositalmente simples (sem módulos nem sintaxe recente) para rodar
-// em navegadores antigos de celular.
+// Deliberately simple JS (no modules or recent syntax) so it runs
+// on old phone browsers.
 //
-// As preferências (tema, telas, troca automática, avisos, som) ficam salvas no PC
-// e chegam junto com os dados; a engrenagem no canto de cima abre a tela para mudar.
+// Preferences (theme, screens, auto-switch, alerts, sound) are saved on the PC
+// and arrive with the data; the gear in the top corner opens the screen to change them.
 //
-// Parâmetros na URL (para testes): ?tela=hardware|claude|pc fixa uma tela; ?tema=neon força um tema.
-// Gestos: toque = próxima tela; toque longo = próximo tema.
+// URL parameters (for testing): ?screen=hardware|claude|pc pins a screen; ?theme=neon forces a theme.
+// Gestures: tap = next screen; long press = next theme.
 (function () {
   "use strict";
 
   var RING_LENGTH = 2 * Math.PI * 52;
-  var THEMES = ["grafite", "oled", "terracota", "neon", "terminal", "claro"];
-  var THEME_INFO = {  // nome e cores da bolinha de amostra (fundo do card, destaque)
-    grafite: ["Grafite", "#151a20", "#4fa3ff"],
+  var THEMES = ["graphite", "oled", "terracotta", "neon", "terminal", "light"];
+  var THEME_INFO = {  // name and colors of the sample dot (card background, accent)
+    graphite: ["Graphite", "#151a20", "#4fa3ff"],
     oled: ["OLED", "#000000", "#4fa3ff"],
-    terracota: ["Terracota", "#27211b", "#d97757"],
+    terracotta: ["Terracotta", "#27211b", "#d97757"],
     neon: ["Neon", "#190a3a", "#00f5d4"],
     terminal: ["Terminal", "#04110a", "#39ff7a"],
-    claro: ["Claro", "#ffffff", "#2f80ed"]
+    light: ["Light", "#ffffff", "#2f80ed"]
   };
   var SCREEN_NAMES = { hardware: "Hardware", claude: "Claude", pc: "PC" };
-  var ROTATE_OPTIONS = [[0, "Não"], [10, "10 s"], [20, "20 s"], [30, "30 s"], [60, "1 min"]];
+  var ROTATE_OPTIONS = [[0, "Off"], [10, "10 s"], [20, "20 s"], [30, "30 s"], [60, "1 min"]];
 
   function $(id) { return document.getElementById(id); }
   function q(root, sel) { return root.querySelector(sel); }
@@ -33,7 +33,7 @@
     return "var(--ok)";
   }
 
-  function decimal(n) { return n.toFixed(1).replace(".", ","); }
+  function decimal(n) { return n.toFixed(1); }
   function gb(bytes) { return decimal(bytes / 1073741824); }
 
   function size(bytes) {
@@ -48,24 +48,24 @@
     return Math.round(bytesPerSecond) + " B/s";
   }
 
-  // 1234567 -> "1,2 mi"; 45300 -> "45 mil"
+  // 1234567 -> "1.2M"; 45300 -> "45K"
   function shortNumber(n) {
-    if (n >= 1e9) return decimal(n / 1e9) + " bi";
-    if (n >= 1e6) return decimal(n / 1e6) + " mi";
-    if (n >= 1e3) return Math.round(n / 1e3) + " mil";
+    if (n >= 1e9) return decimal(n / 1e9) + "B";
+    if (n >= 1e6) return decimal(n / 1e6) + "M";
+    if (n >= 1e3) return Math.round(n / 1e3) + "K";
     return n + "";
   }
 
   function duration(seconds) {
-    if (seconds < 60) return "menos de 1 min";
+    if (seconds < 60) return "less than 1 min";
     var h = Math.floor(seconds / 3600);
     var m = Math.floor((seconds % 3600) / 60);
     if (h >= 24) return Math.floor(h / 24) + "d " + (h % 24) + "h";
-    return h ? h + "h " + pad(m) + "min" : m + " min";
+    return h ? h + "h " + pad(m) + "m" : m + " min";
   }
 
   function ago(seconds) {
-    if (seconds < 60) return "agora";
+    if (seconds < 60) return "now";
     if (seconds < 3600) return Math.floor(seconds / 60) + " min";
     return Math.floor(seconds / 3600) + " h";
   }
@@ -77,7 +77,7 @@
 
   function weekdayTime(epoch) {
     var d = new Date(epoch * 1000);
-    return d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "") + ", " + clockTime(epoch);
+    return d.toLocaleDateString("en-US", { weekday: "short" }).replace(".", "") + ", " + clockTime(epoch);
   }
 
   function el(tag, cls, text) {
@@ -97,7 +97,7 @@
     return svg;
   }
 
-  // Uma linha "nome ........ valor", com barrinha opcional (0-100) embaixo.
+  // A "name ........ value" row, with an optional small bar (0-100) below.
   function row(name, value, barPct, barColor, iconName) {
     var li = el("li");
     var line = el("div", "row-line");
@@ -127,18 +127,18 @@
 
   var params = new URLSearchParams(location.search);
 
-  // ---- Configuração (vem do PC) --------------------------------------------
+  // ---- Configuration (comes from the PC) -----------------------------------
 
-  var cfg = { theme: "grafite", screens: ["hardware", "claude", "pc"], rotate: 20, notify: true, sound: true,
+  var cfg = { theme: "graphite", screens: ["hardware", "claude", "pc"], rotate: 20, notify: true, sound: true,
               fan_names: {}, cpu_fan: null };
-  var fanKeys = [];  // nomes originais das ventoinhas da última leitura ("Fan 1", "GPU"...)
+  var fanKeys = [];  // original fan names from the last reading ("Fan 1", "GPU"...)
 
   function fanName(key) { return (cfg.fan_names && cfg.fan_names[key]) || key; }
   var cfgJson = "";
 
   function applyConfig(newCfg) {
     cfg = newCfg;
-    applyTheme(params.get("tema") || cfg.theme);
+    applyTheme(params.get("theme") || cfg.theme);
     show(current);
     startRotation();
     if (settingsOpen) renderSettings();
@@ -162,23 +162,23 @@
     xhr.send(JSON.stringify(changes));
   }
 
-  // ---- Relógio (hora do próprio celular) ----------------------------------
+  // ---- Clock (the phone's own time) ---------------------------------------
 
   function tickClock() {
     var now = new Date();
     $("time").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
-    var date = now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+    var date = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
     $("date").textContent = date.charAt(0).toUpperCase() + date.slice(1);
   }
   tickClock();
   setInterval(tickClock, 1000);
 
-  // ---- Aviso por cima da tela ----------------------------------------------
+  // ---- Toast on top of the screen ------------------------------------------
 
   var toastQueue = [];
   var toastBusy = false;
 
-  // kind: "done" (verde), "attention" (amarelo) ou "info" (cor de destaque)
+  // kind: "done" (green), "attention" (yellow) or "info" (accent color)
   function toast(kind, title, sub, iconName, seconds) {
     toastQueue.push({ kind: kind, title: title, sub: sub, icon: iconName, seconds: seconds || 8 });
     if (!toastBusy) nextToast();
@@ -207,7 +207,7 @@
     setTimeout(nextToast, 400);
   }
 
-  // ---- Som (só toca depois do primeiro toque: regra dos navegadores) -------
+  // ---- Sound (only plays after the first tap: browser rule) ----------------
 
   var audio = null;
   function unlockAudio() {
@@ -218,7 +218,7 @@
 
   function chime() {
     if (!audio || !cfg.sound) return;
-    var notes = [880, 1318.5];  // lá e mi: um "plim" curto
+    var notes = [880, 1318.5];  // A and E: a short "ding"
     for (var i = 0; i < notes.length; i++) {
       var osc = audio.createOscillator();
       var gain = audio.createGain();
@@ -234,14 +234,14 @@
     }
   }
 
-  // ---- Telas ---------------------------------------------------------------
+  // ---- Screens -------------------------------------------------------------
 
   var allScreens = Array.prototype.slice.call(document.querySelectorAll(".screen"));
   var current = 0;
   var rotateTimer = null;
-  var fixed = params.get("tela");
+  var fixed = params.get("screen");
 
-  // Telas que entram no rodízio: a fixada na URL, ou as ligadas na configuração.
+  // Screens in the rotation: the one pinned in the URL, or the ones enabled in the config.
   function enabledScreens() {
     var list = [];
     for (var i = 0; i < allScreens.length; i++) {
@@ -284,12 +284,12 @@
     }
   }
 
-  // ---- Temas ---------------------------------------------------------------
+  // ---- Themes --------------------------------------------------------------
 
   var theme = null;
 
   function applyTheme(name) {
-    if (THEMES.indexOf(name) < 0) name = "grafite";
+    if (THEMES.indexOf(name) < 0) name = "graphite";
     theme = name;
     document.documentElement.setAttribute("data-theme", name);
   }
@@ -297,10 +297,10 @@
   function nextTheme() {
     var name = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
     saveConfig({ theme: name });
-    toast("info", "Tema", THEME_INFO[name][0], "palette", 2);
+    toast("info", "Theme", THEME_INFO[name][0], "palette", 2);
   }
 
-  // ---- Configurações (painel) ----------------------------------------------
+  // ---- Settings (panel) ----------------------------------------------------
 
   var settingsOpen = false;
 
@@ -333,36 +333,36 @@
       return chip(SCREEN_NAMES[name], on, function () {
         var list = cfg.screens.filter(function (s) { return s !== name; });
         if (!on) list.push(name);
-        if (list.length) saveConfig({ screens: list });  // pelo menos uma tela
+        if (list.length) saveConfig({ screens: list });  // at least one screen
       });
     }));
     fillChips("set-rotate", ROTATE_OPTIONS.map(function (opt) {
       return chip(opt[1], cfg.rotate === opt[0], function () { saveConfig({ rotate: opt[0] }); });
     }));
-    fillChips("set-notify", [[true, "Ligados"], [false, "Desligados"]].map(function (opt) {
+    fillChips("set-notify", [[true, "On"], [false, "Off"]].map(function (opt) {
       return chip(opt[1], cfg.notify === opt[0], function () { saveConfig({ notify: opt[0] }); });
     }));
-    fillChips("set-sound", [[true, "Ligado"], [false, "Desligado"]].map(function (opt) {
+    fillChips("set-sound", [[true, "On"], [false, "Off"]].map(function (opt) {
       return chip(opt[1], cfg.sound === opt[0], function () {
         saveConfig({ sound: opt[0] });
-        if (opt[0]) { unlockAudio(); chime(); }  // amostra do som
+        if (opt[0]) { unlockAudio(); chime(); }  // sound sample
       });
     }));
     renderFanFields();
-    // Qual ventoinha mostrar no card da CPU: cada placa liga o cooler num conector diferente.
-    var cpuFanChoices = [[null, "Nenhuma"]].concat(fanKeys.filter(function (k) { return k !== "GPU"; })
+    // Which fan to show on the CPU card: each motherboard plugs the cooler into a different header.
+    var cpuFanChoices = [[null, "None"]].concat(fanKeys.filter(function (k) { return k !== "GPU"; })
       .map(function (k) { return [k, fanName(k)]; }));
     fillChips("set-cpu-fan", cpuFanChoices.map(function (opt) {
       return chip(opt[1], cfg.cpu_fan === opt[0], function () { saveConfig({ cpu_fan: opt[0] }); });
     }));
   }
 
-  // Um campo por ventoinha. Não redesenha enquanto alguém está digitando.
+  // One field per fan. Does not redraw while someone is typing.
   function renderFanFields() {
     var box = $("set-fans");
     if (box.contains(document.activeElement)) return;
     box.innerHTML = "";
-    if (!fanKeys.length) box.appendChild(el("span", "detail", "nenhuma ventoinha encontrada"));
+    if (!fanKeys.length) box.appendChild(el("span", "detail", "no fans found"));
     fanKeys.forEach(function (key) {
       var field = el("label", "fan-field", key);
       var input = el("input");
@@ -377,7 +377,7 @@
         else delete names[key];
         saveConfig({ fan_names: names });
       });
-      input.addEventListener("keydown", function (e) { if (e.keyCode === 13) input.blur(); });  // Enter salva
+      input.addEventListener("keydown", function (e) { if (e.keyCode === 13) input.blur(); });  // Enter saves
       field.appendChild(input);
       box.appendChild(field);
     });
@@ -400,10 +400,10 @@
   $("set-close").addEventListener("click", function (e) { e.stopPropagation(); closeSettings(); });
   $("settings").addEventListener("click", function (e) {
     e.stopPropagation();
-    if (e.target === $("settings")) closeSettings();  // toque fora do painel fecha
+    if (e.target === $("settings")) closeSettings();  // tapping outside the panel closes it
   });
 
-  // ---- Gestos: toque = próxima tela; toque longo = próximo tema ------------
+  // ---- Gestures: tap = next screen; long press = next theme ----------------
 
   var pressTimer = null;
   var longPressed = false;
@@ -425,7 +425,7 @@
   document.addEventListener("click", function () {
     unlockAudio();
     if (longPressed) { longPressed = false; return; }
-    // A tela cheia é pedida na moldura (index.html), para sobreviver aos recarregamentos daqui.
+    // Fullscreen is requested on the frame (index.html), so it survives reloads of this page.
     var doc = window.parent !== window ? parent.document : document;
     var root = doc.documentElement;
     var req = root.requestFullscreen || root.webkitRequestFullscreen;
@@ -433,16 +433,16 @@
       try {
         var p = req.call(root);
         if (p && p.catch) p.catch(function () {});
-      } catch (e) { /* sem tela cheia neste navegador */ }
+      } catch (e) { /* no fullscreen in this browser */ }
     }
-    if (toastBusy) { hideToast(); return; }  // toque fecha o aviso
+    if (toastBusy) { hideToast(); return; }  // tap closes the toast
     if (!fixed) {
       show(current + 1);
       startRotation();
     }
   });
 
-  applyTheme(params.get("tema") || cfg.theme);
+  applyTheme(params.get("theme") || cfg.theme);
   show(0);
   startRotation();
 
@@ -486,7 +486,7 @@
     }
   }
 
-  // Núcleos em grade de 2 linhas (12 threads -> 6 por linha).
+  // Cores in a 2-row grid (12 threads -> 6 per row).
   function renderCores(box, cores) {
     if (box.children.length !== cores.length) {
       box.innerHTML = "";
@@ -521,13 +521,13 @@
     fillList($(id), items, "");
   }
 
-  // Texto de uma ventoinha pelo nome original que o sistema informou ("Fan 2", "GPU"...).
+  // Text for a fan, by the original name the system reported ("Fan 2", "GPU"...).
   function fanText(sys, key) {
     var fans = sys.fans || [];
     for (var i = 0; i < fans.length; i++) {
       var f = fans[i];
       if (f.name !== key) continue;
-      if (f.gpu) return !f.percent && !f.rpm ? "parada" : Math.round(f.percent || 0) + "%";
+      if (f.gpu) return !f.percent && !f.rpm ? "stopped" : Math.round(f.percent || 0) + "%";
       return Math.round(f.rpm) + " rpm";
     }
     return null;
@@ -540,10 +540,10 @@
     setName(cpu, sys.cpu.name);
     setRing(cpu, sys.cpu.percent);
     setTemp(cpu, sys.cpu.temp, 75, 90);
-    setExtra(cpu, sys.cpu.power, sys.cpu.temp === null ? "sem sensor de temperatura" : "");
+    setExtra(cpu, sys.cpu.power, sys.cpu.temp === null ? "no temperature sensor" : "");
     renderCores(q(cpu, ".cores"), sys.cpu.cores);
     setRows("cpu-rows", [
-      // clock médio / núcleo mais rápido
+      // average clock / fastest core
       ["Clock", sys.cpu.clock ? decimal(sys.cpu.clock / 1000) + (sys.cpu.clock_max ? " / " + ghz(sys.cpu.clock_max) : " GHz") : null],
       [cfg.cpu_fan ? fanName(cfg.cpu_fan) : "", cfg.cpu_fan ? fanText(sys, cfg.cpu_fan) : null, "fan"]
     ]);
@@ -564,13 +564,13 @@
       }
       setRows("gpu-rows", [
         ["Clock", g.clock ? Math.round(g.clock) + " MHz" : null],
-        ["Memória", g.mem_clock ? Math.round(g.mem_clock) + " MHz" : null],
+        ["Memory", g.mem_clock ? Math.round(g.mem_clock) + " MHz" : null],
         [fanName("GPU"), fanText(sys, "GPU"), "fan"]
       ]);
     } else {
       setRing(gpu, null);
       setTemp(gpu, null);
-      setExtra(gpu, null, "GPU não encontrada");
+      setExtra(gpu, null, "GPU not found");
     }
 
     var ram = $("ram");
@@ -581,21 +581,21 @@
     mem.appendChild(document.createTextNode(gb(sys.ram.used)));
     mem.appendChild(el("small", "", "/ " + gb(sys.ram.total) + " GB"));
     setRows("ram-rows", [
-      ["Disponível", sys.ram.available !== undefined ? size(sys.ram.available) : null],
-      ["Paginação", sys.ram.swap_total ? Math.round(sys.ram.swap_percent) + "% de " + size(sys.ram.swap_total) : null],
-      ["Processos", sys.ram.processes]
+      ["Available", sys.ram.available !== undefined ? size(sys.ram.available) : null],
+      ["Swap", sys.ram.swap_total ? Math.round(sys.ram.swap_percent) + "% of " + size(sys.ram.swap_total) : null],
+      ["Processes", sys.ram.processes]
     ]);
   }
 
-  // ---- PC: o que está rolando ----------------------------------------------
+  // ---- PC: what is going on ------------------------------------------------
 
   function renderPc(sys, act, now) {
     if (act && !act.error) {
       var game = act.game;
-      $("game-name").textContent = game ? game.name : "Nenhum jogo aberto";
+      $("game-name").textContent = game ? game.name : "No game running";
       $("game-name").className = "now-name" + (game ? "" : " none");
       $("game-meta").textContent = game
-        ? "aberto há " + duration(now - game.since) + " · CPU " + Math.round(game.cpu) + "% · " + size(game.mem)
+        ? "running for " + duration(now - game.since) + " · CPU " + Math.round(game.cpu) + "% · " + size(game.mem)
         : "";
       var focus = act.focus;
       $("focus-name").textContent = focus ? focus.name : "--";
@@ -611,25 +611,25 @@
     fillList($("fan-list"), fans.map(function (f) {
       if (f.gpu) {
         var stopped = !f.percent && !f.rpm;
-        return row(fanName(f.name), stopped ? "parada" : Math.round(f.percent || 0) + "%" + (f.rpm ? " · " + Math.round(f.rpm) + " rpm" : ""),
+        return row(fanName(f.name), stopped ? "stopped" : Math.round(f.percent || 0) + "%" + (f.rpm ? " · " + Math.round(f.rpm) + " rpm" : ""),
                    f.percent || 0);
       }
-      // Sem % na placa-mãe: a barra é a rotação relativa a 3000 rpm.
+      // No % on the motherboard: the bar is the speed relative to 3000 rpm.
       return row(fanName(f.name), Math.round(f.rpm) + " rpm", f.percent !== null ? f.percent : f.rpm / 30);
-    }), "sem sensores (abra o LibreHardwareMonitor)");
+    }), "no sensors (open LibreHardwareMonitor)");
 
     if (sys.net) {
       $("net-down").textContent = rate(sys.net.down);
       $("net-up").textContent = rate(sys.net.up);
     }
-    $("uptime").textContent = sys.uptime ? "PC ligado há " + duration(sys.uptime) : "";
+    $("uptime").textContent = sys.uptime ? "PC up for " + duration(sys.uptime) : "";
 
     var drives = sys.drives || [];
     var temps = drives.filter(function (d) { return d.temp !== null; })
       .map(function (d) { return Math.round(d.temp) + "°"; }).join(" · ");
     var rows = (sys.disks || []).map(function (d) {
       var color = d.percent >= 95 ? "var(--hot)" : d.percent >= 85 ? "var(--warn)" : "var(--accent)";
-      return row(d.name, size(d.free) + " livres", d.percent, color);
+      return row(d.name, size(d.free) + " free", d.percent, color);
     });
     if (temps) rows.push(row("Temp.", temps));
     fillList($("disk-list"), rows, "--");
@@ -646,14 +646,14 @@
       pct.textContent = "--";
       pct.className = "limit-pct na";
       fill.style.width = "0";
-      reset.textContent = "sem dados";
+      reset.textContent = "no data";
       return;
     }
     if (win.renewed) {
-      pct.textContent = "renovado";
+      pct.textContent = "renewed";
       pct.className = "limit-pct na";
       fill.style.width = "0";
-      reset.textContent = "renovou " + (weekly ? weekdayTime(win.resets_at) : "às " + clockTime(win.resets_at));
+      reset.textContent = "renewed " + (weekly ? weekdayTime(win.resets_at) : "at " + clockTime(win.resets_at));
       return;
     }
     pct.textContent = Math.round(win.percent) + "%";
@@ -661,13 +661,13 @@
     fill.style.width = Math.min(win.percent, 100) + "%";
     fill.style.background = levelColor(win.percent);
     var left = win.resets_at - now;
-    reset.textContent = "renova em " + duration(left) +
+    reset.textContent = "resets in " + duration(left) +
       (weekly && left > 86400 ? " (" + weekdayTime(win.resets_at) + ")" : " (" + clockTime(win.resets_at) + ")");
   }
 
-  // Avisos: compara o status de cada sessão com o da leitura anterior.
+  // Alerts: compare each session's status with the previous reading.
   var lastStatus = {};
-  var justDone = {};  // id da sessão -> até quando destacar (ms)
+  var justDone = {};  // session id -> highlight until (ms)
 
   function watchSessions(sessions) {
     for (var i = 0; i < sessions.length; i++) {
@@ -679,7 +679,7 @@
           showNamed("claude");
           chime();
           toast(done ? "done" : "attention",
-                done ? "Sessão terminou" : "Sessão precisa de você",
+                done ? "Session finished" : "Session needs you",
                 s.name, done ? "check" : "alert");
         }
       }
@@ -691,10 +691,10 @@
     var list = $("cl-sessions");
     list.innerHTML = "";
     if (!sessions.length) {
-      list.appendChild(el("li", "empty", "Nenhuma sessão aberta"));
+      list.appendChild(el("li", "empty", "No open sessions"));
       return;
     }
-    var STATUS = { busy: "trabalhando", idle: "parada" };
+    var STATUS = { busy: "working", idle: "idle" };
     for (var i = 0; i < sessions.length; i++) {
       var s = sessions[i];
       var highlight = justDone[s.id] && justDone[s.id] > Date.now() && s.status !== "busy";
@@ -702,7 +702,7 @@
       li.appendChild(el("span", "s-dot " + (highlight ? "done" : s.status)));
       var text = el("span", "s-text");
       text.appendChild(el("span", "s-name", s.name));
-      var meta = (highlight ? "terminou" : STATUS[s.status] || s.status) + " · " + ago(now - s.since);
+      var meta = (highlight ? "finished" : STATUS[s.status] || s.status) + " · " + ago(now - s.since);
       if (s.project && s.project !== s.name) meta = s.project + " · " + meta;
       text.appendChild(el("span", "s-meta", meta));
       li.appendChild(text);
@@ -717,12 +717,12 @@
     renderLimit("lim-week", limits && limits.seven_day, now, true);
     var age = limits && limits.updated_at ? now - limits.updated_at : null;
     $("lim-updated").textContent = age === null
-      ? "Limites chegam pela status line: abra o Claude Code no terminal."
-      : "limites atualizados " + (age < 60 ? "agora" : "há " + ago(age));
+      ? "Limits come from the status line: open Claude Code in a terminal."
+      : "limits updated " + (age < 60 ? "just now" : ago(age) + " ago");
 
     var f = cl.fable_week;
     $("fable-tokens").textContent = shortNumber(f.input + f.output + f.cache_read);
-    $("fable-detail").textContent = "tokens · " + f.responses + " respostas · Claude Code deste PC";
+    $("fable-detail").textContent = "tokens · " + f.responses + " responses · Claude Code on this PC";
 
     var t = cl.today;
     $("cl-today").textContent = shortNumber(t.input + t.output + t.cache_read);
@@ -730,9 +730,9 @@
     renderSessions(cl.sessions, now);
   }
 
-  // ---- Dados do PC ---------------------------------------------------------
+  // ---- Data from the PC ----------------------------------------------------
 
-  // Modo dev (sparescreen --dev): se o código mudou, recarrega a página sozinho.
+  // Dev mode (sparescreen --dev): if the code changed, reload the page automatically.
   var devVersion = null;
   function checkDev(version) {
     if (!version) return;
@@ -748,15 +748,15 @@
     renderPc(data.system, data.activity, data.time);
   }
 
-  // EventSource reconecta sozinho se o PC cair ou o Wi-Fi oscilar.
+  // EventSource reconnects on its own if the PC drops or the Wi-Fi flickers.
   var events = new EventSource("events");
   events.onopen = function () { $("status").className = "dot on"; };
   events.onerror = function () { $("status").className = "dot"; };
   events.onmessage = function (e) { render(JSON.parse(e.data)); };
 
-  // Manter a tela acesa: só existe em navegadores mais novos (Chrome 84+) e
-  // só em contexto seguro, como http://localhost via USB. Em aparelhos antigos não há;
-  // lá vale a opção --stay-awake do agente.
+  // Keep the screen on: only exists in newer browsers (Chrome 84+) and
+  // only in a secure context, such as http://localhost over USB. Old devices lack it;
+  // there, use the agent's --stay-awake option.
   function keepAwake() {
     if (navigator.wakeLock && document.visibilityState === "visible") {
       navigator.wakeLock.request("screen").catch(function () {});
