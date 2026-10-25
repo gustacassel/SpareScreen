@@ -114,7 +114,20 @@
   function render(state) {
     $("version").textContent = state.version ? "v" + state.version : "";
     $("running").textContent = "Running · " + state.local_url.replace("http://", "");
-    $("phone-url").textContent = state.phone_url || "Wi-Fi off (this PC only)";
+    // A name that a phone already reached survives the router changing the PC's IP: show it first.
+    var names = state.names || [];
+    var working = names.length && names[0].works ? names[0].url : null;
+    $("phone-url").textContent = working || state.phone_url || "Wi-Fi off (this PC only)";
+    if (working) {
+      $("names").textContent = "Works on your phone and keeps working if the IP changes. By IP: " + state.phone_url;
+    } else if (names.length) {
+      var urls = [];
+      for (var n = 0; n < names.length; n++) urls.push(names[n].url);
+      $("names").textContent = "The phone also tries " + urls.join(" and ") +
+        " and switches to it if it works (keeps working if the IP changes).";
+    } else {
+      $("names").textContent = "";
+    }
     $("code").textContent = spaced(state.code);
     var waiting = state.waiting;
     $("waiting-card").className = "card" + (waiting ? " shown" : "");

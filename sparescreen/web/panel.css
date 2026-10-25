@@ -58,6 +58,7 @@ body {
 .connect-item { flex: 1 1 200px; margin: 0 8px 8px; }
 .label { font-size: 12px; color: var(--muted); }
 .url { font-size: 17px; font-weight: 600; word-break: break-all; -webkit-user-select: all; user-select: all; }
+.names { margin-top: 4px; }
 .code { font-size: 26px; font-weight: 600; letter-spacing: .18em; font-variant-numeric: tabular-nums; }
 .code.big { font-size: 40px; color: var(--accent); }
 

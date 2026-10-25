@@ -26,6 +26,7 @@ LOCAL_ADDRESSES = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
 MAX_FAILURES = 5     # wrong codes in a row before a short lockout
 LOCKOUT = 60         # seconds
 WAITING_FOR = 120    # seconds a device that asked to pair shows up as "waiting"
+HANDOFF_FOR = 60     # seconds a code to move a device to another address of the PC lasts
 
 
 def _hash(token):
@@ -42,6 +43,7 @@ class Pairing:
         self._failures = 0
         self._locked_until = 0
         self._waiting = None  # the last device that asked to pair: {"address", "device", "at"}
+        self._handoffs = {}   # one-time code -> (device hash, valid until)
         try:
             self._devices = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -104,6 +106,32 @@ class Pairing:
             self._waiting = None
             self._save()
             return token, None
+
+    def handoff(self, digest):
+        """A one-time code that moves a paired device to another address of this PC (the
+        browser keeps the cookie per address, so it would have to pair again)."""
+        code = secrets.token_urlsafe(24)
+        with self._lock:
+            now = time.time()
+            self._handoffs = {c: h for c, h in self._handoffs.items() if h[1] > now}
+            self._handoffs[code] = (digest, now + HANDOFF_FOR)
+        return code
+
+    def redeem(self, code, address=None):
+        """The new token for the device the code was made for, or None. Single use."""
+        with self._lock:
+            digest, until = self._handoffs.pop(str(code), (None, 0))
+            if not digest or time.time() > until:
+                return None
+            for device in self._devices:
+                if secrets.compare_digest(device.get("hash", ""), digest):
+                    token = secrets.token_urlsafe(32)
+                    device["hash"] = _hash(token)  # the old address's cookie stops working
+                    if address:
+                        device["address"] = address
+                    self._save()
+                    return token
+            return None
 
     def remove(self, index):
         """Forget one paired device (its position in devices())."""

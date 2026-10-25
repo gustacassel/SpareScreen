@@ -124,12 +124,6 @@ and with no mandatory app. That's this project's niche.
   Options: an opt-in `--https` with a self-signed certificate and its fingerprint shown in
   the PC window to compare on the phone; meanwhile, USB only (`--host 127.0.0.1`) on
   networks you don't trust, as the README says.
-- **Address by PC name, not just IP.** The IP can change (DHCP); the name doesn't. Two ways,
-  neither universal: many home routers put DHCP hostnames in their DNS (`http://PCNAME:8765`,
-  sometimes `PCNAME.lan` / `.home`), and mDNS answers `PCNAME.local` (Windows 10+, Linux
-  with Avahi, macOS; iPhones resolve it, Android only from 12). Idea: the agent checks
-  which names resolve to its own IP and the PC window shows the best one first, with the
-  IP as fallback; the phone could also remember the last address that worked.
 - **Game FPS.** Possible, with an extra free tool per OS:
   - Windows: PresentMon (Intel, MIT) reads the frame times every game sends to the screen
     (any API: DirectX, Vulkan, OpenGL). It needs admin rights or the user in the

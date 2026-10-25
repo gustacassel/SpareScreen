@@ -7,9 +7,9 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
-from . import images
+from . import images, names
 from .pairing import LOCAL_ADDRESSES
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -110,8 +110,20 @@ def make_handler(hub, config, pairing, info, clients, panel):
             return json.loads(self.rfile.read(size) or b"{}")
 
         def do_GET(self):
-            path = self.path.split("?", 1)[0]
-            if path == "/events":
+            path, _, query = self.path.partition("?")
+            if path in ("/", "/index.html") and "handoff=" in query:
+                self._redeem(parse_qs(query).get("handoff", [""])[0])
+            elif path == "/whoami":
+                # The page on the phone tries the PC's names; this says "yes, it's this agent".
+                # No data at all, and readable from the page's other address (CORS).
+                self._send_json(200, {"id": names.INSTANCE}, [("Access-Control-Allow-Origin", "*")])
+            elif path == "/names":
+                if self._trusted():
+                    self._send_json(200, {"id": names.INSTANCE, "names": names.candidates(),
+                                          "port": self.server.server_address[1]})
+                else:
+                    self._send_json(401, {})
+            elif path == "/events":
                 if self._trusted():
                     self._stream_events()
                 else:
@@ -157,6 +169,20 @@ def make_handler(hub, config, pairing, info, clients, panel):
                 self.send_error(403)
             elif path == "/pair" and pairing is not None:
                 self._pair(data)
+            elif path == "/names/works" and isinstance(data, dict):
+                if not self._trusted():
+                    self.send_error(401)
+                    return
+                if panel is not None and data.get("name") in names.candidates():
+                    panel.name_works(data["name"])
+                self._send_json(200, {})
+            elif path == "/handoff":
+                # Moving to another address of this PC: a one-time code carries the pairing over.
+                digest = None if pairing is None else pairing.paired_hash(self.headers.get("Cookie"))
+                if not self._trusted():
+                    self.send_error(401)
+                    return
+                self._send_json(200, {"code": pairing.handoff(digest) if digest else None})
             elif path == "/panel/action" and panel is not None:
                 if not self._local() or not isinstance(data, dict):
                     self.send_error(403)
@@ -179,6 +205,16 @@ def make_handler(hub, config, pairing, info, clients, panel):
                 self._send_json(429, {"error": "locked", "retry_in": error[1]})
             else:
                 self._send_json(403, {"error": "wrong", "attempts_left": error[1]})
+
+        def _redeem(self, code):
+            """Arriving at a new address with a handoff code: set this address's cookie."""
+            token = pairing.redeem(code, self.client_address[0]) if pairing is not None and code else None
+            self.send_response(302)
+            self.send_header("Location", "/")
+            if token:
+                self.send_header("Set-Cookie", pairing.cookie_header(token))
+            self.send_header("Content-Length", "0")
+            self.end_headers()
 
         def _serve_art(self, key):
             # Covers and icons reveal what you're playing, so they need pairing like the data.

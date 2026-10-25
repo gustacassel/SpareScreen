@@ -12,7 +12,7 @@ import sys
 import time
 import webbrowser
 
-from . import autostart, lhm
+from . import autostart, lhm, names
 
 # Shown as the device name; modern browsers hide the phone model, so this stays generic.
 _SYSTEMS = (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("CrOS", "ChromeOS"),
@@ -46,6 +46,18 @@ class Panel:
         self.autostart_args = list(autostart_args)
         self.hub = None  # set by server.serve()
         self.message = None  # result of the last action, shown once
+        self.reachable = {}  # PC name -> when a phone last reached SpareScreen by it
+
+    def name_works(self, name):
+        self.reachable[name] = time.time()
+
+    def addresses(self):
+        """The PC's names (the ones a phone has reached first) and its IP, as URLs."""
+        port = self.local_url.rsplit(":", 1)[-1] if self.local_url.count(":") == 2 else "8765"
+        found = [{"url": f"http://{name}:{port}", "works": name in self.reachable}
+                 for name in names.candidates()]
+        found.sort(key=lambda a: not a["works"])
+        return found
 
     # ---- state ---------------------------------------------------------------
 
@@ -55,6 +67,7 @@ class Panel:
         return {
             "version": self.info.get("version"),
             "phone_url": self.info.get("phone_url"),
+            "names": self.addresses() if self.info.get("phone_url") else [],
             "local_url": self.local_url,
             "code": self.pairing.code if self.pairing else None,
             "checks": self.checks(snapshot),

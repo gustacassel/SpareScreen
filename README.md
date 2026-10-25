@@ -136,6 +136,13 @@ One Wi-Fi device is paired at a time: pairing a new one disconnects the previous
 (it asks for the code again). The SpareScreen window shows who is asking to pair and
 lets you remove the paired device.
 
+**The PC's name instead of its IP.** The router can give the PC a new IP, and then the
+phone loses the page. So, once connected by IP, the page tries the PC's names from the
+phone (`yourpc.local`, which the PC answers itself over mDNS, and `yourpc`, which many
+routers know) and moves to the first one that works, keeping the pairing. iPhones
+resolve `.local`; Android does from version 12. The SpareScreen window shows which
+address worked. If none does, the page stays on the IP and tries again a day later.
+
 ### With a USB cable (Android)
 
 Works without Wi-Fi and keeps the phone charging. It uses `adb reverse`, so the
@@ -482,6 +489,8 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/panel.py`, `sparescreen/appwindow.py` and `web/panel.*`: the SpareScreen
   window on the PC (checks, devices, pairing) and how it opens as an app window.
 - `sparescreen/lhm.py`: finds, sets up, starts and installs LibreHardwareMonitor on Windows.
+- `sparescreen/names.py`: the PC's names the phone may reach it by (tested from the phone
+  through `/whoami`; a one-time code carries the pairing to the new address).
 - `packaging/entry.py` and `.github/workflows/release.yml`: the PyInstaller executables
   built for every release.
 - `sparescreen/dev.py`: `--dev` mode (a supervisor that restarts the agent, plus the code version).

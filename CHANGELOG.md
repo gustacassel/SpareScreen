@@ -10,6 +10,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 - "Disconnected" screen: after 30 seconds without data the dashboard says so (with the
   time of the last data) instead of showing old numbers; it goes away when data returns.
+- The PC's name instead of its IP: opened by IP, the page tests the PC's names from the
+  phone (`name.local` over mDNS, `name` through the router) and moves to the first that
+  works, keeping the pairing, so it survives the router changing the PC's IP. The
+  SpareScreen window shows the address that worked.
 
 ### Fixed
 
