@@ -4,6 +4,19 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Game screen: the GPU card shows the fan speed; without store art, the game's icon
+  fills the art area (icons are now extracted at 256 px).
+- Without LibreHardwareMonitor on Windows, the CPU cards say to open it instead of
+  "no temperature sensor".
+
+### Fixed
+
+- Game art with newer Steam versions, which keep the library images in hashed folders.
+
 ## [0.5.0] - 2026-10-24
 
 ### Added

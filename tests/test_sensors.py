@@ -137,6 +137,15 @@ class SensorsTest(unittest.TestCase):
         data = s.read()
         self.assertEqual(data["gpu"]["name"], "from nvidia-smi")
         self.assertEqual([f["name"] for f in data["fans"]], ["GPU"])  # GPU fan added from nvidia-smi
+        self.assertIsNone(data["hint"])
+
+    def test_hint_when_librehardwaremonitor_is_not_running(self):
+        s = sensors.Sensors()
+        s.lhm = mock.Mock(read=mock.Mock(return_value=None))
+        s.nvidia = mock.Mock(read=mock.Mock(return_value=None))
+        data = s.read()
+        self.assertIsNone(data["cpu_temp"])
+        self.assertEqual(data["hint"], "open LibreHardwareMonitor")
 
 
 if __name__ == "__main__":

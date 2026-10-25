@@ -636,7 +636,7 @@
     setName(cpu, sys.cpu.name);
     setRing(cpu, sys.cpu.percent);
     setTemp(cpu, sys.cpu.temp, 75, 90);
-    setExtra(cpu, sys.cpu.power, sys.cpu.temp === null ? "no temperature sensor" : "");
+    setExtra(cpu, sys.cpu.power, sys.cpu.temp === null ? sys.sensors_hint || "no temperature sensor" : "");
     renderCores(q(cpu, ".cores"), sys.cpu.cores);
     setRows("cpu-rows", [
       // average clock / fastest core
@@ -947,14 +947,20 @@
     var meta = ["playing for " + duration(now - game.since)];
     if (known(game.cpu)) meta.push("CPU " + Math.round(game.cpu) + "%");
     $("g-meta").textContent = meta.join(" · ");
-    setImage($("game-art"), $("game-art").parentNode, "has-art", game.art);
-    setImage($("game-icon"), $("game-icon"), "shown", game.icon);
+    // No store art: the game's own icon fills the space, big, over a blurred copy of itself.
+    var asIcon = !game.art && game.icon;
+    var holder = $("game-art").parentNode;
+    holder.className = "game-art" + (asIcon ? " as-icon" : "");
+    setImage($("game-art"), holder, "has-art", game.art || game.icon);
+    $("game-art-bg").style.backgroundImage = asIcon ? "url(" + game.icon + ")" : "none";
+    setImage($("game-icon"), $("game-icon"), "shown", asIcon ? null : game.icon);
 
     var g = sys.gpu;
     if (g) {
       var gpuDetail = [];
       if (g.clock) gpuDetail.push(Math.round(g.clock) + " MHz");
       if (known(g.power)) gpuDetail.push(Math.round(g.power) + " W");
+      if (known(g.fan)) gpuDetail.push("fan " + Math.round(g.fan) + "%");
       setStat("st-gpu", known(g.percent) ? Math.round(g.percent) : "--", degrees(g.temp), gpuDetail.join(" · "),
               null, g.percent);
       if (g.mem_total) {
@@ -965,6 +971,7 @@
     var cpuDetail = [];
     if (c.clock) cpuDetail.push(decimal(c.clock / 1000) + " GHz");
     if (known(c.power)) cpuDetail.push(Math.round(c.power) + " W");
+    if (!known(c.temp) && sys.sensors_hint) cpuDetail.push("temperature: " + sys.sensors_hint);
     setStat("st-cpu", Math.round(c.percent), degrees(c.temp), cpuDetail.join(" · "), null, c.percent);
     setStat("st-ram", gb(sys.ram.used), null, null, " / " + gb(sys.ram.total) + " GB", sys.ram.percent);
   }

@@ -1,8 +1,10 @@
 """Art for the running game: Steam's cached library images, else the .exe icon.
 
 Steam keeps the art it shows in its library on disk, in
-<Steam>/appcache/librarycache/<appid>/ (header.jpg, library_hero.jpg,
-library_600x900.jpg...; older versions used flat files like <appid>_header.jpg).
+<Steam>/appcache/librarycache/<appid>/. The layout changes between Steam versions:
+newer ones put each image in a folder named by a hash (<hash>/library_hero.jpg),
+older ones keep header.jpg, library_600x900.jpg... directly in the folder, and
+very old ones use flat files like <appid>_header.jpg. All three are searched.
 The appid comes from the appmanifest_<appid>.acf whose "installdir" is the game's
 folder, in the same Steam library as the game. Nothing is downloaded.
 """
@@ -15,8 +17,10 @@ from pathlib import Path
 
 from . import icons, images
 
-# Preferred first: wide images fit the game screen best.
-ART_NAMES = ("header.jpg", "library_hero.jpg", "capsule_616x353.jpg", "library_600x900.jpg")
+# Preferred first: wide images without the title on them fit the game screen best
+# (the name is shown below the art anyway, and the art gets cropped in landscape).
+ART_NAMES = ("library_hero.jpg", "header.jpg", "library_header.jpg", "capsule_616x353.jpg",
+             "library_capsule.jpg", "library_600x900.jpg")
 _INSTALLDIR = re.compile(r'"installdir"\s+"([^"]+)"', re.I)
 _APPID = re.compile(r'"appid"\s+"(\d+)"', re.I)
 
@@ -68,7 +72,9 @@ def steam_art(appid, roots):
     for root in roots:
         cache = Path(root) / "appcache" / "librarycache"
         for name in ART_NAMES:
-            for candidate in (cache / appid / name, cache / f"{appid}_{name}"):
+            candidates = [cache / appid / name, cache / f"{appid}_{name}"]
+            candidates += sorted((cache / appid).glob("*/" + name))  # newer Steam: <hash>/<name>
+            for candidate in candidates:
                 if candidate.is_file():
                     return candidate
     return None

@@ -62,6 +62,10 @@ class GameArtTest(unittest.TestCase):
             self.assertEqual(gameart.steam_art("1234", [tmp]).name, "1234_header.jpg")
             (cache / "1234" / "header.jpg").write_bytes(b"wide")
             self.assertEqual(gameart.steam_art("1234", [tmp]), cache / "1234" / "header.jpg")
+            # Newer Steam: each image in a folder named by a hash; the hero (no title) wins.
+            (cache / "1234" / "cf8cec80").mkdir()
+            (cache / "1234" / "cf8cec80" / "library_hero.jpg").write_bytes(b"hero")
+            self.assertEqual(gameart.steam_art("1234", [tmp]), cache / "1234" / "cf8cec80" / "library_hero.jpg")
             self.assertIsNone(gameart.steam_art("5678", [tmp]))
 
     def test_game_art_is_looked_up_once_per_game(self):

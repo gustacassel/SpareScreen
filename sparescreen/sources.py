@@ -54,6 +54,7 @@ class SystemSource:
             "net": self._net_rates(),
             "disks": self._partitions(),
             "uptime": time.time() - psutil.boot_time(),
+            "sensors_hint": sensors.get("hint"),  # what to do when sensors are missing, or None
         }
 
     def _net_rates(self):

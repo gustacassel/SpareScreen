@@ -279,6 +279,10 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .game-art .game-placeholder { position: absolute; top: 50%; left: 50%; width: 64px; height: 64px;
   margin: -32px 0 0 -32px; color: var(--muted); }
 .game-art.has-art .game-placeholder { display: none; }
+.game-art img { position: relative; }
+.game-art-bg { position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px;
+  background-size: cover; background-position: center; -webkit-filter: blur(18px); filter: blur(18px); opacity: .45; }
+.game-art.as-icon img { object-fit: contain; padding: 10%; box-sizing: border-box; }
 .game-head { display: flex; align-items: center; padding: 10px 14px; }
 .game-icon { width: 36px; height: 36px; margin-right: 10px; border-radius: 6px; display: none; flex-shrink: 0; }
 .game-icon.shown { display: block; }

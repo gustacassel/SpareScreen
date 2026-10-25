@@ -78,6 +78,7 @@ class DemoSystem:
                 {"name": "D:", "percent": 41.0, "free": 1180 * GB, "total": 2000 * GB},
             ],
             "uptime": 3 * 3600 + 27 * 60 + (time.time() - self.started),
+            "sensors_hint": None,
         }
 
 

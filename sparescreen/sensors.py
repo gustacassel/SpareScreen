@@ -334,15 +334,19 @@ class Sensors:
         self.mac_temp = MacCpuTemp() if sys.platform == "darwin" else None
         self._at = 0
         self._cache = {"cpu_temp": None, "cpu_power": None, "cpu_clock": None, "cpu_clock_max": None,
-                       "gpu": None, "fans": [], "drives": []}
+                       "gpu": None, "fans": [], "drives": [], "hint": None}
 
     def read(self):
         if time.time() - self._at < self.refresh:
             return self._cache
         self._at = time.time()
         cpu, fans, drives, gpu = {}, [], [], None
+        hint = None
         if self.lhm:
-            lhm = self.lhm.read() or {}
+            lhm = self.lhm.read()
+            if lhm is None:  # not running: CPU temperature, clocks and fans need it on Windows
+                hint = "open LibreHardwareMonitor"
+            lhm = lhm or {}
             cpu, fans, drives, gpu = lhm.get("cpu") or {}, lhm.get("fans", []), lhm.get("drives", []), lhm.get("gpu")
         elif sys.platform.startswith("linux"):
             freq = psutil.cpu_freq()
@@ -363,5 +367,6 @@ class Sensors:
             "gpu": gpu,
             "fans": fans,
             "drives": drives,
+            "hint": hint,
         }
         return self._cache
