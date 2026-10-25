@@ -7,6 +7,7 @@ import urllib.request
 from pathlib import Path
 from unittest import mock
 
+from sparescreen import images
 from sparescreen import pairing as pairing_module
 from sparescreen.config import ConfigStore
 from sparescreen.pairing import COOKIE, MAX_FAILURES, Pairing
@@ -101,6 +102,8 @@ class PairedServerTest(unittest.TestCase):
         self.assertEqual(self.call("/")[0], 200)
         self.assertEqual(self.call("/events")[0], 401)
         self.assertEqual(self.call("/config", {"theme": "neon"})[0], 401)
+        # Covers and game art tell what you're doing: they need pairing too.
+        self.assertEqual(self.call("/" + images.put("test-pairing", b"img", "image/png"))[0], 401)
         self.assertEqual(json.loads(self.call("/auth")[2]), {"paired": False, "pairing": True})
 
     def test_pair_then_access(self):

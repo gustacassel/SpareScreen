@@ -155,6 +155,64 @@
         </div>
       </div>
     </section>
+
+    <!-- Screen 4: what's playing (skipped in the rotation while nothing plays) -->
+    <section class="screen" data-name="music" data-title="Music">
+      <div class="card music">
+        <div class="music-art">
+          <img id="music-art" alt="">
+          <svg class="icon music-placeholder"><use xlink:href="#i-music"></use></svg>
+        </div>
+        <div class="music-info">
+          <div class="music-app"><img id="music-app-icon" alt=""><span id="music-app"></span></div>
+          <div id="music-title" class="music-title"></div>
+          <div id="music-artist" class="music-artist"></div>
+          <div id="music-album" class="detail"></div>
+          <div class="bar music-progress"><div id="music-bar" class="bar-fill"></div></div>
+          <div class="music-times"><span id="music-pos"></span><span id="music-dur"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Game mode: the only screen while a game runs (see settings) -->
+    <section class="screen" data-name="game" data-title="Game">
+      <div class="game-grid">
+        <div class="card game-card">
+          <div class="game-art"><img id="game-art" alt=""><svg class="icon game-placeholder"><use xlink:href="#i-game"></use></svg></div>
+          <div class="game-head">
+            <img id="game-icon" class="game-icon" alt="">
+            <div class="game-title">
+              <div id="g-name" class="g-name"></div>
+              <div id="g-meta" class="detail"></div>
+            </div>
+          </div>
+        </div>
+        <div class="game-stats">
+          <div class="card stat" id="st-gpu">
+            <h2><svg class="icon"><use xlink:href="#i-gpu"></use></svg>GPU</h2>
+            <div class="stat-big"><span class="v1">--</span><small>%</small><span class="v2"></span></div>
+            <div class="bar"><div class="bar-fill"></div></div>
+            <div class="detail stat-detail"></div>
+          </div>
+          <div class="card stat" id="st-cpu">
+            <h2><svg class="icon"><use xlink:href="#i-cpu"></use></svg>CPU</h2>
+            <div class="stat-big"><span class="v1">--</span><small>%</small><span class="v2"></span></div>
+            <div class="bar"><div class="bar-fill"></div></div>
+            <div class="detail stat-detail"></div>
+          </div>
+          <div class="card stat" id="st-vram">
+            <h2>VRAM</h2>
+            <div class="stat-big"><span class="v1">--</span><small class="unit"></small></div>
+            <div class="bar"><div class="bar-fill"></div></div>
+          </div>
+          <div class="card stat" id="st-ram">
+            <h2><svg class="icon"><use xlink:href="#i-ram"></use></svg>RAM</h2>
+            <div class="stat-big"><span class="v1">--</span><small class="unit"></small></div>
+            <div class="bar"><div class="bar-fill"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Night mode: dims everything, or shows only a clock that moves around (see settings).
@@ -193,6 +251,7 @@
       <div class="set-row"><span class="set-label">Claude alerts</span><div id="set-notify" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Alert sound</span><div id="set-sound" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Check Claude limits</span><div id="set-claude-limits" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Game mode</span><div id="set-game-mode" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Burn-in protection</span><div id="set-burn-in" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Night mode</span><div id="set-night-mode" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Night hours</span><div id="set-night-hours" class="chips"></div></div>

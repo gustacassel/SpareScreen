@@ -61,12 +61,27 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(clean({"screens": ["pc", "hardware", "nope"]})["screens"], ["hardware", "pc"])
         self.assertNotIn("screens", clean({"screens": []}))
         self.assertEqual(clean({"screens": ["claude", "pc"]})["screens"], ["ai", "pc"])  # old name
+        # The game screen is not a choice: it only shows in game mode.
+        self.assertEqual(clean({"screens": ["music", "game"]})["screens"], ["music"])
+
+    def test_game_mode_is_a_boolean(self):
+        self.assertEqual(clean({"game_mode": False}), {"game_mode": False})
+        self.assertEqual(clean({"game_mode": "off"}), {})
 
     def test_fan_names_and_cpu_fan(self):
         out = clean({"fan_names": {"Fan 2": "  Radiator  ", "Fan 3": "   "}, "cpu_fan": "Fan 2"})
         self.assertEqual(out["fan_names"], {"Fan 2": "Radiator"})  # empty name = back to original
         self.assertEqual(out["cpu_fan"], "Fan 2")
         self.assertIsNone(clean({"cpu_fan": None})["cpu_fan"])
+
+    def test_new_screens_start_on_but_stay_off_once_turned_off(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.json"
+            path.write_text(json.dumps({"screens": ["hardware", "pc"]}), encoding="utf-8")  # an old file
+            store = ConfigStore(path)
+            self.assertEqual(store.read()["screens"], ["hardware", "pc", "music"])
+            store.update({"screens": ["hardware", "pc"]})
+            self.assertEqual(ConfigStore(path).read()["screens"], ["hardware", "pc"])
 
     def test_store_persists_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

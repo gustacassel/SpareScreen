@@ -147,13 +147,18 @@ class DemoCodex:
 
 class DemoActivity:
     name = "activity"
+    # The game "runs" one minute out of every four, so the demo also shows game mode
+    # without hiding the other screens for good.
+    CYCLE, PLAYING = 240, 60
 
     def __init__(self):
         self.started = time.time() - (47 * 60)
 
     def read(self):
+        playing = time.time() % self.CYCLE < self.PLAYING
         return {
-            "game": {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB, "since": self.started},
+            "game": {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB, "since": self.started,
+                     "art": None, "icon": None} if playing else None,
             "focus": {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB},
             "top": [
                 {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB},
@@ -179,7 +184,8 @@ class DemoMedia:
     def read(self):
         return {"available": True, "playing": True, "title": "Midnight Drive", "artist": "Neon Arcade",
                 "album": "Night Shift", "app": "Spotify", "status": "playing",
-                "position": round(time.time() % self.DURATION, 1), "duration": self.DURATION}
+                "position": round(time.time() % self.DURATION, 1), "duration": self.DURATION,
+                "art": None, "app_icon": None}
 
 
 def demo_sources():

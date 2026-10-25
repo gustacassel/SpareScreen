@@ -6,6 +6,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from sparescreen import images
 from sparescreen.config import ConfigStore
 from sparescreen.server import serve
 
@@ -56,6 +57,16 @@ class ServerTest(unittest.TestCase):
                 self.get(path)
             ctx.exception.close()
             self.assertEqual(ctx.exception.code, 404, path)
+
+    def test_serves_stored_images(self):
+        url = images.put("test-server", b"fake png", "image/png")
+        with self.get("/" + url) as resp:
+            self.assertEqual(resp.headers["Content-Type"], "image/png")
+            self.assertEqual(resp.read(), b"fake png")
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.get("/art/never-stored")
+        ctx.exception.close()
+        self.assertEqual(ctx.exception.code, 404)
 
     def test_events_stream_carries_every_source(self):
         with self.get("/events") as resp:

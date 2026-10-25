@@ -19,7 +19,7 @@
     terminal: ["Terminal", "#04110a", "#39ff7a"],
     light: ["Light", "#ffffff", "#2f80ed"]
   };
-  var SCREEN_NAMES = { hardware: "Hardware", ai: "AI", pc: "PC" };
+  var SCREEN_NAMES = { hardware: "Hardware", ai: "AI", pc: "PC", music: "Music" };
   var ROTATE_OPTIONS = [[0, "Off"], [10, "10 s"], [20, "20 s"], [30, "30 s"], [60, "1 min"]];
 
   function $(id) { return document.getElementById(id); }
@@ -129,7 +129,8 @@
 
   // ---- Configuration (comes from the PC) -----------------------------------
 
-  var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc"], rotate: 20, notify: true, sound: true,
+  var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc", "music"], rotate: 20, notify: true, sound: true,
+              game_mode: true,
               fan_names: {}, cpu_fan: null, claude_limits: false,
               burn_in: true, night_mode: "off", night_hours: "23-7" };
   var fanKeys = [];  // original fan names from the last reading ("Fan 1", "GPU"...)
@@ -285,12 +286,20 @@
   var rotateTimer = null;
   var fixed = params.get("screen");
 
-  // Screens in the rotation: the one pinned in the URL, or the ones enabled in the config.
+  var gameOn = false;   // a game is running and game mode is on: only the game screen
+  var musicOn = false;  // something is playing: the music screen joins the rotation
+
+  // Screens in the rotation: the one pinned in the URL, the game screen in game mode,
+  // or the ones turned on in the settings (music only while something plays).
   function enabledScreens() {
     var list = [];
     for (var i = 0; i < allScreens.length; i++) {
       var name = allScreens[i].getAttribute("data-name");
-      if (fixed ? name === fixed : cfg.screens.indexOf(name) >= 0) list.push(allScreens[i]);
+      var on;
+      if (fixed) on = name === fixed;
+      else if (gameOn) on = name === "game";
+      else on = name !== "game" && cfg.screens.indexOf(name) >= 0 && (name !== "music" || musicOn);
+      if (on) list.push(allScreens[i]);
     }
     return list.length ? list : [allScreens[0]];
   }
@@ -372,7 +381,10 @@
       var info = THEME_INFO[name];
       return chip(info[0], name === cfg.theme, function () { saveConfig({ theme: name }); }, [info[1], info[2]]);
     }));
-    fillChips("set-screens", ["hardware", "ai", "pc"].map(function (name) {
+    fillChips("set-game-mode", [[true, "On"], [false, "Off"]].map(function (opt) {
+      return chip(opt[1], cfg.game_mode === opt[0], function () { saveConfig({ game_mode: opt[0] }); });
+    }));
+    fillChips("set-screens", ["hardware", "ai", "pc", "music"].map(function (name) {
       var on = cfg.screens.indexOf(name) >= 0;
       return chip(SCREEN_NAMES[name], on, function () {
         var list = cfg.screens.filter(function (s) { return s !== name; });
@@ -875,6 +887,87 @@
 
   function known(value) { return value !== null && value !== undefined; }
 
+  // ---- Images (covers, game art, icons) -------------------------------------
+
+  // Shows `url` in `img` and marks `holder` with `cls`; hides it when there's no image.
+  function setImage(img, holder, cls, url) {
+    if (url) {
+      if (img.getAttribute("src") !== url) img.setAttribute("src", url);
+      if ((" " + holder.className + " ").indexOf(" " + cls + " ") < 0) holder.className += " " + cls;
+    } else {
+      holder.className = (" " + holder.className + " ").replace(" " + cls + " ", " ").replace(/^\s+|\s+$/g, "");
+    }
+  }
+
+  // ---- Music screen ----------------------------------------------------------
+
+  function renderMusic(media) {
+    if (!media || !media.playing || !media.title) return;
+    var card = $("music-art").parentNode.parentNode;
+    card.className = "card music" + (media.status === "paused" ? " paused" : "");
+    setImage($("music-art"), $("music-art").parentNode, "has-art", media.art);
+    setImage($("music-app-icon"), $("music-app-icon").parentNode, "has-icon", media.app_icon);
+    $("music-app").textContent = media.app || "";
+    $("music-title").textContent = media.title;
+    $("music-artist").textContent = media.artist || "";
+    $("music-album").textContent = media.album || "";
+    var hasTime = known(media.position) && media.duration;
+    $("music-bar").parentNode.style.display = hasTime ? "" : "none";
+    $("music-bar").style.width = hasTime ? Math.min(100, 100 * media.position / media.duration) + "%" : "0";
+    $("music-pos").textContent = hasTime ? minutes(media.position) : "";
+    $("music-dur").textContent = hasTime ? minutes(media.duration) : (media.status === "paused" ? "paused" : "");
+  }
+
+  // ---- Game screen -----------------------------------------------------------
+
+  function setStat(id, v1, v2, detail, unit, barPct) {
+    var card = $(id);
+    q(card, ".v1").textContent = v1;
+    var second = q(card, ".v2");
+    if (second) second.textContent = v2 || "";
+    var det = q(card, ".stat-detail");
+    if (det) det.textContent = detail || "";
+    var u = q(card, ".unit");
+    if (u) u.textContent = unit || "";
+    var fill = q(card, ".bar-fill");
+    if (fill && known(barPct)) {
+      fill.style.width = Math.min(barPct, 100) + "%";
+      fill.style.background = levelColor(barPct);
+    }
+  }
+
+  function degrees(t) { return known(t) ? Math.round(t) + "°C" : ""; }
+
+  function renderGame(sys, act, now) {
+    var game = act && act.game;
+    if (!game || !sys || sys.error) return;
+    $("g-name").textContent = game.name;
+    var meta = ["playing for " + duration(now - game.since)];
+    if (known(game.cpu)) meta.push("CPU " + Math.round(game.cpu) + "%");
+    if (game.mem) meta.push(size(game.mem));
+    $("g-meta").textContent = meta.join(" · ");
+    setImage($("game-art"), $("game-art").parentNode, "has-art", game.art);
+    setImage($("game-icon"), $("game-icon"), "shown", game.icon);
+
+    var g = sys.gpu;
+    if (g) {
+      var gpuDetail = [];
+      if (g.clock) gpuDetail.push(Math.round(g.clock) + " MHz");
+      if (known(g.power)) gpuDetail.push(Math.round(g.power) + " W");
+      setStat("st-gpu", known(g.percent) ? Math.round(g.percent) : "--", degrees(g.temp), gpuDetail.join(" · "),
+              null, g.percent);
+      if (g.mem_total) {
+        setStat("st-vram", gb(g.mem_used), null, null, " / " + gb(g.mem_total) + " GB", 100 * g.mem_used / g.mem_total);
+      }
+    }
+    var c = sys.cpu;
+    var cpuDetail = [];
+    if (c.clock) cpuDetail.push(decimal(c.clock / 1000) + " GHz");
+    if (known(c.power)) cpuDetail.push(Math.round(c.power) + " W");
+    setStat("st-cpu", Math.round(c.percent), degrees(c.temp), cpuDetail.join(" · "), null, c.percent);
+    setStat("st-ram", gb(sys.ram.used), null, null, " / " + gb(sys.ram.total) + " GB", sys.ram.percent);
+  }
+
   // ---- Now playing (PC screen) ------------------------------------------------
 
   function minutes(seconds) {
@@ -957,6 +1050,24 @@
     renderPc(data.system, data.activity, data.time);
     renderPhone(data.phone);
     renderMedia(data.media);
+
+    // Game mode and the music screen change which screens rotate.
+    var wasGame = gameOn, wasMusic = musicOn;
+    gameOn = !!(cfg.game_mode && data.activity && data.activity.game);
+    musicOn = !!(data.media && data.media.playing && data.media.title);
+    if (gameOn !== wasGame) {
+      show(0);  // entering: the game screen; leaving: back to the first screen
+      startRotation();
+    } else if (musicOn !== wasMusic) {
+      // The list changed: stay on the same screen (or its neighbor if music just left).
+      var active = q(document, ".screen.active");
+      var name = active && active.getAttribute("data-name");
+      show(current);
+      if (name) showNamed(name);
+      startRotation();
+    }
+    renderMusic(data.media);
+    renderGame(data.system, data.activity, data.time);
   }
 
   function request(method, url, body, done) {

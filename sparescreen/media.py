@@ -7,9 +7,16 @@
   macOS 15.4, so only the free `media-control` or `nowplaying-cli` tools (from
   Homebrew) work. AppleScript is not used: it asks for permission to control
   each player.
+
+Album covers come from the session itself (Windows thumbnail, a local MPRIS
+artUrl, media-control's artwork) and are never downloaded from the internet.
+The player's icon is only found on Windows, from the running program.
 """
 
+import base64
+import binascii
 import datetime
+import glob
 import json
 import os
 import re
@@ -17,6 +24,11 @@ import shutil
 import subprocess
 import sys
 import time
+from urllib.parse import unquote, urlparse
+
+import psutil
+
+from . import icons, images
 
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -91,7 +103,20 @@ def track(title, artist="", album="", app="", status="playing", position=None, d
         "status": "paused" if status == "paused" else "playing",
         "position": position,
         "duration": round(duration, 1) if duration else None,
+        "art": None,       # filled by MediaSource from the backend's "_art" loader
+        "app_icon": None,  # same, from "_icon"
     }
+
+
+def image_type(data):
+    """Content type from the first bytes; covers are almost always JPEG or PNG."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:3] == b"GIF":
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
 
 
 def _pick(tracks):
@@ -214,19 +239,124 @@ class WindowsMedia:
             if props is None:
                 continue
             position, duration = windows_position(session.get_timeline_properties(), status)
-            found = track(props.title, props.artist, props.album_title,
-                          friendly_app(session.source_app_user_model_id), status, position, duration)
+            aumid = session.source_app_user_model_id
+            found = track(props.title, props.artist, props.album_title, friendly_app(aumid), status,
+                          position, duration)
             if found:
+                thumbnail = getattr(props, "thumbnail", None)
+                if thumbnail is not None:
+                    found["_art"] = lambda key, ref=thumbnail: self._thumbnail(ref, key)
+                found["_icon"] = (aumid, lambda key: windows_app_icon(aumid, key))
                 return found
         return None
+
+    def _thumbnail(self, reference, key):
+        """The cover the player gave Windows (an IRandomAccessStreamReference) -> image URL."""
+        from winrt.windows.storage.streams import Buffer, InputStreamOptions
+
+        stream = self._wait(reference.open_read_async())
+        try:
+            size = int(stream.size)
+            if not 0 < size <= images.MAX_BYTES:
+                return None
+            data = bytes(self._wait(stream.read_async(Buffer(size), size, InputStreamOptions.READ_AHEAD)))
+            content_type = str(getattr(stream, "content_type", "") or "")
+        finally:
+            try:
+                stream.close()
+            except Exception:
+                pass
+        if not content_type.startswith("image/"):
+            content_type = image_type(data)
+        return images.put(key, data, content_type)
+
+
+def _processes():
+    """(name, exe path) of running programs; exe is None for those we can't inspect."""
+    for proc in psutil.process_iter(["name", "exe"]):
+        yield proc.info.get("name") or "", proc.info.get("exe")
+
+
+def windows_app_icon(aumid, key, processes=None):
+    """Icon of the player behind a Windows media session -> image URL, or None.
+
+    Desktop players report their exe name ("Spotify.exe") or a short name
+    ("Chrome", "MSEdge"); Store apps report "Package.Name_publisherid!App" and
+    run from a folder named "Package.Name_<version>_<arch>__publisherid".
+    """
+    aumid = str(aumid or "")
+    family, bang, _ = aumid.partition("!")
+    procs = list(_processes() if processes is None else processes)
+    if bang and "_" in family:
+        name, _, publisher = family.rpartition("_")
+        folder = re.compile(r"[\\/]" + re.escape(name) + r"_[^\\/]*_" + re.escape(publisher) + r"[\\/]", re.I)
+        for _, exe in procs:
+            if exe and folder.search(exe):
+                return package_logo(exe, key) or images.put(key, icons.exe_icon_png(exe), "image/png")
+        return None
+    wanted = {aumid.lower(), aumid.lower() + ".exe"}
+    friendly = friendly_app(aumid)
+    if friendly:
+        wanted.add(friendly.lower() + ".exe")  # e.g. Firefox, whose id is a hash
+    for name, exe in procs:
+        if exe and name.lower() in wanted:
+            return images.put(key, icons.exe_icon_png(exe), "image/png")
+    return None
+
+
+_MANIFEST_LOGOS = ("Square150x150Logo", "Square44x44Logo")
+
+
+def package_logo(exe, key):
+    """A Store app's logo, from the AppxManifest.xml next to its exe (or a few folders up)."""
+    folder = os.path.dirname(exe)
+    for _ in range(4):
+        manifest = os.path.join(folder, "AppxManifest.xml")
+        if os.path.isfile(manifest):
+            break
+        folder = os.path.dirname(folder)
+    else:
+        return None
+    try:
+        with open(manifest, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except OSError:
+        return None
+    paths = [m.group(1) for attr in _MANIFEST_LOGOS for m in [re.search(attr + r'="([^"]+)"', text)] if m]
+    paths += re.findall(r"<Logo>([^<]+)</Logo>", text)
+    for relative in paths:
+        path = os.path.join(folder, *re.split(r"[\\/]", relative.strip()))
+        stem, ext = os.path.splitext(path)
+        # The file named in the manifest often only exists with a qualifier:
+        # Square44x44Logo.targetsize-256.png, Logo.scale-200.png... Take the biggest.
+        variants = [path] + [p for p in glob.glob(glob.escape(stem) + ".*" + ext) if "contrast" not in p.lower()]
+        variants = [p for p in variants if os.path.isfile(p)]
+        if variants:
+            return images.put_file(key, max(variants, key=os.path.getsize))
+    return None
 
 
 # --- Linux ---------------------------------------------------------------------------------
 
 _SEP = "\x1f"  # unit separator: never part of a song title
 _PLAYERCTL_FORMAT = _SEP.join(("{{status}}", "{{playerName}}", "{{title}}", "{{artist}}", "{{album}}",
-                               "{{position}}", "{{mpris:length}}"))
+                               "{{position}}", "{{mpris:length}}", "{{mpris:artUrl}}"))
 _MPRIS_STATUS = {"Playing": "playing", "Paused": "paused"}
+
+
+def file_art(url):
+    """Loader for an MPRIS artUrl, only when it's a local file: covers are never downloaded."""
+    parsed = urlparse(str(url or "").strip())
+    if parsed.scheme != "file" or parsed.netloc not in ("", "localhost") or not parsed.path:
+        return None
+    path = unquote(parsed.path)
+    return lambda key: images.put_file(key, path)
+
+
+def _with_art(found, loader):
+    if found and loader:
+        found["_art"] = loader
+    return found
 
 
 def parse_playerctl(text):
@@ -234,13 +364,14 @@ def parse_playerctl(text):
     tracks = []
     for line in (text or "").splitlines():
         fields = line.split(_SEP)
-        if len(fields) != 7:
+        if len(fields) != 8:
             continue
-        status, player, title, artist, album, position, length = fields
+        status, player, title, artist, album, position, length, art = fields
         status = _MPRIS_STATUS.get(status.strip())
         if status:
-            tracks.append(track(title, artist, album, friendly_app(player), status,
-                                (_seconds(position) or 0) / 1e6, (_seconds(length) or 0) / 1e6))
+            found = track(title, artist, album, friendly_app(player), status,
+                          (_seconds(position) or 0) / 1e6, (_seconds(length) or 0) / 1e6)
+            tracks.append(_with_art(found, file_art(art)))
     return _pick(tracks)
 
 
@@ -299,9 +430,10 @@ def dbus_track(name, values):
         return None
     length = _seconds(values.get("mpris:length"))
     position = _seconds(values.get("Position"))
-    return track(values.get("xesam:title"), values.get("xesam:artist") or values.get("xesam:albumArtist"),
-                 values.get("xesam:album"), friendly_app(name.replace("org.mpris.MediaPlayer2.", "")), status,
-                 position / 1e6 if position else None, length / 1e6 if length else None)
+    found = track(values.get("xesam:title"), values.get("xesam:artist") or values.get("xesam:albumArtist"),
+                  values.get("xesam:album"), friendly_app(name.replace("org.mpris.MediaPlayer2.", "")), status,
+                  position / 1e6 if position else None, length / 1e6 if length else None)
+    return _with_art(found, file_art(values.get("mpris:artUrl")))
 
 
 class LinuxMedia:
@@ -336,8 +468,23 @@ _BREW_DIRS = ("/opt/homebrew/bin", "/usr/local/bin")
 _NOWPLAYING_FIELDS = ("title", "artist", "album", "duration", "elapsedTime", "playbackRate")
 
 
+def base64_art(encoded, content_type=None):
+    """Loader for artwork sent as base64 (media-control's artworkData)."""
+    if not encoded or not isinstance(encoded, str):
+        return None
+
+    def load(key):
+        try:
+            data = base64.b64decode(encoded)
+        except (binascii.Error, ValueError):
+            return None
+        kind = content_type if isinstance(content_type, str) and content_type.startswith("image/") else None
+        return images.put(key, data, kind or image_type(data))
+    return load
+
+
 def parse_media_control(text):
-    """`media-control get --now --no-artwork` -> track. It prints `null` when nothing is playing."""
+    """`media-control get --now` -> track. It prints `null` when nothing is playing."""
     try:
         data = json.loads(text or "null")
     except ValueError:
@@ -348,8 +495,9 @@ def parse_media_control(text):
     position = data.get("elapsedTimeNow")
     if position is None:
         position = data.get("elapsedTime")
-    return track(data.get("title"), data.get("artist"), data.get("album"), friendly_app(app),
-                 "playing" if data.get("playing") else "paused", position, data.get("duration"))
+    found = track(data.get("title"), data.get("artist"), data.get("album"), friendly_app(app),
+                  "playing" if data.get("playing") else "paused", position, data.get("duration"))
+    return _with_art(found, base64_art(data.get("artworkData"), data.get("artworkMimeType")))
 
 
 def parse_nowplaying(text):
@@ -375,7 +523,8 @@ class MacMedia:
 
     def read(self):
         if self.media_control:
-            return parse_media_control(_run([self.media_control, "get", "--now", "--no-artwork"], timeout=3))
+            # With the artwork (base64, decoded only when the track changes).
+            return parse_media_control(_run([self.media_control, "get", "--now"], timeout=3))
         return parse_nowplaying(_run([self.nowplaying, "get"] + list(_NOWPLAYING_FIELDS)))
 
 
@@ -392,6 +541,30 @@ def default_backend(platform=None):
     return None
 
 
+class _Image:
+    """One image slot (cover or player icon), loaded only when what it shows changes.
+
+    `always` loads per change: covers get 2, because Windows players sometimes
+    still hand out the previous cover right after skipping. While nothing was
+    found, it keeps trying up to `tries` times (some players send it late).
+    """
+
+    def __init__(self, key, always, tries):
+        self.key, self.always, self.tries = key, always, tries
+        self._id, self._url, self._loads = object(), None, 0
+
+    def get(self, ident, loader):
+        if ident != self._id:
+            self._id, self._url, self._loads = ident, None, 0
+        if loader and (self._loads < self.always or (self._url is None and self._loads < self.tries)):
+            self._loads += 1
+            try:
+                self._url = loader(self.key) or self._url
+            except Exception:
+                pass
+        return self._url
+
+
 class MediaSource:
     """Now playing. Asks the OS every INTERVAL seconds; in between, moves the position forward."""
 
@@ -402,6 +575,8 @@ class MediaSource:
         self.backend = backend if backend is not None else default_backend()
         self._at = None
         self._last = UNAVAILABLE
+        self._art = _Image("media-art", always=2, tries=4)
+        self._icon = _Image("media-app-icon", always=1, tries=3)
 
     def read(self):
         try:
@@ -426,4 +601,10 @@ class MediaSource:
             found = self.backend.read()
         except Exception:
             found = None
-        return found or NOTHING
+        if not found:
+            return NOTHING
+        art = found.pop("_art", None)
+        icon_id, icon = found.pop("_icon", None) or (None, None)
+        found["art"] = self._art.get((found["app"], found["title"], found["artist"], found["album"]), art)
+        found["app_icon"] = self._icon.get(icon_id, icon)
+        return found

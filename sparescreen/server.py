@@ -7,6 +7,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from . import images
 from .pairing import LOCAL_ADDRESSES
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -81,6 +82,8 @@ def make_handler(hub, config, pairing, info):
                 # Only this PC may read the code (the page on the PC can show it).
                 local = pairing is not None and self.client_address[0] in LOCAL_ADDRESSES
                 self._send_json(200 if local else 403, {"code": pairing.code} if local else {})
+            elif path.startswith("/art/"):
+                self._serve_art(path[len("/art/"):])
             elif path == "/info":
                 # "Connect a phone" details for the settings screen, only on this PC.
                 if self.client_address[0] not in LOCAL_ADDRESSES:
@@ -116,6 +119,20 @@ def make_handler(hub, config, pairing, info):
                 self._send_json(429, {"error": "locked", "retry_in": error[1]})
             else:
                 self._send_json(403, {"error": "wrong", "attempts_left": error[1]})
+
+        def _serve_art(self, key):
+            # Covers and icons reveal what you're playing, so they need pairing like the data.
+            item = images.get(key) if self._trusted() else None
+            if not item:
+                self.send_error(404 if self._trusted() else 401)
+                return
+            data, ctype = item
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "private, max-age=86400")  # the URL changes with the image
+            self.end_headers()
+            self.wfile.write(data)
 
         def _serve_static(self, name):
             file = (WEB_DIR / name).resolve()

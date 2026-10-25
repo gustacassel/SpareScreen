@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 
 THEMES = ("graphite", "oled", "terracotta", "neon", "terminal", "light")
-SCREENS = ("hardware", "ai", "pc")
+SCREENS = ("hardware", "ai", "pc", "music")  # the game screen only shows in game mode
 ROTATE = (0, 10, 20, 30, 60)  # seconds; 0 = does not switch by itself
 NIGHT_MODES = ("off", "dim", "clock")  # what the screen shows during night hours
 NIGHT_HOURS = ("22-7", "23-7", "0-8")  # "start-end", in the phone's local time
@@ -25,6 +25,7 @@ DEFAULTS = {
     "cpu_fan": None,  # which fan shows on the CPU card (user's choice; none by default)
     "claude_limits": False,  # headless check of Claude Code limits (spends a tiny bit of quota)
     "burn_in": True,  # shift the content a few pixels every minute (protects OLED screens)
+    "game_mode": True,  # while a game runs, show only the game screen
     "night_mode": "off",
     "night_hours": "23-7",
 }
@@ -46,7 +47,7 @@ def clean(data):
             out["screens"] = screens
     if data.get("rotate") in ROTATE:
         out["rotate"] = data["rotate"]
-    for key in ("notify", "sound", "claude_limits", "burn_in"):
+    for key in ("notify", "sound", "claude_limits", "burn_in", "game_mode"):
         if isinstance(data.get(key), bool):
             out[key] = data[key]
     if data.get("night_mode") in NIGHT_MODES:
@@ -78,6 +79,12 @@ class ConfigStore:
         except (OSError, ValueError):
             saved = {}
         self._config = {**DEFAULTS, **clean(saved)}
+        # Screens added in a newer version start on: anything the saved file has never
+        # seen joins the list (files from before this existed knew the first three).
+        known = saved.get("screens_known") if isinstance(saved, dict) else None
+        if not isinstance(known, list):
+            known = ["hardware", "ai", "claude", "pc"]
+        self._config["screens"] = [s for s in SCREENS if s in self._config["screens"] or s not in known]
 
     def read(self):
         with self._lock:
@@ -88,6 +95,7 @@ class ConfigStore:
             self._config.update(clean(changes))
             self.path.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(self._config, indent=2), encoding="utf-8")
+            saved = dict(self._config, screens_known=list(SCREENS))
+            tmp.write_text(json.dumps(saved, indent=2), encoding="utf-8")
             os.replace(tmp, self.path)
             return dict(self._config)

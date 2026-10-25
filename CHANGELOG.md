@@ -4,6 +4,19 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Music screen: album cover, title, artist, album, the player and its icon, and the
+  progress. It joins the rotation only while something plays. Covers come from the PC
+  (Windows media controls, local MPRIS art on Linux, `media-control` on macOS), never
+  from the internet.
+- Game mode (on by default, in the settings): while a game runs, only a Game screen shows,
+  with the game's art (Steam's own library cache), its icon (Windows), the play time and
+  GPU/CPU usage, temperature, clock and power, VRAM and RAM.
+- Screens added in a new version start on, even with an older saved config.
+
 ## [0.3.0] - 2026-10-24
 
 ### Added

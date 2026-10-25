@@ -25,7 +25,7 @@ Turn that old phone in your drawer into a live dashboard for your computer.
 Your PC runs a small Python agent that collects the data and serves a web page;
 the phone (or any device with a browser) just opens that page.
 
-The page has three screens that rotate on their own (or with a tap):
+The page has screens that rotate on their own (or with a tap):
 
 - **Hardware:** CPU and GPU usage, temperature, power and clock, per-core load,
   VRAM, RAM and swap.
@@ -35,6 +35,11 @@ The page has three screens that rotate on their own (or with a tap):
 - **PC:** the game you're playing (and for how long), what's playing (any music or video
   player), the app in focus, the heaviest apps, fans, network, free disk space and drive
   temperatures.
+- **Music:** while something plays, the album cover, title, artist, album, the player
+  (with its icon) and the progress.
+- **Game:** while a game runs, game mode shows only this screen: the game's art and icon,
+  how long you've been playing, and GPU/CPU usage, temperature, clock and power, VRAM and
+  RAM. When the game closes, the normal screens come back.
 
 When a Claude Code or Codex session finishes, the page jumps to the AI screen, shows
 the session name and plays a short chime (sound only works after the first tap on the
@@ -163,7 +168,7 @@ and a LaunchAgent on macOS (from the next login). In the background the output g
 3. Long press (hold ~1 second) switches the theme.
 4. The gear icon in the top corner opens **settings**: theme, which screens rotate,
    how often to switch, Claude alerts, sound, fan names, which fan shows on the CPU card,
-   burn-in protection and night mode. Everything is saved on the PC
+   game mode, burn-in protection and night mode. Everything is saved on the PC
    (`~/.sparescreen/config.json`), so it survives reloading the page. Opened on the PC
    itself, the settings also show the phone address and the pairing code.
 5. To keep the screen on: use `--stay-awake` over USB, or keep the phone charging and
@@ -178,7 +183,7 @@ Themes: Graphite, OLED, Terracotta, Neon, Terminal and Light.
 </p>
 
 For testing you can force things in the address: `…:8765/?screen=pc` pins one screen
-(`hardware`, `ai` or `pc`) and `…:8765/?theme=neon` forces a theme.
+(`hardware`, `ai`, `pc`, `music` or `game`) and `…:8765/?theme=neon` forces a theme.
 
 ## Burn-in protection and night mode
 
@@ -220,19 +225,39 @@ If the back of the phone ever starts to bulge, unplug it and stop using it.
   sorted by CPU. The % is of the whole processor.
 - No FPS yet: on Windows that needs tools such as PresentMon.
 
+### Game mode
+
+While a game runs, the page shows only the **Game** screen (no rotation): the game's art,
+its icon, the game name, how long it has been running, and the numbers that matter while
+playing: GPU and CPU usage, temperature, clock and power, VRAM and RAM. When the game
+closes, the usual screens come back. Turn it off in the settings (*Game mode*) to keep the
+normal rotation; the game still shows on the PC screen.
+
+- **Art:** for Steam games, the library image Steam already keeps on disk
+  (`appcache/librarycache`), found through the game's `appmanifest_*.acf`. Nothing is
+  downloaded. Other stores: no art, a placeholder instead.
+- **Icon:** the icon inside the game's `.exe`, on Windows only.
+
 ## Now playing
 
 Shows what the PC is playing (Spotify, a browser tab, any player that reports to the
-system), with title, artist, player and progress, on the PC screen. Paused media is shown
-dimmed; with nothing playing the block is hidden.
+system): a small block on the PC screen, and the **Music** screen with the album cover,
+title, artist, album, player and progress. Paused media is shown dimmed; with nothing
+playing the block is hidden and the Music screen leaves the rotation.
+
+Covers only come from the PC itself, never from the internet. The player's icon is
+Windows only.
 
 - **Windows:** works out of the box. It reads the same info as the volume flyout (System
   Media Transport Controls), through the `winrt-Windows.Media.Control` packages that are
-  installed automatically on Windows.
+  installed automatically on Windows. Covers come from the player; the icon from the
+  player's program (or its Store app logo).
 - **Linux:** reads MPRIS players over D-Bus. Install `playerctl` for best results; otherwise
-  `dbus-send` (part of D-Bus, usually present) is used.
+  `dbus-send` (part of D-Bus, usually present) is used. Covers only when the player gives
+  a local file (many do; Spotify and browsers give a web address, which is not fetched).
 - **macOS:** best effort. Install `media-control` (`brew install media-control`, works on
   macOS 15.4 and later) or `nowplaying-cli`. Without either, the block is hidden.
+  Covers with `media-control` only.
   AppleScript is not used, so there are no permission prompts.
 
 ## Temperatures, fans and GPU
@@ -401,6 +426,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   (`dumpsys battery`) for the top bar.
 - `sparescreen/activity.py`: running game, app in focus and top apps.
 - `sparescreen/media.py`: now playing (Windows media controls, MPRIS on Linux, optional tools on macOS).
+- `sparescreen/gameart.py` and `sparescreen/icons.py`: Steam's cached game art and program icons.
+- `sparescreen/images.py`: covers, game art and icons kept in memory and served at
+  `/art/<name>` (paired devices only, like the data).
 - `sparescreen/config.py`: preferences saved in `~/.sparescreen/config.json` (POST `/config`).
 - `sparescreen/pairing.py`: pairing code, device tokens (only their hashes are stored, in
   `~/.sparescreen/devices.json`) and the lockout after wrong codes.

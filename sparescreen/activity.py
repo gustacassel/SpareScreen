@@ -20,6 +20,8 @@ import time
 
 import psutil
 
+from .gameart import GameArt
+
 # (path fragment, lowercase with "/") -> the game name is the folder right after it
 GAME_DIRS = (
     "/steamapps/common/",
@@ -203,6 +205,7 @@ class ActivitySource:
         self.refresh = refresh
         self.top = top
         self.cores = psutil.cpu_count() or 1
+        self.art = GameArt()
         self._at = 0
         self._cache = {"game": None, "focus": None, "top": []}
 
@@ -244,6 +247,7 @@ class ActivitySource:
             prog = programs[game.pop("_key")]
             game.pop("_mem")
             game.update(cpu=round(prog["cpu"], 1), mem=prog["mem"], since=prog["since"])
+            game.update(self.art.for_game(prog["exe"], game["name"]))  # "art" and "icon" URLs
 
         def describe(prog):
             return {

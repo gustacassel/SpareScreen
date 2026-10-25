@@ -96,7 +96,10 @@ and with no mandatory app. That's this project's niche.
 6. **Test real devices:** iPhone/iPad over Wi-Fi, very old Android, tablets; USB with a
    data cable; AMD and Intel GPUs on real machines.
 7. **More widgets:** photos and scrolling text (the original idea), history charts, FPS.
-   - ✅ **Now playing:** whatever the PC is playing, from the system's media session.
+   - ✅ **Now playing:** whatever the PC is playing, from the system's media session,
+     and a Music screen with the cover and the player's icon.
+   - ✅ **Game mode:** only the game screen while a game runs, with Steam's art and the
+     game's icon. Still to do: art for other stores, icons on Linux/macOS, FPS.
 8. Optional: a tiny Android app (WebView kiosk, minSdk 23) that opens by itself, full
    screen, screen always on.
 
