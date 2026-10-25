@@ -89,9 +89,11 @@ class SystemSource:
         return disks
 
 
-def default_sources():
+def default_sources(config=None):
     from .activity import ActivitySource
     from .claude import ClaudeSource
+    from .claude_probe import LimitsProbe
     from .codex import CodexSource
 
-    return [SystemSource(), ClaudeSource(), CodexSource(), ActivitySource()]
+    claude = ClaudeSource(probe=LimitsProbe(), probe_enabled=lambda: bool(config and config.read()["claude_limits"]))
+    return [SystemSource(), claude, CodexSource(), ActivitySource()]

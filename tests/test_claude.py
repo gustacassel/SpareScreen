@@ -91,7 +91,7 @@ class ClaudeSourceTest(unittest.TestCase):
     def test_no_limits_file(self):
         data = self.source(None).read()
         self.assertEqual(data["limits"], [])
-        self.assertIn("status line", data["limits_hint"])
+        self.assertIn("Check Claude limits", data["limits_hint"])
 
     def test_not_installed(self):
         self.assertEqual(claude.ClaudeSource(home=self.home / "missing").read(), {"installed": False})

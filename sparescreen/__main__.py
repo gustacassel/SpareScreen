@@ -53,7 +53,7 @@ def main():
         return
 
     config = ConfigStore()
-    sources = (demo_sources() if args.demo else default_sources()) + [config]
+    sources = (demo_sources() if args.demo else default_sources(config)) + [config]
     if args.dev:
         sources.append(dev.DevSource())
     pairing = None if args.no_pairing else Pairing()

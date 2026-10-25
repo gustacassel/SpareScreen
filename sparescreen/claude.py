@@ -3,7 +3,8 @@
 - ~/.claude/sessions/<pid>.json: one per open session, with name, folder and status.
 - ~/.claude/projects/**/*.jsonl: the conversation history; each response carries its token usage.
 - ~/.sparescreen/claude-limits.json: 5-hour and weekly windows, written by our status line
-  (sparescreen/statusline.py), because Claude Code only hands those numbers to it.
+  (sparescreen/statusline.py), because Claude Code only hands those numbers to it, or by
+  the optional limits check (sparescreen/claude_probe.py) for desktop/IDE users.
 
 The first two are internal Claude Code formats and may change between
 versions, so everything here tolerates missing fields.
@@ -20,6 +21,7 @@ from pathlib import Path
 
 import psutil
 
+from .claude_probe import PROBE_DIR
 from .statusline import load_limits
 
 BUCKET = 15 * 60          # tokens are summed in 15-minute blocks
@@ -28,6 +30,17 @@ WEEK = 7 * 24 * 3600
 
 
 LIMIT_LABELS = {"five_hour": ("5 hours", False), "seven_day": ("Week", True)}
+RECENT = 15 * 60  # a session touched this recently means Claude is "in use"
+
+
+def limit_label(key):
+    """('5 hours', weekly?) for a limit key; model-specific weekly limits such as
+    'seven_day_opus' become 'Week · Opus'. Unknown keys return None."""
+    if key in LIMIT_LABELS:
+        return LIMIT_LABELS[key]
+    if key.startswith("seven_day_"):
+        return "Week · " + key[len("seven_day_"):].replace("_", " ").title(), True
+    return None
 
 
 def claude_home():
@@ -45,11 +58,18 @@ def window_label(minutes):
     return f"{round(hours)} hours"
 
 
+def _same_folder(a, b):
+    if not a:
+        return False
+    return os.path.normcase(os.path.abspath(str(a))) == os.path.normcase(os.path.abspath(str(b)))
+
+
 def model_label(model):
-    """'claude-opus-5-5' -> 'Opus 5.5'; anything else is shown as it is."""
-    match = re.match(r"claude-([a-z]+)-(\d+)-(\d+)", model or "")
+    """'claude-opus-5-5' -> 'Opus 5.5'; 'claude-opus-5' -> 'Opus 5'; anything else is shown as it is."""
+    match = re.match(r"claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:\b|$)", model or "")
     if match:
-        return f"{match.group(1).title()} {match.group(2)}.{match.group(3)}"
+        version = match.group(2) + ("." + match.group(3) if match.group(3) else "")
+        return f"{match.group(1).title()} {version}"
     return model or "?"
 
 
@@ -60,8 +80,11 @@ class ClaudeSource:
 
     name = "claude"
 
-    def __init__(self, home=None, token_refresh=5):
+    def __init__(self, home=None, token_refresh=5, probe=None, probe_enabled=None):
+        """`probe` (LimitsProbe) checks the limits headlessly when `probe_enabled()` is true."""
         self.home = Path(home) if home else claude_home()
+        self.probe = probe
+        self.probe_enabled = probe_enabled or (lambda: False)
         self.token_refresh = token_refresh
         self._token_at = 0
         self._offsets = {}  # file -> how many bytes have been read already
@@ -75,7 +98,12 @@ class ClaudeSource:
         if now - self._token_at >= self.token_refresh:
             self._scan_tokens(now)
             self._token_at = now
+        sessions = self._sessions()
         saved = load_limits()
+        probing = bool(self.probe and self.probe_enabled())
+        if probing:
+            active = any(s["status"] == "busy" or now - s["since"] < RECENT for s in sessions)
+            self.probe.maybe_run(active, saved.get("updated_at") if saved else None)
         limits = self._limits(saved, now)
         weekly = next((w for w in limits if w["weekly"] and not w["renewed"]), None)
         week_start = weekly["resets_at"] - WEEK if weekly else now - WEEK
@@ -85,11 +113,18 @@ class ClaudeSource:
             "name": "Claude Code",
             "limits": limits,
             "limits_updated": saved.get("updated_at") if saved else None,
-            "limits_hint": None if saved else "Limits come from the status line: open Claude Code in a terminal.",
+            "limits_hint": None if saved else self._hint(probing),
             "today": self._sum(lambda block, model: block >= midnight - BUCKET + 1),
             "week_models": self._models_since(week_start),
-            "sessions": self._sessions(),
+            "sessions": sessions,
         }
+
+    def _hint(self, probing):
+        if probing and not self.probe.available:
+            return "The claude command was not found, so limits can't be checked."
+        if probing:
+            return "Checking limits while you use Claude Code..."
+        return "No limits yet: turn on \"Check Claude limits\" in settings, or use Claude Code in a terminal."
 
     # Limits (status line) ---------------------------------------------------
 
@@ -97,10 +132,11 @@ class ClaudeSource:
     def _limits(saved, now):
         windows = []
         for key, window in ((saved or {}).get("rate_limits") or {}).items():
-            if key not in LIMIT_LABELS or not isinstance(window, dict) or window.get("resets_at") is None:
+            label = limit_label(key)
+            if not label or not isinstance(window, dict) or window.get("resets_at") is None:
                 continue
             renewed = window["resets_at"] <= now  # the window rolled over after the last reading
-            label, weekly = LIMIT_LABELS[key]
+            label, weekly = label
             windows.append({
                 "label": label,
                 "percent": None if renewed else window.get("used_percentage"),
@@ -108,7 +144,7 @@ class ClaudeSource:
                 "renewed": renewed,
                 "weekly": weekly,
             })
-        windows.sort(key=lambda w: w["weekly"])  # 5 hours first, then the week
+        windows.sort(key=lambda w: (w["weekly"], w["label"] != "Week"))  # 5 hours, week, then per model
         return windows
 
     def _models_since(self, start):
@@ -204,6 +240,8 @@ class ClaudeSource:
                 continue
             pid = info.get("pid")
             if not pid or not psutil.pid_exists(pid):  # session file for one that already closed
+                continue
+            if _same_folder(info.get("cwd"), PROBE_DIR):  # our own limits check, not a real session
                 continue
             project = Path(info.get("cwd") or "").name
             since = info.get("statusUpdatedAt") or info.get("updatedAt") or info.get("startedAt") or 0

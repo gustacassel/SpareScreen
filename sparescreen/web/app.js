@@ -130,7 +130,7 @@
   // ---- Configuration (comes from the PC) -----------------------------------
 
   var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc"], rotate: 20, notify: true, sound: true,
-              fan_names: {}, cpu_fan: null };
+              fan_names: {}, cpu_fan: null, claude_limits: false };
   var fanKeys = [];  // original fan names from the last reading ("Fan 1", "GPU"...)
 
   function fanName(key) { return (cfg.fan_names && cfg.fan_names[key]) || key; }
@@ -354,6 +354,10 @@
       .map(function (k) { return [k, fanName(k)]; }));
     fillChips("set-cpu-fan", cpuFanChoices.map(function (opt) {
       return chip(opt[1], cfg.cpu_fan === opt[0], function () { saveConfig({ cpu_fan: opt[0] }); });
+    }));
+    // Headless check of Claude Code limits for desktop/IDE users (spends a tiny bit of quota).
+    fillChips("set-claude-limits", [[false, "Off"], [true, "Every 10 min while in use"]].map(function (opt) {
+      return chip(opt[1], cfg.claude_limits === opt[0], function () { saveConfig({ claude_limits: opt[0] }); });
     }));
   }
 

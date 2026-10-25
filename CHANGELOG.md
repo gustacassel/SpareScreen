@@ -15,6 +15,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
   Codex CLI support: sessions, tokens and its 5-hour and weekly usage limits, read from
   `~/.codex/sessions`. Saved settings that used the old `claude` screen name keep working.
 
+- Claude Code limits without the terminal: *Settings > Check Claude limits* runs a tiny
+  headless `claude -p` request every 10 minutes while Claude Code is in use and reads the
+  `rate_limit_event` it reports. Works with the desktop app and IDEs. Off by default.
+- Model-specific weekly limits (e.g. "Week · Opus") are shown when Claude Code reports them.
+
 ### Changed
 
 - "Fable · week" became "This week" tokens per model, for every tool.

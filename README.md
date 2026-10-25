@@ -197,9 +197,21 @@ need no setup. They show up after your first Codex message of the day.
 
 ### Claude Code limits
 
-Claude Code only hands these numbers to its **status line**, so SpareScreen ships a
-status line command that saves the limits to a file (`~/.sparescreen/claude-limits.json`)
-that the agent reads. In `~/.claude/settings.json`:
+Claude Code doesn't write its 5-hour and weekly limits to disk, so SpareScreen has two
+ways to get them. Both save to `~/.sparescreen/claude-limits.json`, and the card shows
+when they were last updated.
+
+**Option 1: limits check (works with the desktop app and IDEs).** Turn on
+*Settings > Check Claude limits*. While you are using Claude Code, every 10 minutes the
+agent runs one tiny request in Claude Code's headless mode (`claude -p`, cheapest model,
+no tools, nothing saved to your history) and reads the `rate_limit_event` that Claude
+Code reports. It only runs while a session is active, so it never starts a new 5-hour
+window on its own. It needs the `claude` command on the PATH and spends a very small
+amount of your plan's usage. Off by default.
+
+**Option 2: status line (terminal only).** Claude Code hands these numbers to its
+**status line**, so SpareScreen ships a status line command that saves them. In
+`~/.claude/settings.json`:
 
 ```json
 "statusLine": {
@@ -213,12 +225,12 @@ model, context usage and limits in Claude Code's own bar, e.g. `Opus · ctx 34% 
 
 Limitations:
 
-- Only on Pro and Max plans, and the numbers only update while a Claude Code session is
-  open **in a terminal**. The desktop app doesn't run status lines.
-- It replaces any status line you already have.
-- Model-specific weekly limits aren't in the status line. Instead, SpareScreen shows the
-  tokens used this week per model, counted from this PC's history (usage on claude.ai
-  or other computers is not included).
+- Only on Pro and Max plans.
+- The status line only runs in the terminal; the desktop app and IDEs don't run it
+  (use option 1 there). It also replaces any status line you already have.
+- Model-specific weekly limits (e.g. "Week · Opus") show up when Claude Code reports them.
+  The card also shows the tokens used this week per model, counted from this PC's history
+  (usage on claude.ai or other computers is not included).
 
 ## Development
 
@@ -267,6 +279,8 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   sessions, cumulative token counts turned into per-day usage, and the usage limits Codex
   stores with them. Same output shape as `claude.py`, so the page draws both the same way.
 - `sparescreen/statusline.py`: the status line that saves the limits for the agent.
+- `sparescreen/claude_probe.py`: the optional limits check (headless `claude -p`, only while
+  Claude Code is in use).
 - `sparescreen/server.py`: standard-library HTTP server. The page gets the data through
   Server-Sent Events on `/events`, once per second.
 - `sparescreen/usb.py`: every 3 seconds checks `adb devices`, sets up `adb reverse` on

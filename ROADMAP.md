@@ -75,6 +75,8 @@ and with no mandatory app. That's this project's niche.
 - Pairing: a 6-digit code for new devices on the network; the PC and USB are trusted.
 - AI screen: one card per installed tool (Claude Code, Codex), with limits, tokens and
   sessions; Codex limits come straight from its session files.
+- Claude Code limits for desktop/IDE users: optional headless check (`claude -p`) every
+  10 minutes while Claude Code is in use.
 
 ## Gaps, by priority
 

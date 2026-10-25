@@ -21,6 +21,7 @@ DEFAULTS = {
     "sound": True,
     "fan_names": {},  # original name -> user-given name (e.g. "Fan 2" -> "Radiator")
     "cpu_fan": None,  # which fan shows on the CPU card (user's choice; none by default)
+    "claude_limits": False,  # headless check of Claude Code limits (spends a tiny bit of quota)
 }
 
 CONFIG_FILE = Path.home() / ".sparescreen" / "config.json"
@@ -40,7 +41,7 @@ def clean(data):
             out["screens"] = screens
     if data.get("rotate") in ROTATE:
         out["rotate"] = data["rotate"]
-    for key in ("notify", "sound"):
+    for key in ("notify", "sound", "claude_limits"):
         if isinstance(data.get(key), bool):
             out[key] = data[key]
     if "cpu_fan" in data and (data["cpu_fan"] is None or isinstance(data["cpu_fan"], str)):
