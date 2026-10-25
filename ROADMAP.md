@@ -120,6 +120,15 @@ and with no mandatory app. That's this project's niche.
   connection dropped. If the page gets no data for ~30 s, switch to a clear full-screen
   "Disconnected, trying again..." state (with the time of the last data), and go back to
   the dashboard by itself when data returns.
+- **HTTPS on Wi-Fi.** On the PC and over USB the page is on `localhost`, which browsers
+  already treat as secure (and the data never leaves the machine or the cable). Over
+  Wi-Fi it's plain HTTP: someone on the same network could read the data and the
+  pairing cookie. No easy certificate exists for a LAN address: a self-signed one shows a
+  big warning on every visit (and old browsers handle it badly); a real one needs a public
+  domain (DNS challenge) or installing our own certificate authority on the phone.
+  Options: an opt-in `--https` with a self-signed certificate and its fingerprint shown in
+  the PC window to compare on the phone; meanwhile, USB only (`--host 127.0.0.1`) on
+  networks you don't trust, as the README says.
 - **Address by PC name, not just IP.** The IP can change (DHCP); the name doesn't. Two ways,
   neither universal: many home routers put DHCP hostnames in their DNS (`http://PCNAME:8765`,
   sometimes `PCNAME.lan` / `.home`), and mDNS answers `PCNAME.local` (Windows 10+, Linux
