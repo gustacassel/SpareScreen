@@ -124,6 +124,24 @@ def enable():
 
 # ---- measuring -------------------------------------------------------------
 
+# PresentMon writes frame rows only to a file (to a pipe it writes the header and stops), and
+# writes it as it goes, so SpareScreen reads the file while it grows. --no_track_display would
+# save a little more work, but with it PresentMon writes nothing at all.
+CAPTURE_OPTIONS = ["--no_console_stats", "--no_track_gpu", "--no_track_input"]
+
+
+def capture_command(exe, pid, path, seconds, session):
+    return [exe, "--process_id", str(pid), "--output_file", str(path), "--timed", str(seconds),
+            "--terminate_after_timed", "--session_name", session, "--stop_existing_session"] + CAPTURE_OPTIONS
+
+
+def _remove(path):
+    try:
+        path.unlink()
+    except OSError:
+        pass
+
+
 def frame_column(header):
     """Index of the frame-to-frame time in PresentMon's CSV header (named differently over versions)."""
     for name in ("MsBetweenPresents", "FrameTime", "MsBetweenAppStart"):
@@ -134,6 +152,8 @@ def frame_column(header):
 
 class FrameStats:
     """Frame times of the last seconds -> FPS, 1% low and average frame time."""
+
+    RECENT = 4.0  # seconds counted as "now" (frames arrive in ~2 s batches)
 
     def __init__(self, window=10.0, now=time.monotonic):
         self.window = window
@@ -153,7 +173,7 @@ class FrameStats:
     def summary(self):
         with self._lock:
             now = self.now()
-            recent = [ms for at, ms in self._frames if now - at <= 2.0]  # what's on screen now
+            recent = [ms for at, ms in self._frames if now - at <= self.RECENT]  # what's on screen now
             window = [ms for at, ms in self._frames if now - at <= self.window]
         if not recent:
             return None
@@ -198,32 +218,24 @@ class AutoDetect:
         return False
 
     def _check(self, pid, exe):
+        path = TOOLS / f"check-{os.getpid()}.csv"
         try:
-            result = subprocess.run(
-                [find_presentmon(), "--process_id", str(pid), "--output_stdout", "--no_console_stats",
-                 "--timed", str(self.SECONDS), "--terminate_after_timed",
-                 "--session_name", SESSION + "Check", "--stop_existing_session",
-                 "--no_track_gpu", "--no_track_input", "--no_track_display"],
-                capture_output=True, text=True, timeout=self.SECONDS + 15, creationflags=_NO_WINDOW)
-            game = self.looks_like_a_game(result.stdout)
+            TOOLS.mkdir(parents=True, exist_ok=True)
+            _remove(path)
+            subprocess.run(capture_command(find_presentmon(), pid, path, self.SECONDS, SESSION + "Check"),
+                           capture_output=True, timeout=self.SECONDS + 15, creationflags=_NO_WINDOW)
+            game = path.is_file() and self.looks_like_a_game(path.read_text(encoding="utf-8-sig", errors="replace"))
         except (OSError, subprocess.SubprocessError):
             game = False
+        finally:
+            _remove(path)
         with self._lock:
             self._verdicts[exe] = (game, time.time())
             self._busy = False
 
     @classmethod
     def looks_like_a_game(cls, output):
-        rows = list(csv.reader(output.splitlines()))
-        column = frame_column(rows[0]) if rows else None
-        if column is None:
-            return False
-        times = []
-        for row in rows[1:]:
-            try:
-                times.append(float(row[column]))
-            except (IndexError, ValueError):
-                pass
+        times = frame_times(output)
         # Steady drawing: enough frames over the whole check, at a game-like rate.
         return len(times) >= cls.MIN_FPS * cls.SECONDS * 0.8 and 1000 / (sum(times) / len(times)) >= cls.MIN_FPS
 
@@ -233,12 +245,17 @@ class FpsSource:
 
     name = "fps"
 
+    STRETCH = 2  # seconds per recording; FPS updates this often
+
     def __init__(self, activity):
         self.activity = activity
         self._proc = None
         self._pid = None
         self._stats = None
         self._error = None
+        self._stopped = None  # threading.Event of the current capture
+        for left in list(TOOLS.glob("frames-*.csv")) + list(TOOLS.glob("check-*.csv")):
+            _remove(left)  # from a run that was closed mid-recording
 
     def read(self):
         if sys.platform != "win32":
@@ -264,34 +281,41 @@ class FpsSource:
             self._error = "permission"
             return
         self._stats = FrameStats()
-        try:
-            self._proc = subprocess.Popen(
-                [exe, "--process_id", str(pid), "--output_stdout", "--no_console_stats",
-                 "--session_name", SESSION, "--stop_existing_session",
-                 "--no_track_gpu", "--no_track_input", "--no_track_display"],  # only what FPS needs
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
-                text=True, creationflags=_NO_WINDOW)
-        except OSError:
-            self._error = "failed"
-            return
-        threading.Thread(target=self._read_frames, args=(self._proc, self._stats), daemon=True).start()
+        self._stopped = threading.Event()
+        threading.Thread(target=self._capture, args=(exe, pid, self._stats, self._stopped), daemon=True).start()
 
-    def _read_frames(self, proc, stats):
-        column = None
-        for row in csv.reader(proc.stdout):
-            if column is None:
-                column = frame_column(row)
-                continue
+    def _capture(self, exe, pid, stats, stopped):
+        # PresentMon keeps its file locked while writing, so it records short stretches
+        # back to back and each one is read when it ends.
+        path = TOOLS / f"frames-{os.getpid()}.csv"
+        TOOLS.mkdir(parents=True, exist_ok=True)
+        while not stopped.is_set():
+            _remove(path)
             try:
-                stats.add(float(row[column]))
-            except (IndexError, ValueError):
-                pass  # "NA" or a short line
-        if proc.wait() != 0 and proc is self._proc:
-            err = proc.stderr.read() if proc.stderr else ""
-            self._error = "permission" if "access denied" in err else "failed"
+                proc = subprocess.Popen(capture_command(exe, pid, path, self.STRETCH, SESSION),
+                                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.PIPE, creationflags=_NO_WINDOW)
+            except OSError:
+                self._error = "failed"
+                break
+            self._proc = proc
+            _, err = proc.communicate()
+            if stopped.is_set():
+                break
+            if proc.returncode != 0:
+                text = err.decode("utf-16", "replace") if b"\x00" in err else err.decode("utf-8", "replace")
+                self._error = "permission" if "access denied" in text else "failed"
+                break
+            try:
+                read_frames(path.read_text(encoding="utf-8-sig", errors="replace"), stats)
+            except OSError:
+                pass  # no frames this time (game paused, minimized...)
+        _remove(path)
 
     def _stop(self):
         proc, self._proc, self._stats, self._pid = self._proc, None, None, None
+        if self._stopped:
+            self._stopped.set()
         if proc and proc.poll() is None:
             proc.terminate()
             # A killed PresentMon leaves its trace session behind: close it properly.
@@ -300,3 +324,21 @@ class FpsSource:
                                capture_output=True, timeout=10, creationflags=_NO_WINDOW)
             except (OSError, subprocess.SubprocessError):
                 pass
+
+
+def frame_times(text):
+    """Frame-to-frame times (ms) in one of PresentMon's CSV files."""
+    rows = list(csv.reader(text.splitlines()))
+    column = frame_column(rows[0]) if rows else None
+    times = []
+    for row in rows[1:] if column is not None else []:
+        try:
+            times.append(float(row[column]))
+        except (IndexError, ValueError):
+            pass  # "NA" or a short line
+    return times
+
+
+def read_frames(text, stats):
+    for ms in frame_times(text):
+        stats.add(ms)

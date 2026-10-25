@@ -16,6 +16,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 ### Fixed
 
+- Game FPS never showed: PresentMon only writes frame rows to a file (to a pipe it writes
+  the header and stops), and `--no_track_display` made it write nothing. It now records
+  2-second stretches to a file, read as each one ends (FPS updates every ~2 s).
 - Some program names came out with garbage after them (e.g. "NVIDIA App"), from reading
   the .exe description past its end.
 
