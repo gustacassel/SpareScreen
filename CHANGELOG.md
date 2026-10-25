@@ -13,6 +13,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
   through `nvidia-smi`, Intel's TjMax, NVMe warning temperature, Linux hwmon "high", a
   table by family for AMD CPUs), and a part that stays in the red for 30 s raises an alert
   with a chime (setting: Heat alerts).
+- Phone screen over USB (setting, off by default): while the PC is locked, or at night
+  with night mode on, dim the phone's real brightness or turn its screen off, and put it
+  back afterwards (also when SpareScreen closes).
 
 ### Changed
 

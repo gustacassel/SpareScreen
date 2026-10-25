@@ -130,7 +130,7 @@
   // ---- Configuration (comes from the PC) -----------------------------------
 
   var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc", "music"], rotate: 20, notify: true, sound: true,
-              game_mode: true, heat_alerts: true,
+              game_mode: true, heat_alerts: true, usb_screen: "keep",
               fan_names: {}, cpu_fan: null, claude_limits: false,
               burn_in: true, night_mode: "off", night_hours: "23-7" };
   var fanKeys = [];  // original fan names from the last reading ("Fan 1", "GPU"...)
@@ -455,6 +455,10 @@
     }));
     fillChips("set-night-hours", [["22-7", "22:00–07:00"], ["23-7", "23:00–07:00"], ["0-8", "00:00–08:00"]].map(function (opt) {
       return chip(opt[1], cfg.night_hours === opt[0], function () { saveConfig({ night_hours: opt[0] }); });
+    }));
+    // Over USB the PC can turn the phone's real brightness down, or the screen off.
+    fillChips("set-usb-screen", [["keep", "Keep"], ["dim", "Dim"], ["off", "Off"]].map(function (opt) {
+      return chip(opt[1], cfg.usb_screen === opt[0], function () { saveConfig({ usb_screen: opt[0] }); });
     }));
   }
 

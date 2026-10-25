@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import __version__, autostart, dev, tray
+from . import __version__, autostart, dev, screen, tray
 from .appwindow import open_window
 from .config import ConfigStore
 from .demo import demo_sources
@@ -183,7 +183,8 @@ def main():
     bridge = None
     if adb:
         open_page = not args.no_open and not dev.is_restart()
-        bridge = UsbBridge(adb, args.port, open_page=open_page, stay_awake=args.stay_awake)
+        bridge = UsbBridge(adb, args.port, open_page=open_page, stay_awake=args.stay_awake,
+                           screen=lambda: screen.wanted(config))
     if args.demo:
         sources = demo_sources() + [config]
     else:
@@ -230,7 +231,7 @@ def main():
         try:
             tray.run(server, local_url, window_url, phone_url, pairing, autostart_args(), greet=greet)
         finally:
-            server.server_close()
+            shut_down(server, bridge)
         return
     print("Press Ctrl+C to quit.", flush=True)
     try:
@@ -238,4 +239,10 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        server.server_close()
+        shut_down(server, bridge)
+
+
+def shut_down(server, bridge):
+    server.server_close()
+    if bridge:
+        bridge.restore()  # a dimmed or sleeping phone screen goes back to how it was

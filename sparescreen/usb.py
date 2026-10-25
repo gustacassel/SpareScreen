@@ -88,12 +88,14 @@ class UsbBridge:
 
     BATTERY_EVERY = 30  # seconds between battery readings
 
-    def __init__(self, adb, port, open_page=True, stay_awake=False, poll_interval=3):
+    def __init__(self, adb, port, open_page=True, stay_awake=False, poll_interval=3, screen=None):
         self.adb = adb
         self.port = port
         self.open_page = open_page
         self.stay_awake = stay_awake
         self.poll_interval = poll_interval
+        self.screen = screen  # callable: "dim", "off" or None (see screen.py)
+        self._rested = {}     # serial -> how its screen was rested, and what to put back
         self._ready = set()   # phones already set up on this connection
         self._warned = set()  # phones we have already warned about some problem
         self.batteries = {}   # serial -> latest battery reading (read by PhoneSource)
@@ -150,8 +152,55 @@ class UsbBridge:
             if serial not in connected:
                 del self.batteries[serial]
 
+        for serial in list(self._rested):
+            if serial not in connected:
+                del self._rested[serial]
+
+        wanted = self.screen() if self.screen else None
         for serial in connected:
             self._read_battery(serial, devices[serial][1])
+            try:
+                self._rest_screen(serial, wanted)
+            except (RuntimeError, OSError, subprocess.SubprocessError):
+                pass  # tried again on the next round
+
+    def _rest_screen(self, serial, wanted):
+        """Dims or turns off the phone's screen while `wanted`, and puts it back after."""
+        rested = self._rested.get(serial)
+        current = rested["how"] if rested else None
+        if wanted == current:
+            return
+        if rested:
+            self._wake(serial, rested)
+            del self._rested[serial]
+        if wanted == "dim":
+            # Remember the user's brightness (and auto-brightness) to put them back later.
+            saved = {name: self._run("-s", serial, "shell", "settings", "get", "system", name).strip()
+                     for name in ("screen_brightness", "screen_brightness_mode")}
+            self._run("-s", serial, "shell", "settings", "put", "system", "screen_brightness_mode", "0")
+            self._run("-s", serial, "shell", "settings", "put", "system", "screen_brightness", "1")
+            self._rested[serial] = {"how": "dim", "saved": saved}
+        elif wanted == "off":
+            self._run("-s", serial, "shell", "input", "keyevent", "KEYCODE_SLEEP")
+            self._rested[serial] = {"how": "off"}
+
+    def _wake(self, serial, rested):
+        if rested["how"] == "dim":
+            for name in ("screen_brightness", "screen_brightness_mode"):
+                value = rested["saved"].get(name)
+                if value and value.lstrip("-").isdigit():
+                    self._run("-s", serial, "shell", "settings", "put", "system", name, value)
+        elif rested["how"] == "off":
+            self._run("-s", serial, "shell", "input", "keyevent", "KEYCODE_WAKEUP")
+
+    def restore(self):
+        """Puts every rested screen back (SpareScreen is closing)."""
+        for serial, rested in list(self._rested.items()):
+            try:
+                self._wake(serial, rested)
+            except (RuntimeError, OSError, subprocess.SubprocessError):
+                pass
+        self._rested.clear()
 
     def _read_battery(self, serial, model):
         last = self.batteries.get(serial)

@@ -243,6 +243,14 @@ OLED/AMOLED screens (many older phones have one).
   the screen either dims or shows only a dim clock that moves around every minute.
   Tap it to see the dashboard for a minute. Alerts (session finished, battery hot) still
   show up on top.
+- **Phone screen (USB)** (*Keep* by default): night mode only darkens the page; the
+  backlight stays on. With the phone on USB, SpareScreen can rest the real screen while
+  the PC is locked, and during the night hours when night mode is on: **Dim** turns the
+  brightness all the way down (and puts yours back, auto-brightness included), **Off**
+  turns the screen off and on again. Less heat for a phone that's always plugged in, and
+  less burn-in. With *Off*, a phone with a PIN or pattern lock shows its lock screen when
+  it wakes; for a dashboard-only phone, set the screen lock to *None* or *Swipe*.
+  Locked PC detection: Windows, and Linux with `loginctl`.
 
 ## Phone battery
 

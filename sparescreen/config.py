@@ -14,6 +14,7 @@ SCREENS = ("hardware", "ai", "pc", "music")  # the game screen only shows in gam
 ROTATE = (0, 10, 20, 30, 60)  # seconds; 0 = does not switch by itself
 NIGHT_MODES = ("off", "dim", "clock")  # what the screen shows during night hours
 NIGHT_HOURS = ("22-7", "23-7", "0-8")  # "start-end", in the phone's local time
+USB_SCREEN = ("keep", "dim", "off")  # what to do with a USB phone's screen (see screen.py)
 
 DEFAULTS = {
     "theme": "graphite",
@@ -27,6 +28,7 @@ DEFAULTS = {
     "burn_in": True,  # shift the content a few pixels every minute (protects OLED screens)
     "game_mode": True,  # while a game runs, show only the game screen
     "heat_alerts": True,  # alert when the CPU, GPU or a drive stays near its limit
+    "usb_screen": "keep",  # phone on USB while the PC is locked or at night: keep, dim or off
     "night_mode": "off",
     "night_hours": "23-7",
 }
@@ -69,6 +71,8 @@ def clean(data):
             out[key] = data[key]
     if data.get("night_mode") in NIGHT_MODES:
         out["night_mode"] = data["night_mode"]
+    if data.get("usb_screen") in USB_SCREEN:
+        out["usb_screen"] = data["usb_screen"]
     if data.get("night_hours") in NIGHT_HOURS:
         out["night_hours"] = data["night_hours"]
     if "cpu_fan" in data and (data["cpu_fan"] is None or isinstance(data["cpu_fan"], str)):

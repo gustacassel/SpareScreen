@@ -146,8 +146,8 @@ and with no mandatory app. That's this project's niche.
   - Linux: MangoHud's log files (when the game runs with MangoHud).
   - macOS: no practical free way for other apps' games.
 
-- ✅ **Screen burn-in** (done: pixel shift every minute and night mode; still to do:
-  real backlight control over USB and dimming when the PC is locked). A dashboard showing the same thing in the same place for hours can
+- ✅ **Screen burn-in** (done: pixel shift every minute, night mode, and over USB the real
+  brightness turned down or the screen off while the PC is locked or at night). A dashboard showing the same thing in the same place for hours can
   burn in the screen, like the "always on display" complaints on phones. It's a real
   risk on **AMOLED/OLED** screens (many older Samsung phones); on **LCD** the risk is
   lower (at most temporary image retention), but the backlight ages too.

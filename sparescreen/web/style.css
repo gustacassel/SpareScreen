@@ -223,6 +223,7 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .settings-panel h2 .icon { margin-right: 6px; color: var(--accent); }
 .set-row { display: flex; align-items: center; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--track); }
 .set-label { width: 140px; font-size: 15px; }
+.set-label small { display: block; font-size: 11px; color: var(--muted); }
 .chips { flex: 1; display: flex; flex-wrap: wrap; }
 .chip {
   margin: 3px 6px 3px 0; padding: 7px 12px;
