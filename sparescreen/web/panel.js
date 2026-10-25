@@ -91,6 +91,50 @@
     fill($("devices"), items, "No device connected yet.");
   }
 
+  var FOUND_BY = { library: "found in a game store's library", mine: "in your games", auto: "detected automatically" };
+
+  function fileName(path) { return path.replace(/^.*[\\\/]/, ""); }
+
+  function renderGames(games) {
+    var now = games.current;
+    if (now) {
+      fill($("game-now"), [row("ok", "Playing: " + now.name, FOUND_BY[now.source] || "",
+        { label: "Not a game", onclick: function () { act("not_game_add"); } })], "");
+    } else {
+      fill($("game-now"), [row("", "No game running",
+        games.auto ? "Any game in full screen is detected by itself (FPS in games is on)."
+                   : "Games from Steam, Epic, GOG, Xbox, EA, Ubisoft, Riot and Battle.net are found by " +
+                     "themselves. Others: add them below, or turn on FPS in games to detect them automatically.")], "");
+    }
+    var mine = [];
+    var i;
+    for (i = 0; i < games.mine.length; i++) {
+      (function (game) {
+        mine.push(row("ok", game.name || fileName(game.exe), fileName(game.exe),
+          { label: "Remove", onclick: function () { act("game_remove", { exe: game.exe }); } }));
+      })(games.mine[i]);
+    }
+    fill($("my-games"), mine, "None yet.");
+    var running = [];
+    for (i = 0; i < games.running.length; i++) {
+      (function (prog) {
+        running.push(row("", prog.name, fileName(prog.exe),
+          { label: "It's a game", onclick: function () { act("game_add", { exe: prog.exe, name: prog.name }); } }));
+      })(games.running[i]);
+    }
+    fill($("running-apps"), running, "Nothing to show.");
+    var others = [];
+    for (i = 0; i < games.not_games.length; i++) {
+      (function (prog) {
+        others.push(row("", prog.name, "Never taken for a game",
+          { label: "Undo", onclick: function () { act("not_game_remove", { exe: prog.exe }); } }));
+      })(games.not_games[i]);
+    }
+    fill($("not-games"), others, "");
+    $("not-games").className = "rows" + (others.length ? "" : " empty");
+    $("not-games-title").className = "sub" + (others.length ? "" : " empty");
+  }
+
   function renderChecks(checks) {
     var items = [];
     for (var i = 0; i < checks.length; i++) {
@@ -137,6 +181,7 @@
       $("waiting-code").textContent = spaced(state.code);
     }
     renderDevices(state.devices);
+    if (state.games) renderGames(state.games);
     renderChecks(state.checks);
     $("autostart").checked = state.autostart;
     $("autostart-label").textContent = state.autostart_label;

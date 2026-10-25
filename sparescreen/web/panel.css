@@ -75,6 +75,9 @@ body {
 .rows .btn { margin-left: 10px; }
 .rows .empty { color: var(--muted); }
 
+.sub { margin: 14px 0 4px; font-size: 13px; font-weight: 600; }
+#not-games-title.empty, #not-games.empty { display: none; }
+
 .message {
   display: none; margin-bottom: 12px; padding: 10px 14px; border-radius: 10px;
   background: var(--accent); color: #fff;

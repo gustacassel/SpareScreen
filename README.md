@@ -256,9 +256,18 @@ If the back of the phone ever starts to bulge, unplug it and stop using it.
 
 ## Games and apps
 
-- **Game running:** any program running from a store's game library folder
-  (Steam `steamapps/common`, Epic Games, GOG, Xbox, Riot, EA, Ubisoft, Battle.net).
-  The name shown is the game's folder name. Games installed elsewhere don't show up.
+- **Game running**, decided in this order:
+  1. never a program you marked **Not a game** in the SpareScreen window;
+  2. any program in **your games**: with the game open, click **It's a game** next to it
+     under *Games > Running now* in the SpareScreen window (for games installed anywhere,
+     emulators, Minecraft Java...);
+  3. any program running from a store's game library folder (Steam `steamapps/common`,
+     Epic Games, GOG, Xbox, Riot, EA, Ubisoft, Battle.net), named after its folder;
+  4. with **FPS in games** turned on (Windows): the full-screen app in front, if PresentMon
+     sees it drawing like a game for a few seconds (browsers, video players and Windows'
+     own programs are never checked). It's named after its window title.
+
+  Your lists stay on the PC (they hold file paths); the phone only gets the game's name.
 - **In focus:** the app of the active window. Windows: yes. Linux on X11: yes with
   `xdotool` or `xprop` installed (usually already there; on Debian/Ubuntu the `x11-utils`
   package). Linux on Wayland: Sway and Hyprland only; GNOME, KDE and other Wayland

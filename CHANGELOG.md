@@ -4,6 +4,21 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Your games: mark any running program as a game in the SpareScreen window ("It's a
+  game"), for games installed outside the store folders, emulators, Minecraft Java...
+  And "Not a game" for anything taken for a game by mistake.
+- Automatic game detection where FPS is set up (Windows): the full-screen app in front
+  counts as a game when PresentMon sees it drawing steadily for a few seconds.
+
+### Fixed
+
+- Some program names came out with garbage after them (e.g. "NVIDIA App"), from reading
+  the .exe description past its end.
+
 ## [0.8.0] - 2026-10-25
 
 ### Added

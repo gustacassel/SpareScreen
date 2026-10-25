@@ -1,5 +1,6 @@
 """Data sources shown on the dashboard."""
 
+import sys
 import time
 
 import psutil
@@ -95,9 +96,9 @@ def default_sources(config=None):
     from .claude import ClaudeSource
     from .claude_probe import LimitsProbe
     from .codex import CodexSource
-    from .fps import FpsSource
+    from .fps import AutoDetect, FpsSource
     from .media import MediaSource
 
     claude = ClaudeSource(probe=LimitsProbe(), probe_enabled=lambda: bool(config and config.read()["claude_limits"]))
-    activity = ActivitySource()
+    activity = ActivitySource(config=config, auto=AutoDetect() if sys.platform == "win32" else None)
     return [SystemSource(), claude, CodexSource(), activity, FpsSource(activity), MediaSource()]

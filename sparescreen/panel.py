@@ -5,6 +5,7 @@ web/panel.html, opened in an app window (appwindow.py). Checks are built from th
 latest data snapshot, so they show what the dashboard actually gets.
 """
 
+import os
 import re
 import shutil
 import subprocess
@@ -13,6 +14,7 @@ import time
 import webbrowser
 
 from . import autostart, fps, lhm, names
+from .activity import same_exe
 
 # Shown as the device name; modern browsers hide the phone model, so this stays generic.
 _SYSTEMS = (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("CrOS", "ChromeOS"),
@@ -37,8 +39,11 @@ def _mobile(agent):
 
 
 class Panel:
-    def __init__(self, pairing=None, bridge=None, usb=True, info=None, local_url="", autostart_args=()):
+    def __init__(self, pairing=None, bridge=None, usb=True, info=None, local_url="", autostart_args=(),
+                 config=None, activity=None):
         self.pairing = pairing
+        self.config = config
+        self.activity = activity
         self.bridge = bridge
         self.usb = usb  # False with --no-usb
         self.info = info or {}
@@ -73,6 +78,7 @@ class Panel:
             "checks": self.checks(snapshot),
             "devices": self.devices(clients),
             "waiting": self._waiting(),
+            "games": self.games(snapshot),
             "autostart": bool(autostart.status()),
             "autostart_label": "Start with Windows" if sys.platform == "win32" else "Start when I log in",
             "message": message,
@@ -84,6 +90,20 @@ class Panel:
             return None
         return {"name": describe_agent(waiting["device"]), "address": waiting["address"],
                 "ago": int(time.time() - waiting["at"])}
+
+    def games(self, snapshot):
+        """The game now (and how it was recognized), the user's lists, and what's running."""
+        game = (snapshot.get("activity") or {}).get("game")
+        lists = self.config.games() if self.config else {"my_games": [], "not_games": []}
+        listed = {same_exe(g["exe"]) for g in lists["my_games"]} | {same_exe(p) for p in lists["not_games"]}
+        running = [r for r in (self.activity.running if self.activity else []) if same_exe(r["exe"]) not in listed]
+        return {
+            "current": {"name": game["name"], "source": game.get("source", "library")} if game else None,
+            "mine": lists["my_games"],
+            "not_games": [{"exe": p, "name": os.path.basename(p)} for p in lists["not_games"]],
+            "running": running,
+            "auto": fps.AutoDetect.ready(),
+        }
 
     def devices(self, clients):
         """What's connected now (open dashboards), the paired Wi-Fi device and USB phones."""
@@ -217,6 +237,27 @@ class Panel:
 
     # ---- actions ------------------------------------------------------------
 
+    def _edit_games(self, action, data):
+        lists = self.config.games()
+        mine, others = lists["my_games"], lists["not_games"]
+        exe = data.get("exe") if isinstance(data.get("exe"), str) else None
+        if action == "not_game_add" and not exe and self.activity:
+            exe = self.activity.game_exe  # "not a game" on the game being shown
+        if not exe:
+            return
+        same = same_exe(exe)
+        mine = [g for g in mine if same_exe(g["exe"]) != same]
+        others = [p for p in others if same_exe(p) != same]
+        if action == "game_add":
+            mine.append({"exe": exe, "name": str(data.get("name") or "")})
+            self.message = "Added to your games."
+        elif action == "not_game_add":
+            others.append(exe)
+            self.message = "Won't be taken for a game again."
+        self.config.set_games(mine, others)
+        if self.activity:
+            self.activity._at = 0  # look again now, not in a few seconds
+
     def act(self, action, data=None):
         data = data or {}
         if action == "lhm_start":
@@ -225,6 +266,8 @@ class Panel:
             self.message = error or "Starting LibreHardwareMonitor (it goes to the tray)."
         elif action == "lhm_install":
             self.message = lhm.install() or "Installing in the console window; then click Open it."
+        elif action in ("game_add", "game_remove", "not_game_add", "not_game_remove") and self.config:
+            self._edit_games(action, data)
         elif action == "fps_enable":
             self.message = fps.enable()
         elif action == "adb_install":

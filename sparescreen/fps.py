@@ -163,6 +163,71 @@ class FrameStats:
                 "frametime": round(frametime, 1)}
 
 
+class AutoDetect:
+    """Is the full-screen app in front a game? PresentMon watches it for a few seconds:
+    a game keeps drawing frames all the time, a full-screen document or menu doesn't.
+
+    Only where FPS is set up (PresentMon and its permission), and only for the app in
+    front, so PresentMon isn't running when nobody plays. Answers are remembered per
+    program: a game for the rest of the session, a non-game for a few minutes.
+    """
+
+    SECONDS = 4
+    MIN_FPS = 20
+    RECHECK = 300  # seconds before asking again about a program that wasn't a game
+
+    def __init__(self):
+        self._verdicts = {}  # exe -> (is it a game, when)
+        self._busy = False
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def ready():
+        return sys.platform == "win32" and bool(find_presentmon()) and allowed()
+
+    def is_game(self, pid, exe):
+        """True once confirmed; False while unknown (a check runs in the background)."""
+        with self._lock:
+            verdict = self._verdicts.get(exe)
+            if verdict and (verdict[0] or time.time() - verdict[1] < self.RECHECK):
+                return verdict[0]
+            if self._busy or not self.ready():
+                return False
+            self._busy = True
+        threading.Thread(target=self._check, args=(pid, exe), daemon=True).start()
+        return False
+
+    def _check(self, pid, exe):
+        try:
+            result = subprocess.run(
+                [find_presentmon(), "--process_id", str(pid), "--output_stdout", "--no_console_stats",
+                 "--timed", str(self.SECONDS), "--terminate_after_timed",
+                 "--session_name", SESSION + "Check", "--stop_existing_session",
+                 "--no_track_gpu", "--no_track_input", "--no_track_display"],
+                capture_output=True, text=True, timeout=self.SECONDS + 15, creationflags=_NO_WINDOW)
+            game = self.looks_like_a_game(result.stdout)
+        except (OSError, subprocess.SubprocessError):
+            game = False
+        with self._lock:
+            self._verdicts[exe] = (game, time.time())
+            self._busy = False
+
+    @classmethod
+    def looks_like_a_game(cls, output):
+        rows = list(csv.reader(output.splitlines()))
+        column = frame_column(rows[0]) if rows else None
+        if column is None:
+            return False
+        times = []
+        for row in rows[1:]:
+            try:
+                times.append(float(row[column]))
+            except (IndexError, ValueError):
+                pass
+        # Steady drawing: enough frames over the whole check, at a game-like rate.
+        return len(times) >= cls.MIN_FPS * cls.SECONDS * 0.8 and 1000 / (sum(times) / len(times)) >= cls.MIN_FPS
+
+
 class FpsSource:
     """FPS of the game the activity source found; starts and stops PresentMon with it."""
 

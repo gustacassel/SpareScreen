@@ -31,6 +31,22 @@ DEFAULTS = {
 }
 
 CONFIG_FILE = Path.home() / ".sparescreen" / "config.json"
+MAX_GAMES = 100
+
+
+def clean_games(saved):
+    """The user's own game lists, kept on the PC only (they hold paths with the user name):
+    "my_games" [{"exe", "name"}] counts as games, "not_games" [exe] never does."""
+    def exe(value):
+        return value.strip()[:400] if isinstance(value, str) and value.strip() else None
+
+    mine = []
+    for game in (saved.get("my_games") if isinstance(saved, dict) else None) or []:
+        if isinstance(game, dict) and exe(game.get("exe")):
+            name = game.get("name") if isinstance(game.get("name"), str) else ""
+            mine.append({"exe": exe(game["exe"]), "name": name.strip()[:60]})
+    others = [exe(path) for path in (saved.get("not_games") if isinstance(saved, dict) else None) or []]
+    return {"my_games": mine[:MAX_GAMES], "not_games": [p for p in others if p][:MAX_GAMES]}
 
 
 def clean(data):
@@ -79,6 +95,7 @@ class ConfigStore:
         except (OSError, ValueError):
             saved = {}
         self._config = {**DEFAULTS, **clean(saved)}
+        self._games = clean_games(saved)
         # Screens added in a newer version start on: anything the saved file has never
         # seen joins the list (files from before this existed knew the first three).
         known = saved.get("screens_known") if isinstance(saved, dict) else None
@@ -90,12 +107,24 @@ class ConfigStore:
         with self._lock:
             return dict(self._config)
 
+    def games(self):
+        with self._lock:
+            return {"my_games": [dict(g) for g in self._games["my_games"]],
+                    "not_games": list(self._games["not_games"])}
+
+    def set_games(self, my_games=None, not_games=None):
+        """Changed from the PC window only (POST /config ignores these lists)."""
+        with self._lock:
+            self._games = clean_games({"my_games": self._games["my_games"] if my_games is None else my_games,
+                                       "not_games": self._games["not_games"] if not_games is None else not_games})
+        self.update({})
+
     def update(self, changes):
         with self._lock:
             self._config.update(clean(changes))
             self.path.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.path.with_suffix(".tmp")
-            saved = dict(self._config, screens_known=list(SCREENS))
+            saved = dict(self._config, screens_known=list(SCREENS), **self._games)
             tmp.write_text(json.dumps(saved, indent=2), encoding="utf-8")
             os.replace(tmp, self.path)
             return dict(self._config)

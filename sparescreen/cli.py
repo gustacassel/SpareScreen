@@ -195,8 +195,9 @@ def main():
     local_url = f"http://localhost:{args.port}"
     window_url = f"{local_url}/panel.html"  # the PC window: checks, devices, pairing
     info = {"phone_url": phone_url, "version": __version__}
+    activity = next((s for s in sources if s.name == "activity"), None)
     panel = Panel(pairing, bridge, usb=not args.no_usb, info=info, local_url=local_url,
-                  autostart_args=autostart_args())
+                  autostart_args=autostart_args(), config=config, activity=activity)
     try:
         server = serve(args.host, args.port, sources, args.interval, config, pairing, info=info, panel=panel)
     except OSError as exc:
