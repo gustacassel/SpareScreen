@@ -38,11 +38,13 @@ class DemoSystem:
                 "power": round(30 + cpu * 0.9, 1),
                 "clock": 4300 + cpu * 9,
                 "clock_max": 5400,
+                "temp_limit": 95,
             },
             "gpu": {
                 "name": "RTX 4070",
                 "percent": gpu,
                 "temp": round(40 + gpu * 0.3, 1),
+                "temp_limit": 88,
                 "mem_used": _wave(40, 5, 9) * GB,
                 "mem_total": 12 * GB,
                 "power": round(25 + gpu * 1.6, 1),
@@ -69,8 +71,8 @@ class DemoSystem:
                  "gpu": True},
             ],
             "drives": [
-                {"name": "NVMe SSD 2TB", "temp": 41.0, "read": 0.0, "write": 2.1e6},
-                {"name": "SATA SSD 1TB", "temp": 34.0, "read": 0.0, "write": 0.0},
+                {"name": "NVMe SSD 2TB", "temp": 41.0, "temp_limit": 75.0, "read": 0.0, "write": 2.1e6},
+                {"name": "SATA SSD 1TB", "temp": 34.0, "temp_limit": None, "read": 0.0, "write": 0.0},
             ],
             "net": {"down": _wave(9, 2e5, 8.4e6), "up": _wave(13, 3e4, 9e5)},
             "disks": [

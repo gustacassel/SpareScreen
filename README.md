@@ -366,6 +366,14 @@ Windows only.
   when the card turns it off at idle. Every board wires things differently, so
   SpareScreen doesn't guess which fan is which: in *settings* you can name them
   (e.g. "Fan 2" → "Radiator") and pick which one shows on the CPU card (none by default).
+- **Hot or not depends on the chip.** Temperatures turn yellow 15 °C and red 5 °C below the
+  point where that part starts to slow itself down, read from the hardware where it says:
+  NVIDIA cards report it through `nvidia-smi`, Intel CPUs through LibreHardwareMonitor
+  ("Distance to TjMax"), NVMe drives give their warning temperature, and Linux sensors
+  their own "high" limit. AMD CPUs don't report one, so it comes from a small table by
+  family (e.g. Ryzen 7000: 95 °C). Without any of these, fixed values are used (CPU yellow
+  at 75 °C, red at 90 °C). If a part stays in the red for 30 seconds, the page shows an
+  alert with a chime, once until it cools down (*Heat alerts* in the settings).
 
 ## AI tools: Claude Code and Codex
 

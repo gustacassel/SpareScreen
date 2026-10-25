@@ -117,19 +117,6 @@ and with no mandatory app. That's this project's niche.
 
 ## To think about
 
-- **High temperature warnings, with limits from the hardware itself.** Today the colors use
-  fixed values (e.g. CPU yellow at 75 °C, red at 90 °C), which are wrong for many chips.
-  Where each source can tell the real limits:
-  - NVIDIA: `nvidia-smi -q -d TEMPERATURE` lists the GPU's own slowdown, shutdown and max
-    operating temperatures.
-  - Linux: `psutil.sensors_temperatures()` already returns each sensor's `high` and
-    `critical` (from hwmon `temp*_max` / `temp*_crit`), for CPUs and AMD GPUs.
-  - Windows (LibreHardwareMonitor): Intel CPUs expose "Distance to TjMax" sensors (TjMax =
-    current temp + distance); AMD and others don't, so a small table by CPU family
-    (e.g. Ryzen 7000: 95 °C) as a fallback.
-  - Otherwise the current defaults, and the user can set their own in the settings.
-  Then: warn (toast + chime, like the phone battery) when a part stays near its limit for a
-  while, not on a single spike.
 - **C# / .NET 10 instead of Python?** (idea, 2026-10-25). LibreHardwareMonitor is C# and
   ships LibreHardwareMonitorLib on NuGet (.NET 8/9/10), so a .NET agent could read the
   sensors in-process: no separate LibreHardwareMonitor window, no web server to turn on.

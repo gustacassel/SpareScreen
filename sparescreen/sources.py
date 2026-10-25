@@ -6,7 +6,7 @@ import time
 import psutil
 
 from .hwinfo import cpu_name, ram_name
-from .sensors import Sensors
+from .sensors import Sensors, cpu_limit
 
 
 class SystemSource:
@@ -38,6 +38,8 @@ class SystemSource:
                 "power": sensors["cpu_power"],
                 "clock": sensors["cpu_clock"],
                 "clock_max": sensors["cpu_clock_max"],
+                # Where it starts to throttle: from the CPU when it says, else by family.
+                "temp_limit": sensors["cpu_temp_limit"] or cpu_limit(self.cpu_name),
             },
             "gpu": sensors["gpu"],
             "ram": {

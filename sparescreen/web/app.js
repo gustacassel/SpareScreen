@@ -130,7 +130,7 @@
   // ---- Configuration (comes from the PC) -----------------------------------
 
   var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc", "music"], rotate: 20, notify: true, sound: true,
-              game_mode: true,
+              game_mode: true, heat_alerts: true,
               fan_names: {}, cpu_fan: null, claude_limits: false,
               burn_in: true, night_mode: "off", night_hours: "23-7" };
   var fanKeys = [];  // original fan names from the last reading ("Fan 1", "GPU"...)
@@ -410,6 +410,9 @@
       var info = THEME_INFO[name];
       return chip(info[0], name === cfg.theme, function () { saveConfig({ theme: name }); }, [info[1], info[2]]);
     }));
+    fillChips("set-heat-alerts", [[true, "On"], [false, "Off"]].map(function (opt) {
+      return chip(opt[1], cfg.heat_alerts === opt[0], function () { saveConfig({ heat_alerts: opt[0] }); });
+    }));
     fillChips("set-game-mode", [[true, "On"], [false, "Off"]].map(function (opt) {
       return chip(opt[1], cfg.game_mode === opt[0], function () { saveConfig({ game_mode: opt[0] }); });
     }));
@@ -587,6 +590,12 @@
     fill.style.stroke = levelColor(pct);
   }
 
+  // Yellow and red relative to where the part starts to throttle, when the PC knows it
+  // (the chip's own limit); otherwise the fixed fallbacks given.
+  function tempLevels(limit, warn, hot) {
+    return known(limit) ? [limit - 15, limit - 5] : [warn, hot];
+  }
+
   function setTemp(card, temp, warn, hot) {
     var box = q(card, ".temp");
     if (temp === null || temp === undefined) {
@@ -664,7 +673,8 @@
     var cpu = $("cpu");
     setName(cpu, sys.cpu.name);
     setRing(cpu, sys.cpu.percent);
-    setTemp(cpu, sys.cpu.temp, 75, 90);
+    var cpuLevels = tempLevels(sys.cpu.temp_limit, 75, 90);
+    setTemp(cpu, sys.cpu.temp, cpuLevels[0], cpuLevels[1]);
     setExtra(cpu, sys.cpu.power, sys.cpu.temp === null ? sys.sensors_hint || "no temperature sensor" : "");
     renderCores(q(cpu, ".cores"), sys.cpu.cores);
     setRows("cpu-rows", [
@@ -678,7 +688,8 @@
     setName(gpu, g && g.name);
     if (g) {
       setRing(gpu, g.percent);
-      setTemp(gpu, g.temp, 75, 85);
+      var gpuLevels = tempLevels(g.temp_limit, 75, 85);
+      setTemp(gpu, g.temp, gpuLevels[0], gpuLevels[1]);
       setExtra(gpu, g.power);
       if (g.mem_total) {
         var memPct = 100 * g.mem_used / g.mem_total;
@@ -1081,6 +1092,44 @@
     }
   }
 
+  // ---- Heat alerts ------------------------------------------------------------
+  // A part that stays in the red for a while (not a single spike) gets one alert with a
+  // chime; it can alert again once it has cooled down to the yellow line.
+
+  var HEAT_AFTER = 30000;  // ms in the red before alerting
+  var heat = {};           // part -> {since, alerted}
+
+  function checkHeat(sys) {
+    if (!sys || sys.error) return;
+    var parts = [{ id: "cpu", name: "CPU", temp: sys.cpu.temp, limit: sys.cpu.temp_limit, warn: 75, hot: 90 }];
+    if (sys.gpu) parts.push({ id: "gpu", name: "GPU", temp: sys.gpu.temp, limit: sys.gpu.temp_limit, warn: 75, hot: 85 });
+    var drives = sys.drives || [];
+    for (var i = 0; i < drives.length; i++) {
+      parts.push({ id: "drive" + i, name: drives[i].name || "Drive", temp: drives[i].temp,
+                   limit: drives[i].temp_limit, warn: 60, hot: 70 });
+    }
+    var now = Date.now();
+    for (var j = 0; j < parts.length; j++) {
+      var p = parts[j];
+      if (!known(p.temp)) continue;
+      var levels = tempLevels(p.limit, p.warn, p.hot);
+      var state = heat[p.id] || (heat[p.id] = { since: null, alerted: false });
+      if (p.temp >= levels[1]) {
+        if (state.since === null) state.since = now;
+        if (!state.alerted && now - state.since >= HEAT_AFTER && cfg.heat_alerts) {
+          state.alerted = true;
+          chime();
+          toast("attention", p.name + " is very hot",
+                Math.round(p.temp) + "°C" + (known(p.limit) ? " · it slows down at " + Math.round(p.limit) + "°C" : ""),
+                "alert", 15);
+        }
+      } else {
+        state.since = null;
+        if (p.temp < levels[0]) state.alerted = false;
+      }
+    }
+  }
+
   // ---- Data from the PC ----------------------------------------------------
 
   // Dev mode (sparescreen --dev): if the code changed, reload the page automatically.
@@ -1101,6 +1150,7 @@
     checkDev(data.dev);
     onServerConfig(data.config);
     renderHardware(data.system);
+    checkHeat(data.system);
     renderAi(data, data.time);
     renderPc(data.system, data.activity, data.time);
     renderPhone(data.phone);

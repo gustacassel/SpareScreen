@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 ### Added
 
 - Credits in the README: every project SpareScreen uses or talks to, with links and licenses.
+- Heat alerts: temperatures turn yellow and red relative to each part's own limit (NVIDIA
+  through `nvidia-smi`, Intel's TjMax, NVMe warning temperature, Linux hwmon "high", a
+  table by family for AMD CPUs), and a part that stays in the red for 30 s raises an alert
+  with a chime (setting: Heat alerts).
 
 ### Changed
 

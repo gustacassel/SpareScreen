@@ -53,9 +53,25 @@ def _first(values, names):
 
 class NvidiaGpu:
     QUERY = "name,utilization.gpu,temperature.gpu,memory.used,memory.total,power.draw,fan.speed,clocks.gr,clocks.mem"
+    LIMIT_EVERY = 60  # seconds; the limit doesn't change, no need to ask every reading
 
     def __init__(self):
         self.exe = shutil.which("nvidia-smi")
+        self._limit, self._limit_at = None, 0
+
+    def temp_limit(self, temp):
+        """Where the card starts to slow down to cool itself (°C), from the card. Newer
+        drivers report "T.Limit", the degrees left until then; older ones the slowdown temp."""
+        if time.time() - self._limit_at < self.LIMIT_EVERY:
+            return self._limit
+        self._limit_at = time.time()
+        try:
+            result = subprocess.run([self.exe, "-q", "-d", "TEMPERATURE"], capture_output=True, text=True,
+                                    timeout=5, creationflags=_NO_WINDOW)
+            self._limit = parse_nvidia_limit(result.stdout, temp)
+        except (OSError, subprocess.SubprocessError):
+            self._limit = None
+        return self._limit
 
     def read(self):
         if not self.exe:
@@ -70,10 +86,12 @@ class NvidiaGpu:
         fields = [p.strip() for p in result.stdout.splitlines()[0].split(",")]
         name, util, temp, used, total, power, fan, clock, mem_clock = fields
         used, total = _number(used), _number(total)
+        temp = _number(temp)
         return {
             "name": short_gpu_name(name),
             "percent": _number(util),
-            "temp": _number(temp),
+            "temp": temp,
+            "temp_limit": self.temp_limit(temp) if temp is not None else None,
             "mem_used": used * MIB if used is not None else None,
             "mem_total": total * MIB if total is not None else None,
             "power": _number(power),
@@ -157,8 +175,13 @@ class LibreHardwareMonitor:
         clocks = self._group(hardware, "Clocks")
         cores = [v for k, v in clocks.items() if k.startswith("Core #") and "Effective" not in k and v]
         average = clocks.get("Cores (Average)") or (sum(cores) / len(cores) if cores else None)
+        # Intel reports how far each core is from TjMax, its throttling point: core + distance.
+        limit = next((temps[name[:-len(" Distance to TjMax")]] + value for name, value in temps.items()
+                      if name.endswith(" Distance to TjMax") and value is not None
+                      and temps.get(name[:-len(" Distance to TjMax")]) is not None), None)
         return {
             "temp": temp,
+            "limit": round(limit) if limit else None,
             "power": self._group(hardware, "Powers").get("Package"),
             "clock": average,
             "clock_max": max(cores) if cores else None,
@@ -187,6 +210,7 @@ class LibreHardwareMonitor:
         return {
             "name": hardware.get("Text"),
             "temp": _first(temps, self.DRIVE_TEMP_NAMES),
+            "temp_limit": temps.get("Warning Temperature"),  # the SSD's own (NVMe)
             "read": _with_unit(rates.get("Read Rate"), _RATE_UNITS),
             "write": _with_unit(rates.get("Write Rate"), _RATE_UNITS),
         }
@@ -265,14 +289,29 @@ def linux_amd_gpu(drm="/sys/class/drm"):
     return None
 
 
-def linux_cpu_temp():
+def linux_cpu_sensor():
     temps = psutil.sensors_temperatures()
     for chip, labels in (("k10temp", ("Tctl", "Tdie")), ("zenpower", ("Tdie",)),
                          ("coretemp", ("Package id 0",)), ("cpu_thermal", ("",))):
         for sensor in temps.get(chip, []):
             if sensor.label in labels:
-                return sensor.current
+                return sensor
     return None
+
+
+def linux_cpu_temp():
+    sensor = linux_cpu_sensor()
+    return sensor.current if sensor else None
+
+
+def linux_cpu_limit():
+    """hwmon's own limit for the CPU sensor ("high", else a bit under "critical")."""
+    sensor = linux_cpu_sensor()
+    if not sensor:
+        return None
+    if sensor.high and sensor.high > 40:
+        return sensor.high
+    return sensor.critical - 5 if sensor.critical and sensor.critical > 45 else None
 
 
 def linux_fans():
@@ -334,6 +373,38 @@ def parse_mac_temp(tool, output):
     return temp if temp is not None and 0 < temp < 150 else None
 
 
+def parse_nvidia_limit(text, temp):
+    """The slowdown point in `nvidia-smi -q -d TEMPERATURE` output, or None."""
+    margin = re.search(r"GPU Current T\.Limit Temp\s*:\s*(-?[\d.]+)", text or "")
+    if margin and temp is not None:
+        return round(temp + float(margin.group(1)))
+    for label in ("GPU Slowdown Temp", "GPU Max Operating Temp", "GPU Target Temperature"):
+        match = re.search(re.escape(label) + r"\s*:\s*([\d.]+)\s*C", text or "")
+        if match and float(match.group(1)) > 40:
+            return round(float(match.group(1)))
+    return None
+
+
+# Where CPUs without a limit sensor throttle (AMD reports none). Checked in order; °C.
+CPU_LIMITS = (
+    (r"Ryzen \d+ 7\d{3}X3D", 89),
+    (r"Ryzen \d+ 5\d{3}", 90),
+    (r"Ryzen \d+ [79]\d{3}", 95),
+    (r"Ryzen \d+ [1-3]\d{3}", 95),
+    (r"Ryzen", 95),
+    (r"Core|Intel", 100),
+    (r"Apple M\d", 105),
+)
+
+
+def cpu_limit(name):
+    """Fallback limit by CPU family, or None for an unknown CPU."""
+    for pattern, limit in CPU_LIMITS:
+        if re.search(pattern, name or ""):
+            return limit
+    return None
+
+
 def lhm_url():
     """LibreHardwareMonitor's data URL, on the port set in its config (8085 by default)."""
     from . import lhm
@@ -352,7 +423,7 @@ class Sensors:
         self.mac_temp = MacCpuTemp() if sys.platform == "darwin" else None
         self._at = 0
         self._cache = {"cpu_temp": None, "cpu_power": None, "cpu_clock": None, "cpu_clock_max": None,
-                       "gpu": None, "fans": [], "drives": [], "hint": None}
+                       "cpu_temp_limit": None, "gpu": None, "fans": [], "drives": [], "hint": None}
 
     def read(self):
         if time.time() - self._at < self.refresh:
@@ -368,7 +439,8 @@ class Sensors:
             cpu, fans, drives, gpu = lhm.get("cpu") or {}, lhm.get("fans", []), lhm.get("drives", []), lhm.get("gpu")
         elif sys.platform.startswith("linux"):
             freq = psutil.cpu_freq()
-            cpu, fans = {"temp": linux_cpu_temp(), "clock": freq.current if freq else None}, linux_fans()
+            cpu = {"temp": linux_cpu_temp(), "limit": linux_cpu_limit(), "clock": freq.current if freq else None}
+            fans = linux_fans()
             gpu = linux_amd_gpu()
         elif self.mac_temp:
             cpu = {"temp": self.mac_temp.read()}
@@ -382,6 +454,7 @@ class Sensors:
             "cpu_power": cpu.get("power"),
             "cpu_clock": cpu.get("clock"),
             "cpu_clock_max": cpu.get("clock_max"),
+            "cpu_temp_limit": cpu.get("limit"),
             "gpu": gpu,
             "fans": fans,
             "drives": drives,

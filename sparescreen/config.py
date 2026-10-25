@@ -26,6 +26,7 @@ DEFAULTS = {
     "claude_limits": False,  # headless check of Claude Code limits (spends a tiny bit of quota)
     "burn_in": True,  # shift the content a few pixels every minute (protects OLED screens)
     "game_mode": True,  # while a game runs, show only the game screen
+    "heat_alerts": True,  # alert when the CPU, GPU or a drive stays near its limit
     "night_mode": "off",
     "night_hours": "23-7",
 }
@@ -63,7 +64,7 @@ def clean(data):
             out["screens"] = screens
     if data.get("rotate") in ROTATE:
         out["rotate"] = data["rotate"]
-    for key in ("notify", "sound", "claude_limits", "burn_in", "game_mode"):
+    for key in ("notify", "sound", "claude_limits", "burn_in", "game_mode", "heat_alerts"):
         if isinstance(data.get(key), bool):
             out[key] = data[key]
     if data.get("night_mode") in NIGHT_MODES:
