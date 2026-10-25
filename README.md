@@ -32,9 +32,9 @@ The page has screens that rotate on their own (or with a tap):
 - **AI:** for each AI coding tool installed on the PC (Claude Code and Codex for now):
   usage limits (5-hour and weekly windows), tokens used today and this week per model,
   and your sessions (and which ones are working).
-- **PC:** the game you're playing (and for how long), what's playing (any music or video
-  player), the app in focus, the heaviest apps, fans, network, free disk space and drive
-  temperatures.
+- **PC:** the app in focus, the heaviest apps, fans, network, free disk space and drive
+  temperatures. The running game and what's playing also show here when game mode or the
+  Music screen is turned off.
 - **Music:** while something plays, the album cover, title, artist, album, the player
   (with its icon) and the progress.
 - **Game:** while a game runs, game mode shows only this screen: the game's art and icon,
@@ -241,8 +241,8 @@ normal rotation; the game still shows on the PC screen.
 ## Now playing
 
 Shows what the PC is playing (Spotify, a browser tab, any player that reports to the
-system): a small block on the PC screen, and the **Music** screen with the album cover,
-title, artist, album, player and progress. Paused media is shown dimmed; with nothing
+system): the **Music** screen with the album cover, title, artist, album, player and
+progress (or, with that screen turned off, a small block on the PC screen). Paused media is shown dimmed; with nothing
 playing the block is hidden and the Music screen leaves the rotation.
 
 Covers only come from the PC itself, never from the internet. The player's icon is

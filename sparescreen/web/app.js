@@ -688,6 +688,8 @@
   function renderPc(sys, act, now) {
     if (act && !act.error) {
       var game = act.game;
+      // With game mode on the game has its own screen, so the block would only repeat it.
+      $("game-block").style.display = cfg.game_mode ? "none" : "";
       $("game-name").textContent = game ? game.name : "No game running";
       $("game-name").className = "now-name" + (game ? "" : " none");
       $("game-meta").textContent = game
@@ -977,7 +979,8 @@
 
   function renderMedia(media) {
     var block = $("media-block");
-    if (!media || !media.available || !media.playing || !media.title) {
+    // Hidden while the music screen is on: it shows the same, bigger.
+    if (cfg.screens.indexOf("music") >= 0 || !media || !media.available || !media.playing || !media.title) {
       block.style.display = "none";
       return;
     }

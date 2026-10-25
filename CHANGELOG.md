@@ -4,6 +4,14 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The PC screen no longer repeats the game and now playing while they have their own
+  screens (game mode on, Music screen on).
+- Bigger player name and icon on the Music screen.
+
 ## [0.4.0] - 2026-10-24
 
 ### Added

@@ -258,8 +258,8 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .music-art .music-placeholder { position: absolute; top: 25%; left: 25%; width: 50%; height: 50%; color: var(--muted); }
 .music-art.has-art .music-placeholder { display: none; }
 .music-info { width: 100%; min-width: 0; text-align: center; }
-.music-app { font-size: 13px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
-.music-app img { width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px; display: none; }
+.music-app { font-size: 17px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.music-app img { width: 28px; height: 28px; margin-right: 10px; vertical-align: middle; border-radius: 6px; display: none; }
 .music-app.has-icon img { display: inline-block; }
 .music-title { margin-top: 6px; font-size: 24px; line-height: 1.2; overflow: hidden;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }  /* long titles: two lines */
@@ -363,6 +363,8 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
   .music-info { flex: 1; text-align: left; }
   .music-title { font-size: 8vh; }
   .music-artist { font-size: 5.5vh; }
+  .music-app { font-size: 5vh; }
+  .music-app img { width: 9vh; height: 9vh; }
 
   .game-grid { flex-direction: row; }
   .game-card { width: 42%; margin-right: 10px; }
