@@ -137,7 +137,28 @@
     });
   }
 
+  // Quitting SpareScreen (tray > Quit) drops this stream: close the window with it.
+  // A quick restart (--dev) is back within a moment, so check once before closing.
+  function watchAgent() {
+    if (!window.EventSource) return;
+    var alive = new EventSource("panel/events");
+    alive.onerror = function () {
+      alive.close();
+      setTimeout(function () {
+        request("GET", "panel/state", null, function (status) {
+          if (status === 200) {
+            watchAgent();
+            return;
+          }
+          window.close();
+          $("running").textContent = "SpareScreen was closed. You can close this window.";
+        });
+      }, 1500);
+    };
+  }
+
   $("open-dashboard").addEventListener("click", function () { act("dashboard"); });
+  watchAgent();
   $("autostart").addEventListener("change", function () { act("autostart", { on: $("autostart").checked }); });
 
   refresh();

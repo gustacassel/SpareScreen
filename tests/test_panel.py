@@ -132,6 +132,7 @@ class PanelServerTest(unittest.TestCase):
     def test_other_hostnames_and_sites_are_refused(self):
         # DNS rebinding: a page on another name that points at 127.0.0.1.
         self.assertEqual(self.call("/panel/state", headers={"Host": f"evil.example:{self.port}"})[0], 403)
+        self.assertEqual(self.call("/panel/events", headers={"Host": f"evil.example:{self.port}"})[0], 403)
         # Another site's page posting to this PC through the browser.
         self.assertEqual(self.call("/panel/action", {"action": "unpair", "index": 0},
                                    {"Origin": "https://evil.example"})[0], 403)

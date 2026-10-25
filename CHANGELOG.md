@@ -4,6 +4,12 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Quitting SpareScreen from the tray also closes the SpareScreen window.
+
 ## [0.6.0] - 2026-10-25
 
 ### Added

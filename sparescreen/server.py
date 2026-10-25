@@ -126,6 +126,11 @@ def make_handler(hub, config, pairing, info, clients, panel):
                     self._send_json(403, {})
                 else:
                     self._send_json(200, panel.state(clients.list()))
+            elif path == "/panel/events":
+                if panel is None or not self._local():
+                    self.send_error(403)
+                else:
+                    self._stream_alive()
             elif path == "/pair-code":
                 # Only this PC may read the code (the page on the PC can show it).
                 local = pairing is not None and self.client_address[0] in LOCAL_ADDRESSES
@@ -204,6 +209,21 @@ def make_handler(hub, config, pairing, info, clients, panel):
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             self.wfile.write(body)
+
+        def _stream_alive(self):
+            """An open stream that only says "still here": the PC window closes itself when
+            it drops, so quitting SpareScreen from the tray also closes the window."""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            try:
+                while True:
+                    self.wfile.write(b": alive\n\n")
+                    self.wfile.flush()
+                    time.sleep(15)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass
 
         def _stream_events(self):
             self.send_response(200)
