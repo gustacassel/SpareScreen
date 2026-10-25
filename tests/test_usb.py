@@ -36,8 +36,7 @@ class ParseBatteryTest(unittest.TestCase):
     def test_ignores_extra_log_lines(self):
         # Newer Samsung phones append a log of battery events with "level:"/"temperature:" inside.
         text = DUMPSYS + ("10-24 21:12:39.338  Sending ACTION_BATTERY_CHANGED: level:37, status:3, "
-                          "health:2, temperature:265, scale:100
-")
+                          "health:2, temperature:265, scale:100\n")
         self.assertEqual(parse_battery(text)["level"], 78)
         self.assertEqual(parse_battery(text)["temp"], 32.5)
 
