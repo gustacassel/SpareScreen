@@ -459,7 +459,13 @@ python -m unittest discover -s tests -t .
 ```
 
 They also run on GitHub Actions on Windows, Linux and macOS for every push.
-`sparescreen --demo` shows made-up data, handy when working on the page.
+`sparescreen --demo` shows made-up data, handy when working on the page; it keeps its own
+settings and paired devices in `~/.sparescreen/demo`, so it never changes yours.
+
+Releasing: `python packaging/bump.py 1.2.3` sets the version (it lives only in
+`sparescreen/__init__.py`) and dates the changelog's *Unreleased* entry. Commit, push and
+publish the GitHub release `v1.2.3`; the release workflow builds the executables.
+`python packaging/make_icons.py` redraws the app icons when the logo changes.
 
 The page must keep working on old browsers (Chrome 49 / iOS 10): plain JavaScript,
 no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the project guidelines.
@@ -524,6 +530,40 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/demo.py`: made-up data for `--demo`, same shape as the real sources.
 - `sparescreen/web/`: the page (plain HTML, CSS and JS, built for old browsers).
   `index.html` is just the frame; the dashboard is `app.html`, `app.js` and `style.css`.
+
+## Credits
+
+SpareScreen stands on the work of these free and open source projects. Thank you!
+
+**Inside SpareScreen** (installed with it, or bundled in the executables):
+
+| Project | What it does here | License |
+|---|---|---|
+| [psutil](https://github.com/giampaolo/psutil) | CPU, memory, disks, network and processes | BSD-3-Clause |
+| [pywinrt](https://github.com/pywinrt/pywinrt) | Now playing and album covers on Windows | MIT |
+| [pystray](https://github.com/moses-palmer/pystray) | The tray icon | LGPL-3.0 |
+| [Pillow](https://github.com/python-pillow/Pillow) | Images for the tray icon | MIT-CMU |
+| [PyInstaller](https://github.com/pyinstaller/pyinstaller) | Builds the executables | GPL-2.0+ with bootloader exception |
+| [Feather Icons](https://github.com/feathericons/feather) | Some of the dashboard's icons | MIT |
+
+**Programs SpareScreen talks to** when they're on your PC (not part of SpareScreen;
+each keeps its own license):
+
+| Project | What for | License |
+|---|---|---|
+| [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) | CPU temperature, clocks, fans and drives on Windows | MPL-2.0 |
+| [PresentMon](https://github.com/GameTechDev/PresentMon) | Game FPS on Windows (downloaded when you turn it on) | MIT |
+| [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools) (`adb`) | The USB cable connection | Apache-2.0 |
+| `nvidia-smi` (comes with the NVIDIA driver) | NVIDIA GPU readings | NVIDIA's driver license |
+| [playerctl](https://github.com/altdesktop/playerctl) | Now playing on Linux | LGPL-3.0 |
+| [media-control](https://github.com/ungive/media-control) | Now playing on macOS | see its repository |
+| [nowplaying-cli](https://github.com/kirtan-shah/nowplaying-cli) | Now playing on macOS (fallback) | GPL-3.0 |
+| [smctemp](https://github.com/narugit/smctemp) | CPU temperature on macOS | GPL-2.0 |
+| [macmon](https://github.com/vladkens/macmon) | CPU temperature on Apple Silicon | MIT |
+| [osx-cpu-temp](https://github.com/lavoiesl/osx-cpu-temp) | CPU temperature on older Macs | GPL-2.0 |
+
+Also used when present: `xdotool`/`xprop`, `swaymsg` and `hyprctl` (app in focus on Linux),
+`dbus-send` (now playing on Linux) and `lsappinfo` (app in focus on macOS).
 
 ## License
 

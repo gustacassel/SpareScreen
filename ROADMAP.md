@@ -130,11 +130,6 @@ and with no mandatory app. That's this project's niche.
   - Otherwise the current defaults, and the user can set their own in the settings.
   Then: warn (toast + chime, like the phone battery) when a part stays near its limit for a
   while, not on a single spike.
-- **Credits for what SpareScreen uses.** A "Credits" section in the README (or a
-  CREDITS.md) listing every project it depends on or talks to, with its link and license:
-  psutil, pywinrt, pystray, Pillow, PyInstaller, LibreHardwareMonitor, PresentMon,
-  nvidia-smi (NVIDIA driver), Android Platform Tools (adb), playerctl, media-control,
-  nowplaying-cli, smctemp, macmon, osx-cpu-temp, Feather Icons (some icons).
 - **HTTPS on Wi-Fi.** On the PC and over USB the page is on `localhost`, which browsers
   already treat as secure (and the data never leaves the machine or the cable). Over
   Wi-Fi it's plain HTTP: someone on the same network could read the data and the

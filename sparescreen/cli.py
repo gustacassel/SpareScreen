@@ -176,7 +176,9 @@ def main():
         dev.supervise(sys.argv[1:])
         return
 
-    config = ConfigStore()
+    # The demo keeps its own settings and paired devices: trying it out never touches yours.
+    demo_dir = Path.home() / ".sparescreen" / "demo"
+    config = ConfigStore(demo_dir / "config.json") if args.demo else ConfigStore()
     adb = None if args.no_usb else find_adb(args.adb)
     bridge = None
     if adb:
@@ -188,7 +190,10 @@ def main():
         sources = default_sources(config) + [PhoneSource(bridge), config]
     if args.dev:
         sources.append(dev.DevSource())
-    pairing = None if args.no_pairing else Pairing()
+    if args.no_pairing:
+        pairing = None
+    else:
+        pairing = Pairing(demo_dir / "devices.json") if args.demo else Pairing()
     if pairing and args.reset_pairing:
         pairing.reset()
     phone_url = f"http://{lan_ip()}:{args.port}" if args.host in ("0.0.0.0", "::") else None

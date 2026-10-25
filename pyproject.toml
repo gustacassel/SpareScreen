@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sparescreen"
-version = "0.9.0"
+dynamic = ["version"]  # from sparescreen/__init__.py (packaging/bump.py changes it)
 description = "Turn an old phone (or any device with a browser) into a live dashboard for your PC."
 license = { text = "MIT" }
 readme = "README.md"
@@ -27,6 +27,9 @@ sparescreen-statusline = "sparescreen.statusline:main"
 
 [tool.setuptools]
 packages = ["sparescreen"]
+
+[tool.setuptools.dynamic]
+version = { attr = "sparescreen.__version__" }
 
 [tool.setuptools.package-data]
 sparescreen = ["web/*"]

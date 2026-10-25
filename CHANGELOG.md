@@ -4,6 +4,18 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Credits in the README: every project SpareScreen uses or talks to, with links and licenses.
+
+### Changed
+
+- `--demo` keeps its own settings and paired devices (`~/.sparescreen/demo`) instead of
+  changing yours.
+- The version lives only in `sparescreen/__init__.py`; `packaging/bump.py` starts a release.
+
 ## [0.9.0] - 2026-10-25
 
 ### Added
