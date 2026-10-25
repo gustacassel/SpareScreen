@@ -43,7 +43,8 @@ class DetectionOrderTest(unittest.TestCase):
                 mock.patch.object(activity, "foreground_pid", return_value=focus), \
                 mock.patch.object(activity, "foreground_window", return_value=window), \
                 mock.patch.object(activity, "friendly_name", side_effect=lambda name, exe: name), \
-                mock.patch.object(games.sys, "platform", "win32"):
+                mock.patch.object(games.icons, "main_window", return_value=None), \
+                mock.patch.object(games.sys, "platform", "win32"):  # no real Windows calls on other systems
             return source.read()["game"], source
 
     def test_store_folder(self):
