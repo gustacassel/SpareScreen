@@ -156,16 +156,21 @@ class DemoActivity:
 
     def read(self):
         playing = time.time() % self.CYCLE < self.PLAYING
+        game = {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB}
+        apps = [
+            {"name": "Google Chrome", "cpu": 3.1, "mem": 2.3 * GB},
+            {"name": "Visual Studio Code", "cpu": round(_wave(17, 1, 6), 1), "mem": 1.1 * GB},
+            {"name": "Spotify", "cpu": 1.4, "mem": 0.4 * GB},
+            {"name": "Discord", "cpu": 1.2, "mem": 0.6 * GB},
+            {"name": "Windows Explorer", "cpu": 0.6, "mem": 0.2 * GB},
+            {"name": "Steam", "cpu": 0.4, "mem": 0.3 * GB},
+        ]
+        if not playing:
+            return {"game": None, "focus": apps[1], "top": sorted(apps, key=lambda a: -a["cpu"])}
         return {
-            "game": {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB, "since": self.started,
-                     "art": None, "icon": None} if playing else None,
-            "focus": {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB},
-            "top": [
-                {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB},
-                {"name": "Google Chrome", "cpu": 3.1, "mem": 2.3 * GB},
-                {"name": "Discord", "cpu": 1.2, "mem": 0.6 * GB},
-                {"name": "Visual Studio Code", "cpu": 0.8, "mem": 1.1 * GB},
-            ],
+            "game": dict(game, since=self.started, art="demo-game.svg", icon="demo-game-icon.svg"),
+            "focus": game,
+            "top": [game] + apps[:5],
         }
 
 
@@ -185,7 +190,7 @@ class DemoMedia:
         return {"available": True, "playing": True, "title": "Midnight Drive", "artist": "Neon Arcade",
                 "album": "Night Shift", "app": "Spotify", "status": "playing",
                 "position": round(time.time() % self.DURATION, 1), "duration": self.DURATION,
-                "art": None, "app_icon": None}
+                "art": "demo-cover.svg", "app_icon": None}
 
 
 def demo_sources():

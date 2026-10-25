@@ -201,7 +201,7 @@ class ActivitySource:
     name = "activity"
     IGNORE = {"system idle process", "idle", "system", "registry", "memory compression"}
 
-    def __init__(self, refresh=3, top=4):
+    def __init__(self, refresh=3, top=6):
         self.refresh = refresh
         self.top = top
         self.cores = psutil.cpu_count() or 1

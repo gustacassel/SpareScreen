@@ -11,6 +11,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 - The PC screen no longer repeats the game and now playing while they have their own
   screens (game mode on, Music screen on).
 - Bigger player name and icon on the Music screen.
+- Top apps shows 6 programs instead of 4.
+- `--demo` has an album cover and game art (original drawings), and its game comes and
+  goes so game mode can be seen.
+- Devices set to reduce motion get no animations.
 
 ## [0.4.0] - 2026-10-24
 

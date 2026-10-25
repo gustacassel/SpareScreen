@@ -18,7 +18,11 @@
 <p align="center">
   <img src="docs/screenshots/hardware.png" width="32%" alt="Hardware screen: CPU, GPU and RAM usage, temperature and clocks">
   <img src="docs/screenshots/ai.png" width="32%" alt="AI screen: Claude Code and Codex usage limits and sessions">
-  <img src="docs/screenshots/pc.png" width="32%" alt="PC screen: running game, top apps, fans, network and disks">
+  <img src="docs/screenshots/pc.png" width="32%" alt="PC screen: app in focus, top apps, fans, network and disks">
+</p>
+<p align="center">
+  <img src="docs/screenshots/music.png" width="32%" alt="Music screen: album cover, title, artist, player and progress">
+  <img src="docs/screenshots/game.png" width="32%" alt="Game screen: game art and icon, play time, GPU, CPU, VRAM and RAM">
 </p>
 
 Turn that old phone in your drawer into a live dashboard for your computer.

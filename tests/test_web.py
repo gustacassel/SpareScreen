@@ -1,7 +1,8 @@
-"""Guards for the page: old-browser rules and element ids used by the script."""
+"""Guards for the page: old-browser rules, element ids used by the script, valid images."""
 
 import re
 import unittest
+import xml.dom.minidom
 from pathlib import Path
 
 WEB = Path(__file__).parent.parent / "sparescreen" / "web"
@@ -50,6 +51,15 @@ class ElementIdsTest(unittest.TestCase):
         used = set(re.findall(r'\$\("([\w-]+)"\)', js))
         self.assertTrue(used)
         self.assertEqual(used - ids, set())
+
+
+class ImagesTest(unittest.TestCase):
+    def test_svgs_are_valid_xml(self):
+        # A broken SVG (e.g. "--" inside a comment) just shows as a broken image.
+        svgs = list(WEB.glob("*.svg"))
+        self.assertTrue(svgs)
+        for svg in svgs:
+            xml.dom.minidom.parse(str(svg))
 
 
 if __name__ == "__main__":

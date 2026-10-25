@@ -448,3 +448,8 @@ html[data-theme="light"] {
   --ok: #12a150; --warn: #d48c00; --hot: #e5484d; --accent: #2f80ed;
 }
 html[data-theme="light"] .toast { box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+
+/* Devices set to reduce motion: values jump instead of sliding */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

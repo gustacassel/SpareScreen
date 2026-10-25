@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Icon for the demo mode game "Hollow Peaks" -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b3352"/>
+      <stop offset="1" stop-color="#5d86a8"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <circle cx="45" cy="19" r="6" fill="#fff6dc"/>
+  <path d="M6 50 L24 22 L33 35 L40 27 L58 50 Z" fill="#0f1c2a"/>
+  <path d="M24 22 L29 30 L26 29 L23 31 L20 28 Z" fill="#e8f1f7"/>
+</svg>

@@ -946,7 +946,6 @@
     $("g-name").textContent = game.name;
     var meta = ["playing for " + duration(now - game.since)];
     if (known(game.cpu)) meta.push("CPU " + Math.round(game.cpu) + "%");
-    if (game.mem) meta.push(size(game.mem));
     $("g-meta").textContent = meta.join(" · ");
     setImage($("game-art"), $("game-art").parentNode, "has-art", game.art);
     setImage($("game-icon"), $("game-icon"), "shown", game.icon);

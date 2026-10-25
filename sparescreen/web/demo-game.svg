@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 430">
+  <!-- Art for the demo mode game "Hollow Peaks" (original art, MIT like the rest) -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1b2e"/>
+      <stop offset=".6" stop-color="#26476b"/>
+      <stop offset="1" stop-color="#8fb3c9"/>
+    </linearGradient>
+    <radialGradient id="moon" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#fff8e0"/>
+      <stop offset=".6" stop-color="#ffe9b0" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#ffe9b0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fog" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe2ee" stop-opacity="0"/>
+      <stop offset="1" stop-color="#cfe2ee" stop-opacity=".55"/>
+    </linearGradient>
+  </defs>
+  <rect width="920" height="430" fill="url(#sky)"/>
+  <circle cx="600" cy="105" r="90" fill="url(#moon)"/>
+  <circle cx="600" cy="105" r="42" fill="#fff6dc"/>
+  <!-- Far peaks with snow caps -->
+  <path d="M0 290 L120 170 L190 230 L300 110 L400 220 L470 170 L560 250 L660 140 L780 240 L860 190 L920 230 L920 430 L0 430 Z" fill="#3d5f80"/>
+  <path d="M300 110 L330 145 L312 140 L296 152 L281 138 L270 142 Z M660 140 L688 170 L670 166 L655 176 L642 165 L632 168 Z M120 170 L142 192 L128 189 L116 197 L104 189 Z" fill="#e8f1f7"/>
+  <rect y="230" width="920" height="200" fill="url(#fog)"/>
+  <!-- Middle ridge -->
+  <path d="M0 330 L90 270 L170 310 L260 240 L360 320 L450 280 L540 330 L640 260 L740 320 L830 280 L920 320 L920 430 L0 430 Z" fill="#22384f"/>
+  <!-- Pines in front -->
+  <g fill="#0f1c2a">
+    <path d="M0 360 L60 330 L140 360 L230 340 L330 370 L430 345 L520 372 L620 340 L720 368 L820 345 L920 365 L920 430 L0 430 Z"/>
+    <path d="M70 360 L90 290 L110 360 Z M100 365 L115 315 L130 365 Z M780 360 L802 280 L824 360 Z M815 362 L832 310 L849 362 Z M860 365 L873 325 L886 365 Z M40 368 L52 330 L64 368 Z"/>
+  </g>
+  <!-- A lone traveller on the ridge -->
+  <path d="M452 279 a5 5 0 1 0 0.1 0 Z M447 287 h10 l3 20 h-4 l-2 -10 l-2 10 h-4 l1 -10 l-3 6 l-3 -2 Z" fill="#0f1c2a"/>
+</svg>
