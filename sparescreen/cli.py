@@ -137,10 +137,10 @@ def main():
                      help="turn on the phone's keep-screen-on option while it is on USB")
     parser.add_argument("--dev", action="store_true",
                         help="dev mode: restart when the code changes and reload the page")
-    pairing = parser.add_argument_group("pairing")
-    pairing.add_argument("--no-pairing", action="store_true",
+    pairing_options = parser.add_argument_group("pairing")
+    pairing_options.add_argument("--no-pairing", action="store_true",
                          help="let any device on the network see the data without a code (trusted networks only)")
-    pairing.add_argument("--reset-pairing", action="store_true",
+    pairing_options.add_argument("--reset-pairing", action="store_true",
                          help="forget every paired device before starting")
     parser.add_argument("--demo", action="store_true",
                         help="show made-up data instead of this PC's (for screenshots and trying it out)")
