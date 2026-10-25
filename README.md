@@ -298,10 +298,18 @@ playing: GPU and CPU usage, temperature, clock and power, VRAM and RAM. When the
 closes, the usual screens come back. Turn it off in the settings (*Game mode*) to keep the
 normal rotation; the game still shows on the PC screen.
 
-- **Art:** for Steam games, the library image Steam already keeps on disk
-  (`appcache/librarycache`), found through the game's `appmanifest_*.acf`. Nothing is
-  downloaded. Other stores: the game's own icon, big.
-- **Icon:** the icon inside the game's `.exe`, on Windows only.
+- **Art, icon and name**, from what each store already keeps on disk (nothing is downloaded):
+  - **Steam:** the library image (`appcache/librarycache`), found through the game's
+    `appmanifest_*.acf`.
+  - **Xbox / Game Pass:** the splash screen, logo and display name named in the game's
+    `Content/MicrosoftGame.config` (or `appxmanifest.xml`).
+  - **GOG:** the game's own icon (`goggame-*.ico`) and name (`goggame-*.info`).
+  - **Epic:** the display name from the launcher's manifests (it doesn't keep the art in a
+    readable form).
+  - **Your games and games detected automatically:** their window's icon (Minecraft's
+    block, not Java's cup).
+  - Otherwise the icon inside the game's `.exe` (Windows). Without art, the icon fills the
+    art area, big.
 - **FPS** (Windows, optional): current FPS, 1% low and frame time over the game art. Turn
   it on with **Enable** next to "FPS in games" in the SpareScreen window. It downloads
   [PresentMon](https://github.com/GameTechDev/PresentMon) (free and open source, from

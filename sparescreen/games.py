@@ -107,6 +107,7 @@ class GameFinder:
         self.art = art or GameArt()
         self.exe = None       # the current game's exe, for "not a game" (kept out of the data stream)
         self._found = {}      # pid -> {"name", "hwnd", "icon"} of games detected automatically
+        self._icons = {}      # pid -> {"icon"} of "my games" (their window's icon)
 
     def begin(self):
         lists = self.config.games() if self.config else {"my_games": [], "not_games": []}
@@ -137,6 +138,7 @@ class GameFinder:
         """The game (with cpu, mem, since, art and icon) or None. `programs` are the per-exe
         totals, `focus` the key of the app in front and `window` its window (or None)."""
         self._found = {pid: found for pid, found in self._found.items() if pid in self._seen}
+        self._icons = {pid: found for pid, found in self._icons.items() if pid in self._seen}
         game = self._best
         if game is None and self.auto and focus in programs:
             game = self._auto_game(focus_pid, programs[focus], focus, window, friendly)
@@ -146,16 +148,28 @@ class GameFinder:
         prog = programs[game.pop("_key")]
         game.pop("_rank", None)
         game.update(cpu=round(prog["cpu"], 1), mem=prog["mem"], since=prog["since"])
-        # "art" and "icon" URLs; Steam art is found by the game's folder name
-        game.update(self.art.for_game(prog["exe"], game_name(prog["exe"]) or game["name"]))
-        found = self._found.get(game["pid"]) if game["source"] == "auto" else None
-        if found:
+        # "art" and "icon" URLs (Steam art is found by the game's folder name), and the
+        # store's own name for the game when it has one (Xbox, GOG, Epic).
+        art = dict(self.art.for_game(prog["exe"], game_name(prog["exe"]) or game["name"]))
+        store_name = art.pop("name", None)
+        if store_name and game["source"] == "library":
+            game["name"] = store_name
+        game.update(art)
+        if game["source"] in ("auto", "mine"):
             # The window's own icon: for javaw.exe and the like, the exe's icon isn't the game's.
-            if "icon" not in found:
-                png = icons.window_icon_png(found["hwnd"])
-                found["icon"] = images.put("game-icon", png, "image/png") if png else None
-            game["icon"] = found["icon"] or game["icon"]
+            game["icon"] = self._window_icon(game["pid"]) or game["icon"]
         return game
+
+    def _window_icon(self, pid):
+        """Icon URL of the game's window, remembered per process once found (a game that's
+        just starting may have no window yet, so it's tried again on the next reading)."""
+        found = (self._found if pid in self._found else self._icons).setdefault(pid, {})
+        if not found.get("icon"):
+            hwnd = found.get("hwnd") or icons.main_window(pid)
+            png = icons.window_icon_png(hwnd) if hwnd else None
+            if png:
+                found["icon"] = images.put("game-icon", png, "image/png")
+        return found.get("icon")
 
     def _auto_game(self, pid, prog, key, window, friendly):
         """The full-screen app in front, if PresentMon says it draws like a game."""

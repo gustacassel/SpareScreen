@@ -80,6 +80,32 @@ def exe_icon_png(path):
     return _run(_EXTRACT, {"SPARESCREEN_EXE": str(path)}, path) if path else None
 
 
+def main_window(pid):
+    """The visible, titled top-level window of a process (Windows), or None."""
+    if sys.platform != "win32" or not pid:
+        return None
+    import ctypes
+
+    user32 = ctypes.windll.user32
+    found = []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def check(hwnd, _):
+        owner = ctypes.c_ulong()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid and user32.IsWindowVisible(hwnd) and user32.GetWindowTextLengthW(hwnd) \
+                and not user32.GetWindow(hwnd, 4):  # 4: GW_OWNER (dialogs and tool windows have one)
+            found.append(hwnd)
+            return False  # stop: the first one is the main window
+        return True
+
+    try:
+        user32.EnumWindows(check, 0)
+    except OSError:
+        return None
+    return found[0] if found else None
+
+
 def window_icon_png(hwnd):
     """PNG bytes of a window's icon, or None."""
     return _run(_WINDOW, {"SPARESCREEN_HWND": str(int(hwnd))}, ("window", int(hwnd))) if hwnd else None

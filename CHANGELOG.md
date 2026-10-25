@@ -6,10 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 ## [Unreleased]
 
+### Added
+
+- Game art, icons and names beyond Steam: Xbox / Game Pass (splash screen, logo and name
+  from the game's MicrosoftGame.config), GOG (the game's own .ico and name), Epic (display
+  name from the launcher's manifests), and the window icon for "your games".
+
 ### Changed
 
 - The "Disconnected" screen is redone: truly centered on any screen (it could end up in a
   corner on larger phones), black, with a big clock so it stays useful while waiting.
+- Under the hood: the dashboard script is split into one file per part (`web/app/`), and
+  game detection moved into its own module (`games.py`).
 
 ## [0.10.0] - 2026-10-25
 

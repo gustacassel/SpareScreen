@@ -86,7 +86,7 @@ class GameArtTest(unittest.TestCase):
     def test_games_outside_steam_get_only_the_icon(self):
         with mock.patch.object(icons, "exe_icon_png", return_value=None):
             found = gameart.GameArt(roots=[]).for_game(r"C:\XboxGames\Another Game\game.exe", "Another Game")
-        self.assertEqual(found, {"art": None, "icon": None})
+        self.assertEqual(found, {"art": None, "icon": None, "name": None})
 
 
 class IconsTest(unittest.TestCase):
