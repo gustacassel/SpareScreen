@@ -292,6 +292,7 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .game-fps small { margin-left: 4px; font-size: 12px; letter-spacing: .08em; opacity: .8; }
 .fps-sub { margin-top: 2px; font-size: 11px; opacity: .8; }
 .game-art.as-icon img { object-fit: contain; padding: 10%; box-sizing: border-box; }
+.game-art img.pixel { image-rendering: pixelated; }
 .game-head { display: flex; align-items: center; padding: 10px 14px; }
 .game-icon { width: 36px; height: 36px; margin-right: 10px; border-radius: 6px; display: none; flex-shrink: 0; }
 .game-icon.shown { display: block; }

@@ -981,6 +981,8 @@
     var holder = $("game-art").parentNode;
     holder.className = "game-art" + (asIcon ? " as-icon" : "");
     setImage($("game-art"), holder, "has-art", game.art || game.icon);
+    // A small icon blown up looks blurry; crisp pixels suit it better (e.g. Minecraft's 32 px block).
+    $("game-art").onload = function () { this.className = this.naturalWidth < 96 ? "pixel" : ""; };
     $("game-art-bg").style.backgroundImage = asIcon ? "url(" + game.icon + ")" : "none";
     setImage($("game-icon"), $("game-icon"), "shown", asIcon ? null : game.icon);
 

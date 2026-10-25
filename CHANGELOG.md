@@ -12,7 +12,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
   game"), for games installed outside the store folders, emulators, Minecraft Java...
   And "Not a game" for anything taken for a game by mistake.
 - Automatic game detection where FPS is set up (Windows): the full-screen app in front
-  counts as a game when PresentMon sees it drawing steadily for a few seconds.
+  counts as a game when PresentMon sees it drawing steadily for a few seconds. It stays
+  a game while it runs (also in the background) and shows its window's icon (e.g.
+  Minecraft's block instead of Java's cup).
+
+### Changed
+
+- The SpareScreen window has tabs (Phone, Games, Status) instead of one long page, with a
+  dot on a tab that needs attention; it jumps to Phone when a device asks to pair.
 
 ### Fixed
 

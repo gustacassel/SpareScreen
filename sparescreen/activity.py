@@ -20,6 +20,7 @@ import time
 
 import psutil
 
+from . import icons, images
 from .gameart import GameArt
 
 # (path fragment, lowercase with "/") -> the game name is the folder right after it
@@ -203,7 +204,7 @@ def _windows_foreground_window():
     screen = info.rcMonitor
     fullscreen = (rect.left <= screen.left and rect.top <= screen.top
                   and rect.right >= screen.right and rect.bottom >= screen.bottom)
-    return {"title": title.value.strip(), "fullscreen": fullscreen}
+    return {"title": title.value.strip(), "fullscreen": fullscreen, "hwnd": hwnd}
 
 
 def foreground_window():
@@ -290,7 +291,7 @@ class ActivitySource:
 
     name = "activity"
     IGNORE = {"system idle process", "idle", "system", "registry", "memory compression"}
-    SOURCES = {"mine": 2, "library": 1}  # which wins when several programs qualify
+    SOURCES = {"mine": 3, "library": 2, "auto": 1}  # which wins when several programs qualify
 
     def __init__(self, refresh=3, top=6, config=None, auto=None):
         self.refresh = refresh
@@ -301,6 +302,7 @@ class ActivitySource:
         self.art = GameArt()
         self.running = []  # programs the PC window can mark as games: [{"exe", "name"}]
         self.game_exe = None  # the current game's exe, for "not a game" (kept out of the stream)
+        self._found = {}  # pid -> {"name", "hwnd", "icon"} of games detected automatically
         self._at = 0
         self._cache = {"game": None, "focus": None, "top": []}
 
@@ -316,9 +318,11 @@ class ActivitySource:
         programs = {}  # exe (or name) -> totals
         game = None
         focus = None
+        alive = set()
         for proc in psutil.process_iter(["name", "exe", "memory_info", "create_time"]):
             info = proc.info
             name = info["name"] or ""
+            alive.add(proc.pid)
             if name.lower() in self.IGNORE or proc.pid == 0:
                 continue
             try:
@@ -341,6 +345,8 @@ class ActivitySource:
                 continue
             if exe_id in mine:
                 title, source = mine[exe_id] or friendly_name(name, exe), "mine"
+            elif proc.pid in self._found:  # detected before: still a game in the background
+                title, source = self._found[proc.pid]["name"], "auto"
             else:
                 title, source = game_name(exe), "library"
                 if not title or HELPERS.search(name):
@@ -349,6 +355,7 @@ class ActivitySource:
             if game is None or rank > game["_rank"]:
                 game = {"name": title, "source": source, "_rank": rank, "_key": key, "pid": proc.pid}  # pid: FPS
 
+        self._found = {pid: found for pid, found in self._found.items() if pid in alive}
         if game is None and self.auto and focus in programs:
             game = self._auto_game(focus_pid, programs[focus], not_games, focus)
 
@@ -359,6 +366,13 @@ class ActivitySource:
             game.update(cpu=round(prog["cpu"], 1), mem=prog["mem"], since=prog["since"])
             # "art" and "icon" URLs; Steam art is found by the game's folder name
             game.update(self.art.for_game(prog["exe"], game_name(prog["exe"]) or game["name"]))
+            found = self._found.get(game["pid"]) if game["source"] == "auto" else None
+            if found:
+                # The window's own icon: for javaw.exe and the like, the exe's icon isn't the game's.
+                if "icon" not in found:
+                    png = icons.window_icon_png(found["hwnd"])
+                    found["icon"] = images.put("game-icon", png, "image/png") if png else None
+                game["icon"] = found["icon"] or game["icon"]
 
         def describe(prog):
             return {
@@ -397,5 +411,6 @@ class ActivitySource:
         window = foreground_window()
         if not window or not window["fullscreen"] or not self.auto.is_game(pid, exe):
             return None
-        name = window["title"] or friendly_name(prog["name"], exe)
-        return {"name": name[:60], "source": "auto", "_key": key, "pid": pid}
+        name = (window["title"] or friendly_name(prog["name"], exe))[:60]
+        self._found[pid] = {"name": name, "hwnd": window.get("hwnd")}  # stays a game while it runs
+        return {"name": name, "source": "auto", "_key": key, "pid": pid}

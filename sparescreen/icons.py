@@ -33,25 +33,53 @@ _EXTRACT = (
 )
 
 
-def exe_icon_png(path):
-    """PNG bytes of the program's icon, or None."""
-    if not path or sys.platform != "win32":
+# A window's own icon (WM_GETICON, else its class icon). Games that run inside another
+# program (Minecraft in javaw.exe) set their icon on the window, not in the exe.
+_WINDOW = (
+    "Add-Type -AssemblyName System.Drawing;"
+    "Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;"
+    "public static class SpareScreenWindowIcon{"
+    "[DllImport(\"user32.dll\")]public static extern IntPtr SendMessageTimeout(IntPtr h,uint m,IntPtr w,IntPtr l,"
+    "uint f,uint t,out IntPtr r);"
+    "[DllImport(\"user32.dll\",EntryPoint=\"GetClassLongPtrW\")]public static extern IntPtr GetClassLongPtr(IntPtr h,int i);}';"
+    "$w=[IntPtr][long]$env:SPARESCREEN_HWND;$i=[IntPtr]::Zero;"
+    "[void][SpareScreenWindowIcon]::SendMessageTimeout($w,0x7F,[IntPtr]1,[IntPtr]0,2,500,[ref]$i);"  # ICON_BIG
+    "if($i -eq [IntPtr]::Zero){$i=[SpareScreenWindowIcon]::GetClassLongPtr($w,-14)};"  # GCLP_HICON
+    "if($i -eq [IntPtr]::Zero){exit 1};"
+    "$m=New-Object System.IO.MemoryStream;"
+    "[System.Drawing.Icon]::FromHandle($i).ToBitmap().Save($m,[System.Drawing.Imaging.ImageFormat]::Png);"
+    "[Convert]::ToBase64String($m.ToArray())"
+)
+
+
+def _run(script, env, key):
+    if sys.platform != "win32":
         return None
     with _lock:
-        if path in _cache:
-            return _cache[path]
+        if key in _cache:
+            return _cache[key]
     data = None
     try:
         result = subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-Command", _EXTRACT],
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
             capture_output=True, text=True, timeout=10, creationflags=_NO_WINDOW,
-            # The path goes in an environment variable, so no quoting can break the command.
-            env=dict(os.environ, SPARESCREEN_EXE=str(path)),
+            # Values go in environment variables, so no quoting can break the command.
+            env=dict(os.environ, **env),
         )
         if result.returncode == 0 and result.stdout.strip():
             data = base64.b64decode(result.stdout.strip())
     except (OSError, ValueError, subprocess.SubprocessError):
         data = None
     with _lock:
-        _cache[path] = data
+        _cache[key] = data
     return data
+
+
+def exe_icon_png(path):
+    """PNG bytes of the program's icon, or None."""
+    return _run(_EXTRACT, {"SPARESCREEN_EXE": str(path)}, path) if path else None
+
+
+def window_icon_png(hwnd):
+    """PNG bytes of a window's icon, or None."""
+    return _run(_WINDOW, {"SPARESCREEN_HWND": str(int(hwnd))}, ("window", int(hwnd))) if hwnd else None

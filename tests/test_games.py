@@ -67,6 +67,21 @@ class DetectionOrderTest(unittest.TestCase):
         self.assertEqual((game["name"], game["source"]), ("Minecraft 1.21", "auto"))
         auto.is_game.assert_called_once_with(7, MINE)
 
+    def test_detected_game_stays_a_game_in_the_background_with_its_window_icon(self):
+        auto = mock.Mock(is_game=mock.Mock(return_value=True))
+        config = mock.Mock(games=mock.Mock(return_value={"my_games": [], "not_games": []}))
+        source = activity.ActivitySource(config=config, auto=auto)
+        source.art = mock.Mock(for_game=mock.Mock(return_value={"art": None, "icon": "art/java-cup"}))
+        with mock.patch.object(activity.psutil, "process_iter", return_value=[Proc(7, MINE, 100)]),                 mock.patch.object(activity, "friendly_name", side_effect=lambda name, exe: name),                 mock.patch.object(activity.icons, "window_icon_png", return_value=b"png") as window_icon,                 mock.patch.object(activity.images, "put", return_value="art/game-icon?v=1"),                 mock.patch.object(activity.sys, "platform", "win32"):
+            with mock.patch.object(activity, "foreground_pid", return_value=7),                     mock.patch.object(activity, "foreground_window",
+                                      return_value={"title": "Minecraft 1.21", "fullscreen": True, "hwnd": 99}):
+                self.assertEqual(source.read()["game"]["icon"], "art/game-icon?v=1")  # the window's, not Java's
+            source._at = 0
+            with mock.patch.object(activity, "foreground_pid", return_value=None),                     mock.patch.object(activity, "foreground_window", return_value=None):
+                game = source.read()["game"]  # alt-tabbed out: still the game
+        self.assertEqual((game["name"], game["source"]), ("Minecraft 1.21", "auto"))
+        window_icon.assert_called_once_with(99)
+
     def test_no_automatic_check_for_windows_browsers_or_not_full_screen(self):
         auto = mock.Mock(is_game=mock.Mock(return_value=True))
         game, _ = self.detect([Proc(7, MINE, 100)], auto=auto, focus=7, window={"title": "x", "fullscreen": False})

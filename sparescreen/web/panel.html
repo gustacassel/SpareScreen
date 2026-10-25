@@ -18,53 +18,74 @@
     <button id="open-dashboard" class="btn">Open dashboard</button>
   </header>
 
+  <!-- One section at a time; a dot on a tab when something there needs attention. -->
+  <nav class="tabs">
+    <button class="tab" data-tab="phone">Phone<span id="dot-phone" class="tab-dot"></span></button>
+    <button class="tab" data-tab="games">Games<span id="dot-games" class="tab-dot"></span></button>
+    <button class="tab" data-tab="status">Status<span id="dot-status" class="tab-dot"></span></button>
+  </nav>
+
   <div id="message" class="message"></div>
 
-  <section class="card" id="waiting-card">
-    <h2>New device wants to connect</h2>
-    <p><b id="waiting-name"></b> <span id="waiting-address" class="muted"></span></p>
-    <p>Type this code on it:</p>
-    <div id="waiting-code" class="code big"></div>
-    <p class="muted small">It will replace the device paired now (one at a time).</p>
-  </section>
+  <main>
+    <div class="page" data-page="phone">
+      <section class="card" id="waiting-card">
+        <h2>New device wants to connect</h2>
+        <p><b id="waiting-name"></b> <span id="waiting-address" class="muted"></span></p>
+        <p>Type this code on it:</p>
+        <div id="waiting-code" class="code big"></div>
+        <p class="muted small">It will replace the device paired now (one at a time).</p>
+      </section>
 
-  <section class="card">
-    <h2>Connect a phone</h2>
-    <div class="connect">
-      <div class="connect-item">
-        <div class="label">Wi-Fi: open on the phone</div>
-        <div id="phone-url" class="url">--</div>
-        <div id="names" class="names small muted"></div>
-      </div>
-      <div class="connect-item">
-        <div class="label">Pairing code</div>
-        <div id="code" class="code">------</div>
-      </div>
+      <section class="card">
+        <h2>Connect a phone</h2>
+        <div class="connect">
+          <div class="connect-item">
+            <div class="label">Wi-Fi: open on the phone</div>
+            <div id="phone-url" class="url">--</div>
+            <div id="names" class="names small muted"></div>
+          </div>
+          <div class="connect-item">
+            <div class="label">Pairing code</div>
+            <div id="code" class="code">------</div>
+          </div>
+        </div>
+        <p class="muted small">USB: plug in an Android phone with USB debugging on and the page opens by
+          itself (no code needed). Only one device is paired at a time: pairing a new one replaces it.</p>
+      </section>
+
+      <section class="card">
+        <h2>Devices</h2>
+        <ul id="devices" class="rows"></ul>
+      </section>
     </div>
-    <p class="muted small">USB: plug in an Android phone with USB debugging on and the page opens by
-      itself (no code needed). Only one device is paired at a time: pairing a new one replaces it.</p>
-  </section>
 
-  <section class="card">
-    <h2>Devices</h2>
-    <ul id="devices" class="rows"></ul>
-  </section>
+    <div class="page" data-page="games">
+      <section class="card">
+        <h2>Now</h2>
+        <ul id="game-now" class="rows"></ul>
+      </section>
+      <section class="card">
+        <h2>Your games <span class="muted small plain">count as games wherever they're installed</span></h2>
+        <ul id="my-games" class="rows"></ul>
+      </section>
+      <section class="card">
+        <h2>Running now <span class="muted small plain">open your game, then mark it here</span></h2>
+        <ul id="running-apps" class="rows"></ul>
+      </section>
+      <section class="card" id="not-games-card">
+        <h2>Never a game</h2>
+        <ul id="not-games" class="rows"></ul>
+      </section>
+    </div>
 
-  <section class="card">
-    <h2>Games</h2>
-    <ul id="game-now" class="rows"></ul>
-    <div class="sub">Your games <span class="muted small">(count as games wherever they're installed)</span></div>
-    <ul id="my-games" class="rows"></ul>
-    <div class="sub">Running now <span class="muted small">(open your game, then mark it here)</span></div>
-    <ul id="running-apps" class="rows"></ul>
-    <div id="not-games-title" class="sub">Never a game</div>
-    <ul id="not-games" class="rows"></ul>
-  </section>
-
-  <section class="card">
-    <h2>Checks</h2>
-    <ul id="checks" class="rows"></ul>
-  </section>
+    <div class="page" data-page="status">
+      <section class="card">
+        <h2>Checks</h2>
+        <ul id="checks" class="rows"></ul>
+      </section>
+    </div>
+  </main>
 
   <footer class="foot">
     <label class="switch"><input type="checkbox" id="autostart"> <span id="autostart-label">Start with Windows</span></label>

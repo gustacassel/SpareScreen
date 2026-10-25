@@ -131,8 +131,7 @@
       })(games.not_games[i]);
     }
     fill($("not-games"), others, "");
-    $("not-games").className = "rows" + (others.length ? "" : " empty");
-    $("not-games-title").className = "sub" + (others.length ? "" : " empty");
+    $("not-games-card").className = "card" + (others.length ? "" : " empty");
   }
 
   function renderChecks(checks) {
@@ -145,6 +144,43 @@
     }
     fill($("checks"), items, "");
   }
+
+  // ---- Tabs -------------------------------------------------------------------
+
+  var TAB_KEY = "sparescreen_panel_tab";
+  var tabs = document.querySelectorAll(".tab");
+  var pages = document.querySelectorAll(".page");
+  var currentTab = null;
+
+  function showTab(name) {
+    currentTab = name;
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].className = "tab" + (tabs[i].getAttribute("data-tab") === name ? " on" : "");
+    }
+    for (var j = 0; j < pages.length; j++) {
+      pages[j].className = "page" + (pages[j].getAttribute("data-page") === name ? " on" : "");
+    }
+    try { localStorage.setItem(TAB_KEY, name); } catch (e) { /* not saved, no harm */ }
+  }
+
+  for (var t = 0; t < tabs.length; t++) {
+    tabs[t].addEventListener("click", function () { showTab(this.getAttribute("data-tab")); });
+  }
+
+  function dot(id, level) { $(id).className = "tab-dot" + (level ? " " + level : ""); }
+
+  // The worst check on the Status tab; the Phone tab when a device asks to pair.
+  function updateDots(state) {
+    var worst = "";
+    for (var i = 0; i < state.checks.length; i++) {
+      if (state.checks[i].status === "error") worst = "error";
+      else if (state.checks[i].status === "warn" && !worst) worst = "warn";
+    }
+    dot("dot-status", worst);
+    dot("dot-phone", state.waiting ? "info" : "");
+  }
+
+  var wasWaiting = false;
 
   var messageTimer = null;
 
@@ -186,6 +222,9 @@
     $("autostart").checked = state.autostart;
     $("autostart-label").textContent = state.autostart_label;
     if (state.message) showMessage(state.message);
+    updateDots(state);
+    if (waiting && !wasWaiting) showTab("phone");  // someone needs the code: show it
+    wasWaiting = !!waiting;
   }
 
   function refresh() {
@@ -219,6 +258,9 @@
   watchAgent();
   $("autostart").addEventListener("change", function () { act("autostart", { on: $("autostart").checked }); });
 
+  var savedTab = null;
+  try { savedTab = localStorage.getItem(TAB_KEY); } catch (e) { savedTab = null; }
+  showTab(savedTab === "games" || savedTab === "status" ? savedTab : "phone");
   refresh();
   setInterval(refresh, 2000);
 })();

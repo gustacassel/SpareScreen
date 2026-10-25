@@ -76,17 +76,21 @@ onto the taskbar to keep it in sight. Typed in a terminal, it runs right there, 
 
 ### The SpareScreen window (on the PC)
 
-A small window (an Edge or Chrome app window, no tabs; a browser tab where neither is
-installed) that shows, live:
+A small window (an Edge or Chrome app window; a browser tab where neither is installed)
+with three tabs, kept live. A dot on a tab means something there needs you:
 
-- **Connect a phone:** the Wi-Fi address and the pairing code. When a new device asks to
-  pair, it shows up at the top with the code in big digits.
-- **Devices:** phones on USB (with battery level and temperature), the paired Wi-Fi
-  device (with a Remove button) and every screen that has the dashboard open right now.
-- **Checks:** what works and what's missing, with a button to fix it where possible:
-  install or open LibreHardwareMonitor (CPU sensors on Windows), install adb (USB cable),
-  plus GPU, Wi-Fi, AI tools and now playing.
-- **Start with Windows** (or "Start when I log in" elsewhere) and **Open dashboard**.
+- **Phone:** the Wi-Fi address and the pairing code; when a new device asks to pair, the
+  window jumps here and shows the code in big digits. Below, the devices: phones on USB
+  (with battery level and temperature), the paired Wi-Fi device (with a Remove button) and
+  every screen that has the dashboard open right now.
+- **Games:** the game now (and how it was recognized), your games, the programs running
+  now to mark as games, and the ones marked "not a game" (see *Games and apps*).
+- **Status:** what works and what's missing, with a button to fix it where possible:
+  install or open LibreHardwareMonitor (CPU sensors on Windows), turn on FPS in games,
+  install adb (USB cable), plus GPU, Wi-Fi, AI tools and now playing.
+
+At the bottom, **Start with Windows** (or "Start when I log in" elsewhere); at the top,
+**Open dashboard**.
 
 It answers only to this PC (`http://localhost:8765/panel.html`); other devices and other
 websites can't read it or press its buttons.
@@ -265,7 +269,8 @@ If the back of the phone ever starts to bulge, unplug it and stop using it.
      Epic Games, GOG, Xbox, Riot, EA, Ubisoft, Battle.net), named after its folder;
   4. with **FPS in games** turned on (Windows): the full-screen app in front, if PresentMon
      sees it drawing like a game for a few seconds (browsers, video players and Windows'
-     own programs are never checked). It's named after its window title.
+     own programs are never checked). It's named after its window title, uses the
+     window's own icon, and stays a game while it runs, even in the background.
 
   Your lists stay on the PC (they hold file paths); the phone only gets the game's name.
 - **In focus:** the app of the active window. Windows: yes. Linux on X11: yes with
