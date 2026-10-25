@@ -32,7 +32,7 @@ class DevSource:
         self.started = time.time()
 
     def read(self):
-        web = max((p.stat().st_mtime for p in (PACKAGE / "web").iterdir()), default=0)
+        web = max((p.stat().st_mtime for p in (PACKAGE / "web").rglob("*") if p.is_file()), default=0)
         return f"{self.started:.0f}-{web:.3f}"
 
 

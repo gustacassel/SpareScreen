@@ -5,6 +5,8 @@ import unittest
 import xml.dom.minidom
 from pathlib import Path
 
+from sparescreen.server import app_js
+
 WEB = Path(__file__).parent.parent / "sparescreen" / "web"
 
 
@@ -17,7 +19,7 @@ class OldBrowserRulesTest(unittest.TestCase):
     """The page must run on old phones (Chrome 49 / iOS 10): no modern syntax."""
 
     def test_javascript(self):
-        code = _without_comments((WEB / "app.js").read_text(encoding="utf-8"))
+        code = _without_comments(app_js() + (WEB / "panel.js").read_text(encoding="utf-8"))
         forbidden = {
             "arrow function": r"=>",
             "template literal": r"`",
@@ -46,7 +48,7 @@ class OldBrowserRulesTest(unittest.TestCase):
 class ElementIdsTest(unittest.TestCase):
     def test_every_id_used_by_the_script_exists(self):
         html = (WEB / "app.html").read_text(encoding="utf-8")
-        js = (WEB / "app.js").read_text(encoding="utf-8")
+        js = app_js()
         ids = set(re.findall(r'id="([\w-]+)"', html))
         used = set(re.findall(r'\$\("([\w-]+)"\)', js))
         self.assertTrue(used)

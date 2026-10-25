@@ -545,7 +545,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/hwinfo.py`: short CPU, GPU and memory names.
 - `sparescreen/demo.py`: made-up data for `--demo`, same shape as the real sources.
 - `sparescreen/web/`: the page (plain HTML, CSS and JS, built for old browsers).
-  `index.html` is just the frame; the dashboard is `app.html`, `app.js` and `style.css`.
+  `index.html` is just the frame; the dashboard is `app.html`, `style.css` and its script,
+  kept in `web/app/` one file per part (screens, settings, alerts, pairing...) and joined in
+  order into `app.js` by the agent when the page asks for it.
 
 ## Credits
 

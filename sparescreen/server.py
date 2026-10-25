@@ -13,6 +13,14 @@ from . import images, names
 from .pairing import LOCAL_ADDRESSES
 
 WEB_DIR = Path(__file__).parent / "web"
+APP_DIR = WEB_DIR / "app"
+
+
+def app_js():
+    """The dashboard's script: the files in web/app/ joined in order inside one function,
+    so they share their variables like a single file (no modules on old browsers)."""
+    parts = [path.read_text(encoding="utf-8") for path in sorted(APP_DIR.glob("*.js"))]
+    return '(function () {\n  "use strict";\n\n' + "\n".join(parts) + "})();\n"
 
 
 class Hub:
@@ -230,7 +238,18 @@ def make_handler(hub, config, pairing, info, clients, panel):
             self.end_headers()
             self.wfile.write(data)
 
+        def _send_body(self, body, ctype):
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(body)
+
         def _serve_static(self, name):
+            if name == "app.js":
+                self._send_body(app_js().encode(), "text/javascript; charset=utf-8")
+                return
             file = (WEB_DIR / name).resolve()
             if file.parent != WEB_DIR.resolve() or not file.is_file():
                 self.send_error(404)
@@ -239,12 +258,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
             ctype = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
             if ctype.startswith("text/") or ctype.endswith("javascript"):
                 ctype += "; charset=utf-8"
-            self.send_response(200)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-cache")
-            self.end_headers()
-            self.wfile.write(body)
+            self._send_body(body, ctype)
 
         def _stream_alive(self):
             """An open stream that only says "still here": the PC window closes itself when

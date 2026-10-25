@@ -32,4 +32,4 @@ packages = ["sparescreen"]
 version = { attr = "sparescreen.__version__" }
 
 [tool.setuptools.package-data]
-sparescreen = ["web/*"]
+sparescreen = ["web/*", "web/app/*"]
