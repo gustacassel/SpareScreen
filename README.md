@@ -266,7 +266,7 @@ If the back of the phone ever starts to bulge, unplug it and stop using it.
   the built-in `lsappinfo` (no permission prompt).
 - **Top apps:** processes added up per executable (all Chrome tabs count as one),
   sorted by CPU. The % is of the whole processor.
-- No FPS yet: on Windows that needs tools such as PresentMon.
+- **FPS:** on Windows, once turned on in the SpareScreen window (see Game mode below).
 
 ### Game mode
 
@@ -278,8 +278,18 @@ normal rotation; the game still shows on the PC screen.
 
 - **Art:** for Steam games, the library image Steam already keeps on disk
   (`appcache/librarycache`), found through the game's `appmanifest_*.acf`. Nothing is
-  downloaded. Other stores: no art, a placeholder instead.
+  downloaded. Other stores: the game's own icon, big.
 - **Icon:** the icon inside the game's `.exe`, on Windows only.
+- **FPS** (Windows, optional): current FPS, 1% low and frame time over the game art. Turn
+  it on with **Enable** next to "FPS in games" in the SpareScreen window. It downloads
+  [PresentMon](https://github.com/GameTechDev/PresentMon) (free and open source, from
+  Intel; one pinned version, checked against its published checksum) into
+  `~/.sparescreen/tools`, and asks Windows once for admin rights to add you to the
+  *Performance Log Users* group, which lets programs read frame timings without being
+  admin. Sign out and back in to finish. From then on SpareScreen starts PresentMon only
+  while a game runs, without prompts. Works with any graphics API (DirectX, Vulkan,
+  OpenGL). To undo: remove yourself from that group (`compmgmt.msc` > Local Users and
+  Groups) and delete the tools folder.
 
 ## Now playing
 
@@ -489,6 +499,8 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/panel.py`, `sparescreen/appwindow.py` and `web/panel.*`: the SpareScreen
   window on the PC (checks, devices, pairing) and how it opens as an app window.
 - `sparescreen/lhm.py`: finds, sets up, starts and installs LibreHardwareMonitor on Windows.
+- `sparescreen/fps.py`: game FPS from PresentMon (Windows): setup, and frame times turned
+  into FPS, 1% low and frame time while a game runs.
 - `sparescreen/names.py`: the PC's names the phone may reach it by (tested from the phone
   through `/whoami`; a one-time code carries the pairing to the new address).
 - `packaging/entry.py` and `.github/workflows/release.yml`: the PyInstaller executables

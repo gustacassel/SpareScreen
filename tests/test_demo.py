@@ -34,7 +34,7 @@ class DemoShapeTest(unittest.TestCase):
         self.assertEqual(set(DemoActivity().read()), set(ActivitySource().read()))
         with mock.patch("sparescreen.demo.time.time", return_value=DemoActivity.CYCLE * 1000 + 1):
             game = DemoActivity().read()["game"]
-        self.assertEqual(set(game), {"name", "cpu", "mem", "since", "art", "icon"})
+        self.assertEqual(set(game), {"name", "cpu", "mem", "since", "art", "icon", "pid"})
 
 
 if __name__ == "__main__":

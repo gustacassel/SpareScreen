@@ -109,7 +109,8 @@ and with no mandatory app. That's this project's niche.
    - ✅ **Now playing:** whatever the PC is playing, from the system's media session,
      and a Music screen with the cover and the player's icon.
    - ✅ **Game mode:** only the game screen while a game runs, with Steam's art and the
-     game's icon. Still to do: art for other stores, icons on Linux/macOS, FPS.
+     game's icon, and FPS on Windows. Still to do: art for other stores, icons on
+     Linux/macOS, FPS on Linux.
 8. Optional: a tiny Android app (WebView kiosk, minSdk 23) that opens by itself, full
    screen, screen always on.
 
@@ -124,10 +125,7 @@ and with no mandatory app. That's this project's niche.
   Options: an opt-in `--https` with a self-signed certificate and its fingerprint shown in
   the PC window to compare on the phone; meanwhile, USB only (`--host 127.0.0.1`) on
   networks you don't trust, as the README says.
-- **Game FPS.** Possible, with an extra free tool per OS:
-  - Windows: PresentMon (Intel, MIT) reads the frame times every game sends to the screen
-    (any API: DirectX, Vulkan, OpenGL). It needs admin rights or the user in the
-    "Performance Log Users" group, so it fits next to the LibreHardwareMonitor handling.
+- **Game FPS.** ✅ Windows, with PresentMon (set up from the PC window). Still to do:
   - Linux: MangoHud's log files (when the game runs with MangoHud).
   - macOS: no practical free way for other apps' games.
 

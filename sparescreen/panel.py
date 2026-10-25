@@ -12,7 +12,7 @@ import sys
 import time
 import webbrowser
 
-from . import autostart, lhm, names
+from . import autostart, fps, lhm, names
 
 # Shown as the device name; modern browsers hide the phone model, so this stays generic.
 _SYSTEMS = (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("CrOS", "ChromeOS"),
@@ -114,8 +114,8 @@ class Panel:
     def checks(self, snapshot):
         """[{"id", "status": ok|warn|error|info, "title", "detail", "action": {"id", "label"}|None}]"""
         system = snapshot.get("system") or {}
-        items = [self._sensors_check(system), self._gpu_check(system), self._usb_check(),
-                 self._wifi_check(), self._ai_check(snapshot), self._media_check(snapshot)]
+        items = [self._sensors_check(system), self._gpu_check(system), self._fps_check(snapshot),
+                 self._usb_check(), self._wifi_check(), self._ai_check(snapshot), self._media_check(snapshot)]
         return [item for item in items if item]
 
     @staticmethod
@@ -157,6 +157,25 @@ class Panel:
         detail = "No GPU data. NVIDIA cards need their driver (nvidia-smi)"
         detail += "; AMD and Intel need LibreHardwareMonitor." if sys.platform == "win32" else "."
         return self._check("gpu", "info", "GPU", detail)
+
+    def _fps_check(self, snapshot):
+        if sys.platform != "win32":
+            return None  # PresentMon is Windows only
+        title = "FPS in games"
+        if fps.find_presentmon() and fps.allowed():
+            reading = snapshot.get("fps") or {}
+            if reading.get("playing") and reading.get("error") == "failed":
+                return self._check("fps", "warn", title, "PresentMon couldn't follow this game.")
+            if reading.get("playing") and reading.get("fps"):
+                return self._check("fps", "ok", title, f"{reading['fps']} FPS right now")
+            return self._check("fps", "ok", title, "Ready: shows on the game screen while you play.")
+        if fps.find_presentmon() and fps.requested():
+            return self._check("fps", "warn", title,
+                               "Sign out of Windows and back in to finish turning it on.")
+        return self._check("fps", "info", title,
+                           "Show the FPS of the game you're playing. Uses PresentMon (free, from Intel; "
+                           "downloaded once) and asks Windows once for permission to read frame "
+                           "timings (the \"Performance Log Users\" group).", "fps_enable", "Enable")
 
     def _usb_check(self):
         if not self.usb:
@@ -206,6 +225,8 @@ class Panel:
             self.message = error or "Starting LibreHardwareMonitor (it goes to the tray)."
         elif action == "lhm_install":
             self.message = lhm.install() or "Installing in the console window; then click Open it."
+        elif action == "fps_enable":
+            self.message = fps.enable()
         elif action == "adb_install":
             winget = shutil.which("winget")
             if winget:

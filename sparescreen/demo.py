@@ -169,7 +169,7 @@ class DemoActivity:
         if not playing:
             return {"game": None, "focus": apps[1], "top": sorted(apps, key=lambda a: -a["cpu"])}
         return {
-            "game": dict(game, since=self.started, art="demo-game.svg", icon="demo-game-icon.svg"),
+            "game": dict(game, since=self.started, art="demo-game.svg", icon="demo-game-icon.svg", pid=4242),
             "focus": game,
             "top": [game] + apps[:5],
         }
@@ -194,5 +194,20 @@ class DemoMedia:
                 "art": "demo-cover.svg", "app_icon": None}
 
 
+class DemoFps:
+    name = "fps"
+
+    def __init__(self, activity):
+        self.activity = activity
+
+    def read(self):
+        if not self.activity.read()["game"]:
+            return {"available": True, "playing": False}
+        fps = round(_wave(9, 128, 152))
+        return {"available": True, "playing": True, "error": None, "fps": fps,
+                "low1": round(fps * 0.72), "frametime": round(1000 / fps, 1)}
+
+
 def demo_sources():
-    return [DemoSystem(), DemoClaude(), DemoCodex(), DemoActivity(), DemoPhone(), DemoMedia()]
+    activity = DemoActivity()
+    return [DemoSystem(), DemoClaude(), DemoCodex(), activity, DemoFps(activity), DemoPhone(), DemoMedia()]

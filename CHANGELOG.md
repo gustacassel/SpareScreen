@@ -4,6 +4,15 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Game FPS on Windows: current FPS, 1% low and frame time over the game art. Turned on
+  from the SpareScreen window, which downloads Intel's PresentMon (pinned version,
+  checksum verified) and asks Windows once to add the user to "Performance Log Users";
+  SpareScreen then runs PresentMon only while a game is open.
+
 ## [0.7.0] - 2026-10-25
 
 ### Added

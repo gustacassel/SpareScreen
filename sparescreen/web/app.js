@@ -1005,6 +1005,15 @@
     setStat("st-ram", gb(sys.ram.used), null, null, " / " + gb(sys.ram.total) + " GB", sys.ram.percent);
   }
 
+  // Game FPS from PresentMon (Windows, once set up in the PC window); hidden otherwise.
+  function renderFps(fps) {
+    var on = !!(fps && fps.playing && fps.fps);
+    $("g-fps").className = "game-fps" + (on ? " shown" : "");
+    if (!on) return;
+    $("g-fps-v").textContent = fps.fps;
+    $("g-fps-sub").textContent = "1% low " + fps.low1 + " · " + fps.frametime + " ms";
+  }
+
   // ---- Now playing (PC screen) ------------------------------------------------
 
   function minutes(seconds) {
@@ -1112,6 +1121,7 @@
     }
     renderMusic(data.media);
     renderGame(data.system, data.activity, data.time);
+    renderFps(data.fps);
   }
 
   function request(method, url, body, done) {

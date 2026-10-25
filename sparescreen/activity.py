@@ -239,7 +239,7 @@ class ActivitySource:
             title = game_name(exe)
             if title and not HELPERS.search(name):
                 if game is None or mem > game["_mem"]:
-                    game = {"name": title, "_mem": mem, "_key": key}
+                    game = {"name": title, "_mem": mem, "_key": key, "pid": proc.pid}  # pid: for FPS
             if proc.pid == focus_pid:
                 focus = key
 

@@ -282,6 +282,15 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .game-art img { position: relative; }
 .game-art-bg { position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px;
   background-size: cover; background-position: center; -webkit-filter: blur(18px); filter: blur(18px); opacity: .45; }
+/* FPS over the game art (only when PresentMon is set up) */
+.game-fps {
+  position: absolute; right: 10px; bottom: 10px; display: none; padding: 6px 12px 7px;
+  border-radius: 10px; background: rgba(0, 0, 0, .62); color: #fff; text-align: right;
+}
+.game-fps.shown { display: block; }
+.fps-v { font-size: 34px; font-weight: 300; line-height: 1; font-variant-numeric: tabular-nums; }
+.game-fps small { margin-left: 4px; font-size: 12px; letter-spacing: .08em; opacity: .8; }
+.fps-sub { margin-top: 2px; font-size: 11px; opacity: .8; }
 .game-art.as-icon img { object-fit: contain; padding: 10%; box-sizing: border-box; }
 .game-head { display: flex; align-items: center; padding: 10px 14px; }
 .game-icon { width: 36px; height: 36px; margin-right: 10px; border-radius: 6px; display: none; flex-shrink: 0; }
