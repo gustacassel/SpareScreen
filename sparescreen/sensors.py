@@ -96,6 +96,7 @@ class LibreHardwareMonitor:
     def __init__(self, url="http://localhost:8085/data.json"):
         self.url = url
         self._down_until = 0
+        self.hint = None  # what the user should do while it doesn't answer
 
     def read(self):
         if time.time() < self._down_until:
@@ -105,7 +106,9 @@ class LibreHardwareMonitor:
                 tree = json.load(resp)
         except (OSError, ValueError):
             self._down_until = time.time() + self.RETRY_AFTER
+            self.hint = self._why_down()
             return None
+        self.hint = None
 
         result = {"cpu": None, "gpu": None, "fans": [], "drives": []}
         gpus = []
@@ -203,6 +206,14 @@ class LibreHardwareMonitor:
             })
         return fans
 
+    @staticmethod
+    def _why_down():
+        # Open but silent usually means its web server is off (it isn't always remembered).
+        for proc in psutil.process_iter(["name"]):
+            if (proc.info["name"] or "").lower().startswith("librehardwaremonitor"):
+                return "turn on LibreHardwareMonitor's web server"
+        return "open LibreHardwareMonitor"
+
 
 def _read_file(path, scale=1.0):
     """Number from a sysfs file (None if it does not exist)."""
@@ -274,7 +285,6 @@ def linux_fans():
                 fans.append({"name": fan.label or f"{chip} {i + 1}", "rpm": fan.current, "percent": None, "gpu": False})
     return fans
 
-
 class MacCpuTemp:
     """CPU temperature on macOS from the first optional tool that answers.
 
@@ -344,8 +354,8 @@ class Sensors:
         hint = None
         if self.lhm:
             lhm = self.lhm.read()
-            if lhm is None:  # not running: CPU temperature, clocks and fans need it on Windows
-                hint = "open LibreHardwareMonitor"
+            if lhm is None:  # CPU temperature, clocks and fans need it on Windows
+                hint = self.lhm.hint or "open LibreHardwareMonitor"
             lhm = lhm or {}
             cpu, fans, drives, gpu = lhm.get("cpu") or {}, lhm.get("fans", []), lhm.get("drives", []), lhm.get("gpu")
         elif sys.platform.startswith("linux"):

@@ -971,7 +971,7 @@
     var cpuDetail = [];
     if (c.clock) cpuDetail.push(decimal(c.clock / 1000) + " GHz");
     if (known(c.power)) cpuDetail.push(Math.round(c.power) + " W");
-    if (!known(c.temp) && sys.sensors_hint) cpuDetail.push("temperature: " + sys.sensors_hint);
+    if (!known(c.temp) && sys.sensors_hint) cpuDetail.push("no temperature: " + sys.sensors_hint);
     setStat("st-cpu", Math.round(c.percent), degrees(c.temp), cpuDetail.join(" · "), null, c.percent);
     setStat("st-ram", gb(sys.ram.used), null, null, " / " + gb(sys.ram.total) + " GB", sys.ram.percent);
   }

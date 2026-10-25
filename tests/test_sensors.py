@@ -141,11 +141,22 @@ class SensorsTest(unittest.TestCase):
 
     def test_hint_when_librehardwaremonitor_is_not_running(self):
         s = sensors.Sensors()
-        s.lhm = mock.Mock(read=mock.Mock(return_value=None))
+        s.lhm = mock.Mock(read=mock.Mock(return_value=None), hint=None)
         s.nvidia = mock.Mock(read=mock.Mock(return_value=None))
         data = s.read()
         self.assertIsNone(data["cpu_temp"])
         self.assertEqual(data["hint"], "open LibreHardwareMonitor")
+
+    def test_hint_tells_apart_closed_and_web_server_off(self):
+        lhm = sensors.LibreHardwareMonitor("http://127.0.0.1:9/data.json")  # nothing listens there
+        running = [mock.Mock(info={"name": "LibreHardwareMonitor.exe"})]
+        with mock.patch.object(sensors.psutil, "process_iter", return_value=running):
+            self.assertIsNone(lhm.read())
+        self.assertEqual(lhm.hint, "turn on LibreHardwareMonitor's web server")
+        lhm._down_until = 0
+        with mock.patch.object(sensors.psutil, "process_iter", return_value=[]):
+            lhm.read()
+        self.assertEqual(lhm.hint, "open LibreHardwareMonitor")
 
 
 if __name__ == "__main__":

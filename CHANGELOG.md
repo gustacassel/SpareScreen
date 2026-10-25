@@ -10,8 +10,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 - Game screen: the GPU card shows the fan speed; without store art, the game's icon
   fills the art area (icons are now extracted at 256 px).
-- Without LibreHardwareMonitor on Windows, the CPU cards say to open it instead of
-  "no temperature sensor".
+- Without LibreHardwareMonitor on Windows, the CPU cards say what to do instead of
+  "no temperature sensor": open it, or turn on its web server when it's open.
 
 ### Fixed
 
