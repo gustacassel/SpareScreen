@@ -220,6 +220,17 @@
   <div id="night-dim" class="night-dim"></div>
   <div id="night-clock" class="night-clock"><span id="night-time">--:--</span></div>
 
+  <!-- No data for a while (PC off, SpareScreen closed, Wi-Fi down): say so instead of
+       showing old numbers as if they were live. Goes away by itself when data returns. -->
+  <div id="offline" class="offline">
+    <div id="offline-box" class="offline-box">
+      <svg class="icon offline-icon"><use xlink:href="#i-alert"></use></svg>
+      <div class="offline-title">Disconnected</div>
+      <div id="offline-detail" class="offline-detail">Trying to reconnect...</div>
+      <div class="offline-hint">Is SpareScreen running on the PC?</div>
+    </div>
+  </div>
+
   <!-- Toast shown on top (session finished, theme changed...) -->
   <div id="toast" class="toast">
     <svg class="icon toast-icon"><use id="toast-icon" xlink:href="#i-check"></use></svg>

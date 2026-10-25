@@ -51,7 +51,7 @@ jobs:
           # pystray picks its backend at runtime, so name the Windows one (ignored elsewhere).
           pyinstaller --noconfirm --onefile --name sparescreen --paths . --hidden-import pystray._win32 \
             --add-data "sparescreen/web${SEP}sparescreen/web" \
-            --icon assets/icon-256.png packaging/entry.py
+            --icon assets/icon.ico packaging/entry.py
       - name: Smoke test
         run: |
           ./${{ matrix.built }} --version

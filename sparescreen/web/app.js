@@ -172,6 +172,7 @@
     var date = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
     $("date").textContent = date.charAt(0).toUpperCase() + date.slice(1);
     updateNight(now);
+    updateOffline(now);
   }
 
   // ---- Burn-in protection and night mode -----------------------------------
@@ -213,6 +214,34 @@
       $("night-time").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
       if (!wasOn || now.getSeconds() === 0) moveNightClock();
     }
+  }
+
+  // ---- Disconnected screen --------------------------------------------------
+  // The dot in the top bar is easy to miss on a phone across the desk: after a while
+  // without data, cover the stale numbers with a clear message.
+
+  var OFFLINE_AFTER = 30000;  // ms without data
+  var pageStart = Date.now();
+  var lastData = 0;           // when the last reading arrived (ms)
+  var offlineOn = false;
+
+  function moveOfflineBox() {
+    var box = $("offline-box");
+    box.style.marginTop = Math.round(-90 + (Math.random() - 0.5) * 120) + "px";
+    box.style.marginLeft = "calc(-40% + " + Math.round((Math.random() - 0.5) * 80) + "px)";
+  }
+
+  function updateOffline(now) {
+    var since = lastData || pageStart;
+    var wasOn = offlineOn;
+    offlineOn = !pairingOpen && Date.now() - since > OFFLINE_AFTER;
+    $("offline").className = "offline" + (offlineOn ? " on" : "");
+    if (!offlineOn) return;
+    var last = new Date(lastData);
+    $("offline-detail").textContent = lastData
+      ? "Last data at " + pad(last.getHours()) + ":" + pad(last.getMinutes()) + " · trying to reconnect..."
+      : "Waiting for the PC...";
+    if (!wasOn || now.getSeconds() === 0) moveOfflineBox();
   }
 
   tickClock();
@@ -1052,6 +1081,8 @@
   }
 
   function render(data) {
+    lastData = Date.now();
+    if (offlineOn) updateOffline(new Date());
     checkDev(data.dev);
     onServerConfig(data.config);
     renderHardware(data.system);

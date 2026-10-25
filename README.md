@@ -445,8 +445,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   starts); a new one is made every time it starts. The paired device keeps working;
   `--reset-pairing` forgets it.
 - **"Too many attempts":** after 5 wrong codes, pairing pauses for a minute.
-- **Red dot in the top corner:** the phone lost its connection to the agent.
-  The page reconnects by itself when the agent is back.
+- **Red dot in the top corner / "Disconnected" screen:** the phone lost its connection
+  to the agent (the dot right away, the full screen after 30 seconds, with the time of the
+  last data). The page reconnects by itself when the agent is back.
 
 ## How it works
 

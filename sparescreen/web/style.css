@@ -309,6 +309,15 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
   font-size: 18vh; font-weight: 200; color: #6f7680; font-variant-numeric: tabular-nums;
 }
 
+/* Disconnected: covers the stale numbers; the box wanders a little every minute (burn-in) */
+.offline { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: none; background: var(--bg); }
+.offline.on { display: block; }
+.offline-box { position: absolute; left: 50%; top: 50%; width: 80%; max-width: 420px; margin-left: -40%; text-align: center; }
+.offline .offline-icon { width: 12vh; height: 12vh; color: var(--warn); }
+.offline-title { margin-top: 2vh; font-size: 7vh; font-weight: 300; }
+.offline-detail { margin-top: 1vh; font-size: 3.4vh; color: var(--muted); }
+.offline-hint { margin-top: 2vh; font-size: 2.8vh; color: var(--muted); }
+
 .set-connect { padding: 4px 0 8px; border-bottom: 1px solid var(--track); }
 .set-connect:empty { display: none; }
 .connect-row { padding: 2px 0; font-size: 15px; }

@@ -2,7 +2,7 @@
 
 Build (see .github/workflows/release.yml):
     pyinstaller --onefile --name sparescreen --add-data "sparescreen/web<sep>sparescreen/web" \
-        --icon assets/icon-256.png packaging/entry.py
+        --icon assets/icon.ico packaging/entry.py
 where <sep> is ";" on Windows and ":" elsewhere.
 """
 

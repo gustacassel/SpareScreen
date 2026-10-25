@@ -93,10 +93,9 @@ and with no mandatory app. That's this project's niche.
      signing for open source, works from GitHub Actions); Azure Trusted Signing (about
      US$10/month, needs identity verification); a Certum open source certificate.
      Signing gives the file a known publisher; reputation still builds with downloads.
-   - Ways around the browser warning: publish to winget (`winget install SpareScreen`),
-     a Scoop bucket or the Microsoft Store (free for individual developers).
-   - macOS: notarization needs a paid Apple Developer account (US$99/year); Homebrew is
-     the free route.
+   - Distribution stays on GitHub releases only (decided: no winget, Scoop, Microsoft
+     Store, PyPI or Homebrew), so signing is the way to reduce the warnings.
+   - macOS: notarization needs a paid Apple Developer account (US$99/year).
 3. **Generic AI data.** ✅ "Tokens this week per model", the AI screen with Claude Code
    and Codex, and a status line that wraps the user's own. Still to do: more tools that
    keep local data (e.g. Gemini CLI).
@@ -116,10 +115,6 @@ and with no mandatory app. That's this project's niche.
 
 ## To think about
 
-- **"Disconnected" screen.** Today only the colored dot in the top bar shows that the
-  connection dropped. If the page gets no data for ~30 s, switch to a clear full-screen
-  "Disconnected, trying again..." state (with the time of the last data), and go back to
-  the dashboard by itself when data returns.
 - **HTTPS on Wi-Fi.** On the PC and over USB the page is on `localhost`, which browsers
   already treat as secure (and the data never leaves the machine or the cable). Over
   Wi-Fi it's plain HTTP: someone on the same network could read the data and the
@@ -135,9 +130,6 @@ and with no mandatory app. That's this project's niche.
   with Avahi, macOS; iPhones resolve it, Android only from 12). Idea: the agent checks
   which names resolve to its own IP and the PC window shows the best one first, with the
   IP as fallback; the phone could also remember the last address that worked.
-- **Windows .exe icon looks broken** in Explorer: the dark rounded background shows
-  shifted to the top-left and smaller than the drawing. Probably the PNG -> .ico
-  conversion at build time (build a proper multi-size .ico from logo.svg instead).
 - **Game FPS.** Possible, with an extra free tool per OS:
   - Windows: PresentMon (Intel, MIT) reads the frame times every game sends to the screen
     (any API: DirectX, Vulkan, OpenGL). It needs admin rights or the user in the

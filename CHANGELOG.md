@@ -6,9 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 ## [Unreleased]
 
+### Added
+
+- "Disconnected" screen: after 30 seconds without data the dashboard says so (with the
+  time of the last data) instead of showing old numbers; it goes away when data returns.
+
 ### Fixed
 
 - Quitting SpareScreen from the tray also closes the SpareScreen window.
+- The app icon (the .exe, the tray and the iPhone home screen) was drawn wrong: the dark
+  tile showed up small in a corner. Icons are now rendered from the logo by
+  `packaging/make_icons.py`, with a multi-size .ico for Windows.
 
 ## [0.6.0] - 2026-10-25
 
