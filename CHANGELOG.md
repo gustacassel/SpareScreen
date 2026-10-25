@@ -4,6 +4,13 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The "Disconnected" screen is redone: truly centered on any screen (it could end up in a
+  corner on larger phones), black, with a big clock so it stays useful while waiting.
+
 ## [0.10.0] - 2026-10-25
 
 ### Added

@@ -225,10 +225,13 @@
   var lastData = 0;           // when the last reading arrived (ms)
   var offlineOn = false;
 
+  // A small wander every minute, around the center (burn-in).
   function moveOfflineBox() {
+    var shift = "translate(" + Math.round((Math.random() - 0.5) * 60) + "px," +
+                Math.round((Math.random() - 0.5) * 40) + "px)";
     var box = $("offline-box");
-    box.style.marginTop = Math.round(-90 + (Math.random() - 0.5) * 120) + "px";
-    box.style.marginLeft = "calc(-40% + " + Math.round((Math.random() - 0.5) * 80) + "px)";
+    box.style.webkitTransform = shift;
+    box.style.transform = shift;
   }
 
   function updateOffline(now) {
@@ -237,9 +240,10 @@
     offlineOn = !pairingOpen && Date.now() - since > OFFLINE_AFTER;
     $("offline").className = "offline" + (offlineOn ? " on" : "");
     if (!offlineOn) return;
+    $("offline-time").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
     var last = new Date(lastData);
     $("offline-detail").textContent = lastData
-      ? "Last data at " + pad(last.getHours()) + ":" + pad(last.getMinutes()) + " · trying to reconnect..."
+      ? "No data since " + pad(last.getHours()) + ":" + pad(last.getMinutes()) + " · trying again..."
       : "Waiting for the PC...";
     if (!wasOn || now.getSeconds() === 0) moveOfflineBox();
   }

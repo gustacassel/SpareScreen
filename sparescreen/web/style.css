@@ -321,13 +321,27 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 }
 
 /* Disconnected: covers the stale numbers; the box wanders a little every minute (burn-in) */
-.offline { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: none; background: var(--bg); }
-.offline.on { display: block; }
-.offline-box { position: absolute; left: 50%; top: 50%; width: 80%; max-width: 420px; margin-left: -40%; text-align: center; }
-.offline .offline-icon { width: 12vh; height: 12vh; color: var(--warn); }
-.offline-title { margin-top: 2vh; font-size: 7vh; font-weight: 300; }
-.offline-detail { margin-top: 1vh; font-size: 3.4vh; color: var(--muted); }
-.offline-hint { margin-top: 2vh; font-size: 2.8vh; color: var(--muted); }
+/* Black (kind to OLED), centered with flexbox; a clock keeps the screen useful meanwhile.
+   Sizes follow the narrow side: vw in portrait, vh in landscape (below). */
+.offline { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: none; background: #000; color: #8a929c; }
+.offline.on {
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+  -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+}
+.offline-box { padding: 0 6vw; text-align: center; }
+.offline-time { font-size: 24vw; font-weight: 200; line-height: 1; font-variant-numeric: tabular-nums; color: #9aa3ad; }
+.offline-status { margin-top: 4vw; font-size: 5vw; color: var(--warn); }
+.offline .offline-icon { width: 5vw; height: 5vw; margin-right: 2vw; vertical-align: -0.12em; }
+.offline-detail { margin-top: 2vw; font-size: 3.8vw; }
+.offline-hint { margin-top: 1vw; font-size: 3.4vw; color: #5d656e; }
+@media (orientation: landscape) {
+  .offline-time { font-size: 26vh; }
+  .offline-status { margin-top: 4vh; font-size: 5.5vh; }
+  .offline .offline-icon { width: 5.5vh; height: 5.5vh; margin-right: 2vh; }
+  .offline-detail { margin-top: 2vh; font-size: 4vh; }
+  .offline-hint { margin-top: 1vh; font-size: 3.6vh; }
+}
 
 .set-connect { padding: 4px 0 8px; border-bottom: 1px solid var(--track); }
 .set-connect:empty { display: none; }
