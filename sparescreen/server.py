@@ -307,5 +307,6 @@ def serve(host, port, sources, interval, config=None, pairing=None, info=None, p
         panel.hub = hub
     server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing, info, clients, panel))
     start_sampler(hub, sources, interval)  # only once the port is ours (a busy port fails above)
+    names.warm_up()
     server.daemon_threads = True
     return server
