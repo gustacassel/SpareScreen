@@ -4,6 +4,26 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- The SpareScreen window on the PC: phone address and pairing code (big, when a new
+  device asks to pair), connected devices (USB phones with battery, the paired Wi-Fi
+  device, open dashboards) and checks with fixes: install or open LibreHardwareMonitor
+  (turning on its web server), install adb, GPU, Wi-Fi, AI tools, now playing. Opens as an
+  app window (Edge/Chrome) when SpareScreen starts and from the tray icon.
+
+### Changed
+
+- One paired Wi-Fi device at a time: pairing a new one disconnects the previous one.
+- LibreHardwareMonitor's port is read from its settings instead of assuming 8085.
+
+### Security
+
+- Requests sent by other websites through the PC's browser (POSTs with a foreign
+  Origin) and pages reached under another hostname (DNS rebinding) are refused.
+
 ## [0.5.1] - 2026-10-24
 
 ### Changed

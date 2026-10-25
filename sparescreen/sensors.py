@@ -334,13 +334,21 @@ def parse_mac_temp(tool, output):
     return temp if temp is not None and 0 < temp < 150 else None
 
 
+def lhm_url():
+    """LibreHardwareMonitor's data URL, on the port set in its config (8085 by default)."""
+    from . import lhm
+
+    exe = lhm.find()
+    return f"http://localhost:{lhm.port(exe) if exe else lhm.DEFAULT_PORT}/data.json"
+
+
 class Sensors:
     """Combines the sources above and caches the result for a few seconds."""
 
     def __init__(self, refresh=2):
         self.refresh = refresh
         self.nvidia = NvidiaGpu()
-        self.lhm = LibreHardwareMonitor() if sys.platform == "win32" else None
+        self.lhm = LibreHardwareMonitor(lhm_url()) if sys.platform == "win32" else None
         self.mac_temp = MacCpuTemp() if sys.platform == "darwin" else None
         self._at = 0
         self._cache = {"cpu_temp": None, "cpu_power": None, "cpu_clock": None, "cpu_clock_max": None,

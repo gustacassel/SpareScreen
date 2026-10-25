@@ -1,11 +1,13 @@
 """HTTP server: serves the page and streams the data over Server-Sent Events."""
 
+import itertools
 import json
 import mimetypes
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlparse
 
 from . import images
 from .pairing import LOCAL_ADDRESSES
@@ -20,18 +22,46 @@ class Hub:
         self._cond = threading.Condition()
         self._version = 0
         self._payload = None
+        self.snapshot = {}  # the latest one, for the PC window's checks
 
     def publish(self, snapshot):
         payload = json.dumps(snapshot, separators=(",", ":"))
         with self._cond:
             self._version += 1
             self._payload = payload
+            self.snapshot = snapshot
             self._cond.notify_all()
 
     def wait_next(self, last_version, timeout):
         with self._cond:
             self._cond.wait_for(lambda: self._version != last_version, timeout)
             return self._version, self._payload
+
+
+class Clients:
+    """Devices with the dashboard open right now (one entry per open data stream)."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._ids = itertools.count(1)
+        self._open = {}
+
+    def add(self, info):
+        with self._lock:
+            key = next(self._ids)
+            self._open[key] = dict(info, since=time.time())
+            return key
+
+    def remove(self, key):
+        with self._lock:
+            self._open.pop(key, None)
+
+    def list(self):
+        with self._lock:
+            return [dict(c) for c in self._open.values()]
+
+
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
 
 
 def start_sampler(hub, sources, interval):
@@ -49,10 +79,20 @@ def start_sampler(hub, sources, interval):
     threading.Thread(target=loop, name="sampler", daemon=True).start()
 
 
-def make_handler(hub, config, pairing, info):
+def make_handler(hub, config, pairing, info, clients, panel):
     class Handler(BaseHTTPRequestHandler):
         def _trusted(self):
             return pairing is None or pairing.is_trusted(self.client_address[0], self.headers.get("Cookie"))
+
+        def _local(self):
+            """This PC, reached by its own name (a DNS-rebinding page would carry another Host)."""
+            host = (self.headers.get("Host") or "").rsplit(":", 1)[0].lower()
+            return self.client_address[0] in LOCAL_ADDRESSES and host in LOCAL_HOSTS
+
+        def _cross_site(self):
+            """A POST sent by another website's page: browsers always say where it comes from."""
+            origin = self.headers.get("Origin")
+            return bool(origin) and urlparse(origin).netloc.lower() != (self.headers.get("Host") or "").lower()
 
         def _send_json(self, status, data, headers=()):
             body = json.dumps(data).encode()
@@ -77,7 +117,15 @@ def make_handler(hub, config, pairing, info):
                 else:
                     self.send_error(401)
             elif path == "/auth":
-                self._send_json(200, {"paired": self._trusted(), "pairing": pairing is not None})
+                trusted = self._trusted()
+                if not trusted and pairing is not None:
+                    pairing.note_waiting(self.client_address[0], self.headers.get("User-Agent") or "")
+                self._send_json(200, {"paired": trusted, "pairing": pairing is not None})
+            elif path == "/panel/state":
+                if panel is None or not self._local():
+                    self._send_json(403, {})
+                else:
+                    self._send_json(200, panel.state(clients.list()))
             elif path == "/pair-code":
                 # Only this PC may read the code (the page on the PC can show it).
                 local = pairing is not None and self.client_address[0] in LOCAL_ADDRESSES
@@ -100,8 +148,15 @@ def make_handler(hub, config, pairing, info):
             except ValueError:
                 self.send_error(400)
                 return
-            if path == "/pair" and pairing is not None:
+            if self._cross_site():
+                self.send_error(403)
+            elif path == "/pair" and pairing is not None:
                 self._pair(data)
+            elif path == "/panel/action" and panel is not None:
+                if not self._local() or not isinstance(data, dict):
+                    self.send_error(403)
+                    return
+                self._send_json(200, panel.act(str(data.get("action", "")), data))
             elif path == "/config" and config is not None:
                 if not self._trusted():
                     self.send_error(401)
@@ -112,7 +167,7 @@ def make_handler(hub, config, pairing, info):
 
         def _pair(self, data):
             code = data.get("code", "") if isinstance(data, dict) else ""
-            token, error = pairing.pair(code, self.headers.get("User-Agent") or "")
+            token, error = pairing.pair(code, self.headers.get("User-Agent") or "", self.client_address[0])
             if token:
                 self._send_json(200, {"paired": True}, [("Set-Cookie", pairing.cookie_header(token))])
             elif error[0] == "locked":
@@ -155,9 +210,17 @@ def make_handler(hub, config, pairing, info):
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
+            address = self.client_address[0]
+            local = address in LOCAL_ADDRESSES
+            # Remote devices are tied to their pairing: unpaired (or replaced by a new device)
+            # means the stream closes, and the page asks for the code again.
+            digest = None if local or pairing is None else pairing.paired_hash(self.headers.get("Cookie"))
+            key = clients.add({"address": address, "local": local, "agent": self.headers.get("User-Agent") or ""})
             version = 0
             try:
                 while True:
+                    if digest and not pairing.knows(digest):
+                        break
                     new_version, payload = hub.wait_next(version, timeout=15)
                     if new_version == version or payload is None:
                         self.wfile.write(b": ping\n\n")
@@ -167,6 +230,8 @@ def make_handler(hub, config, pairing, info):
                     self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 pass  # the phone closed the page or lost the connection
+            finally:
+                clients.remove(key)
 
         def log_message(self, fmt, *args):
             if "/events" not in self.path:
@@ -175,12 +240,16 @@ def make_handler(hub, config, pairing, info):
     return Handler
 
 
-def serve(host, port, sources, interval, config=None, pairing=None, info=None):
+def serve(host, port, sources, interval, config=None, pairing=None, info=None, panel=None):
     """`config` (ConfigStore) receives the changes made on the settings screen.
     `pairing` (Pairing), when given, restricts the data to paired devices.
-    `info` ({"phone_url", "version"}) is shown on this PC's settings screen."""
+    `info` ({"phone_url", "version"}) is shown on this PC's settings screen.
+    `panel` (panel.Panel) answers the PC window, on this machine only."""
     hub = Hub()
-    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing, info))
+    clients = Clients()
+    if panel is not None:
+        panel.hub = hub
+    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing, info, clients, panel))
     start_sampler(hub, sources, interval)  # only once the port is ours (a busy port fails above)
     server.daemon_threads = True
     return server

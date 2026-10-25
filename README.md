@@ -65,15 +65,31 @@ and run it. No Python needed.
 | Linux | `sparescreen-linux-x64` | `chmod +x sparescreen-linux-x64` once, then `./sparescreen-linux-x64` |
 | macOS (Apple Silicon) | `sparescreen-macos-arm64` | `chmod +x sparescreen-macos-arm64`, then run it from Terminal. The first time macOS blocks it: *System Settings > Privacy & Security > Open Anyway*. |
 
-When you start it by hand it opens the dashboard in your browser; its settings show the
-address and pairing code for your phone. The files aren't code-signed yet, which is why
-the systems warn the first time.
+When you start it by hand it opens the **SpareScreen window** on the PC (see below).
+The files aren't code-signed yet, which is why the systems warn the first time.
 
 On Windows, double-clicking it runs SpareScreen in the background with an icon in the
-tray (next to the clock): no window to keep open. Right-click the icon to open the
-dashboard, see the phone address and pairing code, turn **Start with Windows** on or off,
-or quit. Windows 11 puts new icons behind the **^** arrow; drag it onto the taskbar to keep
-it in sight. Typed in a terminal, it runs right there, as before.
+tray (next to the clock): closing the window doesn't stop it. Click the icon to open the
+window again; right-click it for the dashboard, the phone address and pairing code,
+**Start with Windows** and Quit. Windows 11 puts new icons behind the **^** arrow; drag it
+onto the taskbar to keep it in sight. Typed in a terminal, it runs right there, as before.
+
+### The SpareScreen window (on the PC)
+
+A small window (an Edge or Chrome app window, no tabs; a browser tab where neither is
+installed) that shows, live:
+
+- **Connect a phone:** the Wi-Fi address and the pairing code. When a new device asks to
+  pair, it shows up at the top with the code in big digits.
+- **Devices:** phones on USB (with battery level and temperature), the paired Wi-Fi
+  device (with a Remove button) and every screen that has the dashboard open right now.
+- **Checks:** what works and what's missing, with a button to fix it where possible:
+  install or open LibreHardwareMonitor (CPU sensors on Windows), install adb (USB cable),
+  plus GPU, Wi-Fi, AI tools and now playing.
+- **Start with Windows** (or "Start when I log in" elsewhere) and **Open dashboard**.
+
+It answers only to this PC (`http://localhost:8765/panel.html`); other devices and other
+websites can't read it or press its buttons.
 
 ### From source
 
@@ -115,6 +131,10 @@ Any device with a browser works: Android, iPhone, iPad, a tablet, another comput
 The first time, the page asks for the pairing code: type it once and that device is
 remembered (even after the agent restarts). Devices that haven't paired can't see any
 data or change settings. The PC itself and phones on USB don't need the code.
+
+One Wi-Fi device is paired at a time: pairing a new one disconnects the previous one
+(it asks for the code again). The SpareScreen window shows who is asking to pair and
+lets you remove the paired device.
 
 ### With a USB cable (Android)
 
@@ -289,12 +309,18 @@ Windows only.
 - **NVIDIA:** read from `nvidia-smi`, which ships with the driver. Nothing to set up.
 - **Windows (CPU temperature, fans, drives, AMD/Intel GPUs):** Windows only exposes
   these sensors to programs that ship their own driver, so SpareScreen reads them from
-  [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor):
+  [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor).
+  The SpareScreen window does it for you: **Install** (with winget, in a console you can
+  watch) and **Open it**, which turns on its web server and "start minimized to the tray"
+  in its settings and starts it (Windows asks for admin rights, as LibreHardwareMonitor
+  always needs them). By hand:
   1. Install it: `winget install LibreHardwareMonitor.LibreHardwareMonitor`
   2. Run it as administrator.
-  3. Turn on *Options > Remote Web Server > Run* (port 8085, the default).
+  3. Turn on *Options > Remote Web Server > Run* (port 8085 by default; SpareScreen reads
+     the port from its settings).
   4. So you don't have to remember: also turn on *Options > Start Minimized*,
-     *Minimize To Tray* and *Run On Windows Startup*.
+     *Minimize To Tray* and *Run On Windows Startup* (the last one avoids the admin
+     prompt at every login).
 - **Linux:** CPU temperature (`k10temp`/`coretemp`) and fans come straight from `hwmon`;
   AMD GPUs from the `amdgpu` driver's sysfs files. No root needed.
 - **macOS:** Apple has no public, permission-free API for temperatures. If
@@ -415,8 +441,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - **Privacy on Wi-Fi:** only paired devices get data, but the connection itself is plain
   HTTP on your local network. On a network you don't trust, use USB only with
   `--host 127.0.0.1`.
-- **Lost the pairing code?** It's printed when the agent starts, and a new one is made
-  every time it starts. Paired devices keep working; `--reset-pairing` forgets them all.
+- **Lost the pairing code?** It's in the SpareScreen window (and printed when the agent
+  starts); a new one is made every time it starts. The paired device keeps working;
+  `--reset-pairing` forgets it.
 - **"Too many attempts":** after 5 wrong codes, pairing pauses for a minute.
 - **Red dot in the top corner:** the phone lost its connection to the agent.
   The page reconnects by itself when the agent is back.
@@ -451,6 +478,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/cli.py`: the command line (`python -m sparescreen` and the executables run it).
 - `sparescreen/autostart.py`: `--autostart` per OS.
 - `sparescreen/tray.py`: the tray icon in background mode (pystray).
+- `sparescreen/panel.py`, `sparescreen/appwindow.py` and `web/panel.*`: the SpareScreen
+  window on the PC (checks, devices, pairing) and how it opens as an app window.
+- `sparescreen/lhm.py`: finds, sets up, starts and installs LibreHardwareMonitor on Windows.
 - `packaging/entry.py` and `.github/workflows/release.yml`: the PyInstaller executables
   built for every release.
 - `sparescreen/dev.py`: `--dev` mode (a supervisor that restarts the agent, plus the code version).

@@ -97,6 +97,7 @@ class UsbBridge:
         self._ready = set()   # phones already set up on this connection
         self._warned = set()  # phones we have already warned about some problem
         self.batteries = {}   # serial -> latest battery reading (read by PhoneSource)
+        self.phones = {}      # serial -> model of the phones ready right now (for the PC window)
 
     def start(self):
         threading.Thread(target=self._loop, name="usb", daemon=True).start()
@@ -140,6 +141,7 @@ class UsbBridge:
 
         # Phone disconnected: set it up again the next time it is plugged in.
         connected = {s for s, (state, _) in devices.items() if state == "device"}
+        self.phones = {s: devices[s][1] for s in connected}
         for serial in self._ready - connected:
             print(f"[usb] phone {serial} disconnected.", flush=True)
         self._ready &= connected

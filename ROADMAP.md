@@ -105,6 +105,26 @@ and with no mandatory app. That's this project's niche.
 
 ## To think about
 
+- **"Disconnected" screen.** Today only the colored dot in the top bar shows that the
+  connection dropped. If the page gets no data for ~30 s, switch to a clear full-screen
+  "Disconnected, trying again..." state (with the time of the last data), and go back to
+  the dashboard by itself when data returns.
+- **Address by PC name, not just IP.** The IP can change (DHCP); the name doesn't. Two ways,
+  neither universal: many home routers put DHCP hostnames in their DNS (`http://PCNAME:8765`,
+  sometimes `PCNAME.lan` / `.home`), and mDNS answers `PCNAME.local` (Windows 10+, Linux
+  with Avahi, macOS; iPhones resolve it, Android only from 12). Idea: the agent checks
+  which names resolve to its own IP and the PC window shows the best one first, with the
+  IP as fallback; the phone could also remember the last address that worked.
+- **Windows .exe icon looks broken** in Explorer: the dark rounded background shows
+  shifted to the top-left and smaller than the drawing. Probably the PNG -> .ico
+  conversion at build time (build a proper multi-size .ico from logo.svg instead).
+- **Game FPS.** Possible, with an extra free tool per OS:
+  - Windows: PresentMon (Intel, MIT) reads the frame times every game sends to the screen
+    (any API: DirectX, Vulkan, OpenGL). It needs admin rights or the user in the
+    "Performance Log Users" group, so it fits next to the LibreHardwareMonitor handling.
+  - Linux: MangoHud's log files (when the game runs with MangoHud).
+  - macOS: no practical free way for other apps' games.
+
 - ✅ **Screen burn-in** (done: pixel shift every minute and night mode; still to do:
   real backlight control over USB and dimming when the PC is locked). A dashboard showing the same thing in the same place for hours can
   burn in the screen, like the "always on display" complaints on phones. It's a real

@@ -14,19 +14,21 @@ class Pairing:
 
 class TrayMenuTest(unittest.TestCase):
     def test_entries(self):
-        items = tray.entries("http://localhost:8765", "http://192.168.0.5:8765", Pairing(), ["--no-usb"])
+        items = tray.entries("http://localhost:8765", "http://localhost:8765/panel.html",
+                             "http://192.168.0.5:8765", Pairing(), ["--no-usb"])
         labels = [label() if callable(label) else label for label, _, _ in items]
-        self.assertEqual(labels[:3], ["Open dashboard", "Phone: http://192.168.0.5:8765", "Pairing code: 123456"])
+        self.assertEqual(labels[:4], ["Open SpareScreen", "Open dashboard", "Phone: http://192.168.0.5:8765",
+                                      "Pairing code: 123456"])
         self.assertEqual(labels[-1], "Quit")
         self.assertTrue(items[0][2]["default"])
-        self.assertIsNone(items[1][1])  # information only
+        self.assertIsNone(items[2][1])  # information only
 
     def test_no_phone_address_or_pairing(self):
-        labels = [label for label, _, _ in tray.entries("http://localhost:8765", None, None, [])]
-        self.assertEqual(labels, ["Open dashboard", "-", tray.start_label(), "Quit"])
+        labels = [label for label, _, _ in tray.entries("http://localhost:8765", "w", None, None, [])]
+        self.assertEqual(labels, ["Open SpareScreen", "Open dashboard", "-", tray.start_label(), "Quit"])
 
     def test_start_at_login_toggles(self):
-        toggle = next(action for label, action, _ in tray.entries("u", None, None, ["--no-usb"])
+        toggle = next(action for label, action, _ in tray.entries("u", "w", None, None, ["--no-usb"])
                       if label == tray.start_label())
         with mock.patch.object(tray.autostart, "status", return_value=None), \
                 mock.patch.object(tray.autostart, "enable") as enable:

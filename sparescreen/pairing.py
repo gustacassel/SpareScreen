@@ -6,6 +6,9 @@ hash of each token is stored on the PC (~/.sparescreen/devices.json).
 
 Requests from this machine are always trusted: the PC's own browser and phones
 on USB (adb reverse makes them connect through 127.0.0.1).
+
+One paired device at a time: pairing a new one forgets the previous one (the PC
+window shows the code and who is asking for it). USB and the PC itself don't count.
 """
 
 import hashlib
@@ -22,6 +25,7 @@ COOKIE = "sparescreen_token"
 LOCAL_ADDRESSES = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
 MAX_FAILURES = 5     # wrong codes in a row before a short lockout
 LOCKOUT = 60         # seconds
+WAITING_FOR = 120    # seconds a device that asked to pair shows up as "waiting"
 
 
 def _hash(token):
@@ -29,13 +33,15 @@ def _hash(token):
 
 
 class Pairing:
-    def __init__(self, path=DEVICES_FILE, trust_localhost=True):
+    def __init__(self, path=DEVICES_FILE, trust_localhost=True, single=True):
         self.path = path
         self.trust_localhost = trust_localhost
+        self.single = single
         self.code = f"{secrets.randbelow(10 ** 6):06d}"
         self._lock = threading.Lock()
         self._failures = 0
         self._locked_until = 0
+        self._waiting = None  # the last device that asked to pair: {"address", "device", "at"}
         try:
             self._devices = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -44,14 +50,38 @@ class Pairing:
     def is_trusted(self, address, cookie_header):
         if self.trust_localhost and address in LOCAL_ADDRESSES:
             return True
+        return self.paired_hash(cookie_header) is not None
+
+    def paired_hash(self, cookie_header):
+        """Hash of the cookie's token if it belongs to a paired device, else None."""
         token = self._token(cookie_header)
         if not token:
-            return False
+            return None
         digest = _hash(token)
+        return digest if self.knows(digest) else None
+
+    def knows(self, digest):
         with self._lock:
             return any(secrets.compare_digest(d.get("hash", ""), digest) for d in self._devices)
 
-    def pair(self, code, device=""):
+    def note_waiting(self, address, device):
+        """A device that isn't paired opened the page: the PC window shows it with the code."""
+        with self._lock:
+            self._waiting = {"address": address, "device": device[:120], "at": time.time()}
+
+    def waiting(self):
+        with self._lock:
+            if self._waiting and time.time() - self._waiting["at"] < WAITING_FOR:
+                return dict(self._waiting)
+            return None
+
+    def devices(self):
+        """Paired devices, without their hashes: [{"device", "address", "added"}]."""
+        with self._lock:
+            return [{"device": d.get("device", ""), "address": d.get("address"), "added": d.get("added")}
+                    for d in self._devices]
+
+    def pair(self, code, device="", address=None):
         """Returns (token, None) on success or (None, error), where error is
         ("wrong", attempts_left) or ("locked", seconds_left)."""
         with self._lock:
@@ -67,9 +97,20 @@ class Pairing:
                 return None, ("wrong", MAX_FAILURES - self._failures)
             self._failures = 0
             token = secrets.token_urlsafe(32)
-            self._devices.append({"hash": _hash(token), "added": int(now), "device": device[:120]})
+            if self.single:
+                self._devices = []  # the new device replaces the previous one
+            self._devices.append({"hash": _hash(token), "added": int(now), "device": device[:120],
+                                  "address": address})
+            self._waiting = None
             self._save()
             return token, None
+
+    def remove(self, index):
+        """Forget one paired device (its position in devices())."""
+        with self._lock:
+            if 0 <= index < len(self._devices):
+                del self._devices[index]
+                self._save()
 
     def reset(self):
         """Forget every paired device."""

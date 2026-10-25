@@ -5,13 +5,14 @@ import os
 import socket
 import subprocess
 import sys
-import webbrowser
 from pathlib import Path
 
 from . import __version__, autostart, dev, tray
+from .appwindow import open_window
 from .config import ConfigStore
 from .demo import demo_sources
 from .pairing import Pairing
+from .panel import Panel
 from .server import serve
 from .sources import default_sources
 from .usb import PhoneSource, UsbBridge, find_adb
@@ -192,14 +193,17 @@ def main():
         pairing.reset()
     phone_url = f"http://{lan_ip()}:{args.port}" if args.host in ("0.0.0.0", "::") else None
     local_url = f"http://localhost:{args.port}"
+    window_url = f"{local_url}/panel.html"  # the PC window: checks, devices, pairing
+    info = {"phone_url": phone_url, "version": __version__}
+    panel = Panel(pairing, bridge, usb=not args.no_usb, info=info, local_url=local_url,
+                  autostart_args=autostart_args())
     try:
-        server = serve(args.host, args.port, sources, args.interval, config, pairing,
-                       info={"phone_url": phone_url, "version": __version__})
+        server = serve(args.host, args.port, sources, args.interval, config, pairing, info=info, panel=panel)
     except OSError as exc:
         print(f"Can't use port {args.port} ({exc}). Is SpareScreen already running? "
-              f"Open {local_url}, or pick another port with --port.", flush=True)
+              f"Open {window_url}, or pick another port with --port.", flush=True)
         if frozen and (greet or not args.background):
-            webbrowser.open(local_url)  # double-clicked again: show the one that is running
+            open_window(window_url)  # double-clicked again: show the one that is running
         return 1
     print(f"SpareScreen running on port {args.port}." + (" Demo mode: showing made-up data." if args.demo else ""))
     if phone_url:
@@ -212,13 +216,13 @@ def main():
         bridge.start()
     elif not args.no_usb:
         print("  USB:   adb not found. Install Android Platform Tools to use the cable (see the README).")
-    print(f"  On this PC: {local_url} (address and pairing code are in its settings)")
+    print(f"  On this PC: {local_url} (dashboard) and {window_url} (checks, devices, pairing)")
     if frozen and (greet or not args.background):
-        webbrowser.open(local_url)  # the packaged app has no terminal to read: show the page
+        open_window(window_url)  # the packaged app has no terminal to read: show the PC window
     if args.background and not args.no_tray and tray.available():
         print("Tray icon on; quit from its menu.", flush=True)
         try:
-            tray.run(server, local_url, phone_url, pairing, autostart_args(), greet=greet)
+            tray.run(server, local_url, window_url, phone_url, pairing, autostart_args(), greet=greet)
         finally:
             server.server_close()
         return

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpareScreen</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <!-- The PC window: what's missing, who is connected and pairing (this PC only). -->
+  <header class="head">
+    <img src="icon.svg" alt="" class="logo">
+    <div class="head-text">
+      <div class="app">SpareScreen <span id="version" class="muted"></span></div>
+      <div id="running" class="muted small">Starting...</div>
+    </div>
+    <button id="open-dashboard" class="btn">Open dashboard</button>
+  </header>
+
+  <div id="message" class="message"></div>
+
+  <section class="card" id="waiting-card">
+    <h2>New device wants to connect</h2>
+    <p><b id="waiting-name"></b> <span id="waiting-address" class="muted"></span></p>
+    <p>Type this code on it:</p>
+    <div id="waiting-code" class="code big"></div>
+    <p class="muted small">It will replace the device paired now (one at a time).</p>
+  </section>
+
+  <section class="card">
+    <h2>Connect a phone</h2>
+    <div class="connect">
+      <div class="connect-item">
+        <div class="label">Wi-Fi: open on the phone</div>
+        <div id="phone-url" class="url">--</div>
+      </div>
+      <div class="connect-item">
+        <div class="label">Pairing code</div>
+        <div id="code" class="code">------</div>
+      </div>
+    </div>
+    <p class="muted small">USB: plug in an Android phone with USB debugging on and the page opens by
+      itself (no code needed). Only one device is paired at a time: pairing a new one replaces it.</p>
+  </section>
+
+  <section class="card">
+    <h2>Devices</h2>
+    <ul id="devices" class="rows"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Checks</h2>
+    <ul id="checks" class="rows"></ul>
+  </section>
+
+  <footer class="foot">
+    <label class="switch"><input type="checkbox" id="autostart"> <span id="autostart-label">Start with Windows</span></label>
+    <span class="muted small">Closing this window keeps SpareScreen running (tray icon).</span>
+  </footer>
+
+  <script src="panel.js"></script>
+</body>
+</html>
