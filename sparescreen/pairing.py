@@ -11,6 +11,8 @@ One paired device at a time: pairing a new one forgets the previous one (the PC
 window shows the code and who is asking for it). USB and the PC itself don't count.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os
@@ -19,6 +21,9 @@ import threading
 import time
 from http.cookies import SimpleCookie
 from pathlib import Path
+from typing import Optional
+
+from .shapes import Json
 
 DEVICES_FILE = Path.home() / ".sparescreen" / "devices.json"
 COOKIE = "sparescreen_token"
@@ -29,32 +34,32 @@ WAITING_FOR = 120    # seconds a device that asked to pair shows up as "waiting"
 HANDOFF_FOR = 60     # seconds a code to move a device to another address of the PC lasts
 
 
-def _hash(token):
+def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
 class Pairing:
-    def __init__(self, path=DEVICES_FILE, trust_localhost=True, single=True):
+    def __init__(self, path: Path = DEVICES_FILE, trust_localhost: bool = True, single: bool = True) -> None:
         self.path = path
         self.trust_localhost = trust_localhost
         self.single = single
         self.code = f"{secrets.randbelow(10 ** 6):06d}"
         self._lock = threading.Lock()
         self._failures = 0
-        self._locked_until = 0
-        self._waiting = None  # the last device that asked to pair: {"address", "device", "at"}
-        self._handoffs = {}   # one-time code -> (device hash, valid until)
+        self._locked_until: float = 0
+        self._waiting: Optional[Json] = None  # the last device that asked to pair: {"address", "device", "at"}
+        self._handoffs: dict[str, tuple[str, float]] = {}  # one-time code -> (device hash, valid until)
         try:
-            self._devices = json.loads(path.read_text(encoding="utf-8"))
+            self._devices: list[Json] = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             self._devices = []
 
-    def is_trusted(self, address, cookie_header):
+    def is_trusted(self, address: str, cookie_header: Optional[str]) -> bool:
         if self.trust_localhost and address in LOCAL_ADDRESSES:
             return True
         return self.paired_hash(cookie_header) is not None
 
-    def paired_hash(self, cookie_header):
+    def paired_hash(self, cookie_header: Optional[str]) -> Optional[str]:
         """Hash of the cookie's token if it belongs to a paired device, else None."""
         token = self._token(cookie_header)
         if not token:
@@ -62,28 +67,29 @@ class Pairing:
         digest = _hash(token)
         return digest if self.knows(digest) else None
 
-    def knows(self, digest):
+    def knows(self, digest: str) -> bool:
         with self._lock:
             return any(secrets.compare_digest(d.get("hash", ""), digest) for d in self._devices)
 
-    def note_waiting(self, address, device):
+    def note_waiting(self, address: str, device: str) -> None:
         """A device that isn't paired opened the page: the PC window shows it with the code."""
         with self._lock:
             self._waiting = {"address": address, "device": device[:120], "at": time.time()}
 
-    def waiting(self):
+    def waiting(self) -> Optional[Json]:
         with self._lock:
             if self._waiting and time.time() - self._waiting["at"] < WAITING_FOR:
                 return dict(self._waiting)
             return None
 
-    def devices(self):
+    def devices(self) -> list[Json]:
         """Paired devices, without their hashes: [{"device", "address", "added"}]."""
         with self._lock:
             return [{"device": d.get("device", ""), "address": d.get("address"), "added": d.get("added")}
                     for d in self._devices]
 
-    def pair(self, code, device="", address=None):
+    def pair(self, code: object, device: str = "",
+             address: Optional[str] = None) -> tuple[Optional[str], Optional[tuple[str, int]]]:
         """Returns (token, None) on success or (None, error), where error is
         ("wrong", attempts_left) or ("locked", seconds_left)."""
         with self._lock:
@@ -107,7 +113,7 @@ class Pairing:
             self._save()
             return token, None
 
-    def handoff(self, digest):
+    def handoff(self, digest: str) -> str:
         """A one-time code that moves a paired device to another address of this PC (the
         browser keeps the cookie per address, so it would have to pair again)."""
         code = secrets.token_urlsafe(24)
@@ -117,7 +123,7 @@ class Pairing:
             self._handoffs[code] = (digest, now + HANDOFF_FOR)
         return code
 
-    def redeem(self, code, address=None):
+    def redeem(self, code: str, address: Optional[str] = None) -> Optional[str]:
         """The new token for the device the code was made for, or None. Single use."""
         with self._lock:
             digest, until = self._handoffs.pop(str(code), (None, 0))
@@ -133,24 +139,24 @@ class Pairing:
                     return token
             return None
 
-    def remove(self, index):
+    def remove(self, index: int) -> None:
         """Forget one paired device (its position in devices())."""
         with self._lock:
             if 0 <= index < len(self._devices):
                 del self._devices[index]
                 self._save()
 
-    def reset(self):
+    def reset(self) -> None:
         """Forget every paired device."""
         with self._lock:
             self._devices = []
             self._save()
 
-    def cookie_header(self, token):
+    def cookie_header(self, token: str) -> str:
         ten_years = 10 * 365 * 24 * 3600
         return f"{COOKIE}={token}; Max-Age={ten_years}; Path=/; HttpOnly; SameSite=Strict"
 
-    def _token(self, cookie_header):
+    def _token(self, cookie_header: Optional[str]) -> Optional[str]:
         if not cookie_header:
             return None
         try:
@@ -159,7 +165,7 @@ class Pairing:
             return None
         return morsel.value if morsel else None
 
-    def _save(self):
+    def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(self._devices, indent=2), encoding="utf-8")

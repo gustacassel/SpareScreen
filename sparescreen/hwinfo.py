@@ -1,5 +1,7 @@
 """Short hardware names (read once, when the agent starts)."""
 
+from __future__ import annotations
+
 import json
 import platform
 import re
@@ -12,7 +14,7 @@ _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _MEMORY_TYPES = {24: "DDR3", 26: "DDR4", 29: "LPDDR3", 30: "LPDDR4", 34: "DDR5", 35: "LPDDR5"}
 
 
-def short_cpu_name(raw):
+def short_cpu_name(raw: str) -> str:
     """'AMD Ryzen 5 7600X 6-Core Processor' -> 'Ryzen 5 7600X';
     '13th Gen Intel(R) Core(TM) i7-13700K' -> 'Core i7-13700K'."""
     name = re.sub(r"\((R|TM|tm)\)", "", raw)
@@ -20,7 +22,7 @@ def short_cpu_name(raw):
     return " ".join(name.split())
 
 
-def cpu_name():
+def cpu_name() -> str:
     try:
         if sys.platform == "win32":
             import winreg
@@ -39,14 +41,14 @@ def cpu_name():
     return short_cpu_name(raw or "")
 
 
-def short_gpu_name(raw):
+def short_gpu_name(raw: str) -> str:
     """'NVIDIA GeForce RTX 5060' -> 'RTX 5060'; 'AMD Radeon RX 7800 XT' -> 'Radeon RX 7800 XT';
     'Intel(R) UHD Graphics 770' -> 'UHD Graphics 770'."""
     name = re.sub(r"\((R|TM|tm)\)|\bNVIDIA\b|\bGeForce\b|\bAMD\b|\bIntel\b", "", raw)
     return " ".join(name.split()) or raw
 
 
-def ram_name(total_bytes):
+def ram_name(total_bytes: int) -> str:
     """'32 GB DDR5-6000' on Windows; just '32 GB' on other systems for now."""
     name = f"{round(total_bytes / 2**30)} GB"
     if sys.platform != "win32":

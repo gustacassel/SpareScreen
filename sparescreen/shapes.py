@@ -6,7 +6,7 @@ are described here. `Json` is for the looser ones.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Protocol, TypedDict
+from typing import Any, Dict, List, Optional, Protocol, TypedDict
 
 Json = Dict[str, Any]  # a JSON-like dict: what the sources send to the page
 
@@ -17,6 +17,18 @@ class Source(Protocol):
     name: str
 
     def read(self) -> Any: ...
+
+
+class Activity(Protocol):
+    """What the PC window needs from the activity source (the real one or the demo's)."""
+
+    name: str
+    running: List[Json]     # programs the window offers as games: [{"exe", "name"}]
+    game_exe: Optional[str]  # the current game's exe, for "not a game"
+
+    def read(self) -> Json: ...
+
+    def refresh_soon(self) -> None: ...  # look again on the next reading, not seconds later
 
 
 class Art(TypedDict):

@@ -1,5 +1,7 @@
 """HTTP server: serves the page and streams the data over Server-Sent Events."""
 
+from __future__ import annotations
+
 import itertools
 import json
 import mimetypes
@@ -7,16 +9,23 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional
 from urllib.parse import parse_qs, urlparse
 
 from . import images, names
 from .pairing import LOCAL_ADDRESSES
+from .shapes import Json, Source
+
+if TYPE_CHECKING:
+    from .config import ConfigStore
+    from .pairing import Pairing
+    from .panel import Panel
 
 WEB_DIR = Path(__file__).parent / "web"
 APP_DIR = WEB_DIR / "app"
 
 
-def app_js():
+def app_js() -> str:
     """The dashboard's script: the files in web/app/ joined in order inside one function,
     so they share their variables like a single file (no modules on old browsers)."""
     parts = [path.read_text(encoding="utf-8") for path in sorted(APP_DIR.glob("*.js"))]
@@ -26,13 +35,13 @@ def app_js():
 class Hub:
     """Holds the latest snapshot and wakes the clients when a new one arrives."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._cond = threading.Condition()
         self._version = 0
-        self._payload = None
-        self.snapshot = {}  # the latest one, for the PC window's checks
+        self._payload: Optional[str] = None
+        self.snapshot: Json = {}  # the latest one, for the PC window's checks
 
-    def publish(self, snapshot):
+    def publish(self, snapshot: Json) -> None:
         payload = json.dumps(snapshot, separators=(",", ":"))
         with self._cond:
             self._version += 1
@@ -40,7 +49,7 @@ class Hub:
             self.snapshot = snapshot
             self._cond.notify_all()
 
-    def wait_next(self, last_version, timeout):
+    def wait_next(self, last_version: int, timeout: Optional[float]) -> tuple[int, Optional[str]]:
         with self._cond:
             self._cond.wait_for(lambda: self._version != last_version, timeout)
             return self._version, self._payload
@@ -49,22 +58,22 @@ class Hub:
 class Clients:
     """Devices with the dashboard open right now (one entry per open data stream)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._lock = threading.Lock()
         self._ids = itertools.count(1)
-        self._open = {}
+        self._open: dict[int, Json] = {}
 
-    def add(self, info):
+    def add(self, info: Json) -> int:
         with self._lock:
             key = next(self._ids)
             self._open[key] = dict(info, since=time.time())
             return key
 
-    def remove(self, key):
+    def remove(self, key: int) -> None:
         with self._lock:
             self._open.pop(key, None)
 
-    def list(self):
+    def list(self) -> List[Json]:  # typing.List: `list` here is this method
         with self._lock:
             return [dict(c) for c in self._open.values()]
 
@@ -72,10 +81,10 @@ class Clients:
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
 
 
-def start_sampler(hub, sources, interval):
-    def loop():
+def start_sampler(hub: Hub, sources: list[Source], interval: float) -> None:
+    def loop() -> None:
         while True:
-            snapshot = {"time": time.time()}
+            snapshot: Json = {"time": time.time()}
             for source in sources:
                 try:
                     snapshot[source.name] = source.read()
@@ -87,22 +96,23 @@ def start_sampler(hub, sources, interval):
     threading.Thread(target=loop, name="sampler", daemon=True).start()
 
 
-def make_handler(hub, config, pairing, info, clients, panel):
+def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pairing], info: Optional[Json],
+                 clients: Clients, panel: Optional[Panel]) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
-        def _trusted(self):
+        def _trusted(self) -> bool:
             return pairing is None or pairing.is_trusted(self.client_address[0], self.headers.get("Cookie"))
 
-        def _local(self):
+        def _local(self) -> bool:
             """This PC, reached by its own name (a DNS-rebinding page would carry another Host)."""
             host = (self.headers.get("Host") or "").rsplit(":", 1)[0].lower()
             return self.client_address[0] in LOCAL_ADDRESSES and host in LOCAL_HOSTS
 
-        def _cross_site(self):
+        def _cross_site(self) -> bool:
             """A POST sent by another website's page: browsers always say where it comes from."""
             origin = self.headers.get("Origin")
             return bool(origin) and urlparse(origin).netloc.lower() != (self.headers.get("Host") or "").lower()
 
-        def _send_json(self, status, data, headers=()):
+        def _send_json(self, status: int, data: Json, headers: Iterable[tuple[str, str]] = ()) -> None:
             body = json.dumps(data).encode()
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
@@ -113,11 +123,11 @@ def make_handler(hub, config, pairing, info, clients, panel):
             self.end_headers()
             self.wfile.write(body)
 
-        def _read_json(self):
+        def _read_json(self) -> Any:
             size = min(int(self.headers.get("Content-Length") or 0), 10_000)
             return json.loads(self.rfile.read(size) or b"{}")
 
-        def do_GET(self):
+        def do_GET(self) -> None:
             path, _, query = self.path.partition("?")
             if path in ("/", "/index.html") and "handoff=" in query:
                 self._redeem(parse_qs(query).get("handoff", [""])[0])
@@ -127,8 +137,9 @@ def make_handler(hub, config, pairing, info, clients, panel):
                 self._send_json(200, {"id": names.INSTANCE}, [("Access-Control-Allow-Origin", "*")])
             elif path == "/names":
                 if self._trusted():
-                    self._send_json(200, {"id": names.INSTANCE, "names": names.candidates(),
-                                          "port": self.server.server_address[1]})
+                    address = self.server.server_address
+                    assert isinstance(address, tuple)  # (host, port): this server is always TCP
+                    self._send_json(200, {"id": names.INSTANCE, "names": names.candidates(), "port": address[1]})
                 else:
                     self._send_json(401, {})
             elif path == "/events":
@@ -154,7 +165,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
             elif path == "/pair-code":
                 # Only this PC may read the code (the page on the PC can show it).
                 local = pairing is not None and self.client_address[0] in LOCAL_ADDRESSES
-                self._send_json(200 if local else 403, {"code": pairing.code} if local else {})
+                self._send_json(200 if local else 403, {"code": pairing.code} if local and pairing else {})
             elif path.startswith("/art/"):
                 self._serve_art(path[len("/art/"):])
             elif path == "/info":
@@ -166,7 +177,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
             else:
                 self._serve_static("index.html" if path == "/" else path.lstrip("/"))
 
-        def do_POST(self):
+        def do_POST(self) -> None:
             path = self.path.split("?", 1)[0]
             try:
                 data = self._read_json()
@@ -190,7 +201,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
                 if not self._trusted():
                     self.send_error(401)
                     return
-                self._send_json(200, {"code": pairing.handoff(digest) if digest else None})
+                self._send_json(200, {"code": pairing.handoff(digest) if digest and pairing else None})
             elif path == "/panel/action" and panel is not None:
                 if not self._local() or not isinstance(data, dict):
                     self.send_error(403)
@@ -204,27 +215,30 @@ def make_handler(hub, config, pairing, info, clients, panel):
             else:
                 self.send_error(404)
 
-        def _pair(self, data):
+        def _pair(self, data: Any) -> None:
+            assert pairing is not None  # only called with pairing on
             code = data.get("code", "") if isinstance(data, dict) else ""
             token, error = pairing.pair(code, self.headers.get("User-Agent") or "", self.client_address[0])
             if token:
                 self._send_json(200, {"paired": True}, [("Set-Cookie", pairing.cookie_header(token))])
-            elif error[0] == "locked":
+                return
+            assert error is not None  # no token comes with an error
+            if error[0] == "locked":
                 self._send_json(429, {"error": "locked", "retry_in": error[1]})
             else:
                 self._send_json(403, {"error": "wrong", "attempts_left": error[1]})
 
-        def _redeem(self, code):
+        def _redeem(self, code: str) -> None:
             """Arriving at a new address with a handoff code: set this address's cookie."""
             token = pairing.redeem(code, self.client_address[0]) if pairing is not None and code else None
             self.send_response(302)
             self.send_header("Location", "/")
-            if token:
+            if token and pairing:
                 self.send_header("Set-Cookie", pairing.cookie_header(token))
             self.send_header("Content-Length", "0")
             self.end_headers()
 
-        def _serve_art(self, key):
+        def _serve_art(self, key: str) -> None:
             # Covers and icons reveal what you're playing, so they need pairing like the data.
             item = images.get(key) if self._trusted() else None
             if not item:
@@ -238,7 +252,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
             self.end_headers()
             self.wfile.write(data)
 
-        def _send_body(self, body, ctype):
+        def _send_body(self, body: bytes, ctype: str) -> None:
             self.send_response(200)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
@@ -246,7 +260,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
             self.end_headers()
             self.wfile.write(body)
 
-        def _serve_static(self, name):
+        def _serve_static(self, name: str) -> None:
             if name == "app.js":
                 self._send_body(app_js().encode(), "text/javascript; charset=utf-8")
                 return
@@ -260,7 +274,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
                 ctype += "; charset=utf-8"
             self._send_body(body, ctype)
 
-        def _stream_alive(self):
+        def _stream_alive(self) -> None:
             """An open stream that only says "still here": the PC window closes itself when
             it drops, so quitting SpareScreen from the tray also closes the window."""
             self.send_response(200)
@@ -275,7 +289,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
             except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 pass
 
-        def _stream_events(self):
+        def _stream_events(self) -> None:
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
@@ -289,7 +303,7 @@ def make_handler(hub, config, pairing, info, clients, panel):
             version = 0
             try:
                 while True:
-                    if digest and not pairing.knows(digest):
+                    if digest and pairing and not pairing.knows(digest):
                         break
                     new_version, payload = hub.wait_next(version, timeout=15)
                     if new_version == version or payload is None:
@@ -303,14 +317,16 @@ def make_handler(hub, config, pairing, info, clients, panel):
             finally:
                 clients.remove(key)
 
-        def log_message(self, fmt, *args):
+        def log_message(self, fmt: str, *args: Any) -> None:
             if "/events" not in self.path:
                 super().log_message(fmt, *args)
 
     return Handler
 
 
-def serve(host, port, sources, interval, config=None, pairing=None, info=None, panel=None):
+def serve(host: str, port: int, sources: list[Source], interval: float, config: Optional[ConfigStore] = None,
+          pairing: Optional[Pairing] = None, info: Optional[Json] = None,
+          panel: Optional[Panel] = None) -> ThreadingHTTPServer:
     """`config` (ConfigStore) receives the changes made on the settings screen.
     `pairing` (Pairing), when given, restricts the data to paired devices.
     `info` ({"phone_url", "version"}) is shown on this PC's settings screen.

@@ -10,6 +10,8 @@ The first two are internal Claude Code formats and may change between
 versions, so everything here tolerates missing fields.
 """
 
+from __future__ import annotations
+
 import glob
 import json
 import os
@@ -18,10 +20,12 @@ import time
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Callable
 
 import psutil
 
-from .claude_probe import PROBE_DIR
+from .claude_probe import PROBE_DIR, LimitsProbe
+from .shapes import Json
 from .statusline import load_limits
 
 BUCKET = 15 * 60          # tokens are summed in 15-minute blocks
@@ -33,7 +37,7 @@ LIMIT_LABELS = {"five_hour": ("5 hours", False), "seven_day": ("Week", True)}
 RECENT = 15 * 60  # a session touched this recently means Claude is "in use"
 
 
-def limit_label(key):
+def limit_label(key: str) -> tuple[str, bool] | None:
     """('5 hours', weekly?) for a limit key; model-specific weekly limits such as
     'seven_day_opus' become 'Week · Opus'. Unknown keys return None."""
     if key in LIMIT_LABELS:
@@ -43,11 +47,11 @@ def limit_label(key):
     return None
 
 
-def claude_home():
+def claude_home() -> Path:
     return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
 
 
-def window_label(minutes):
+def window_label(minutes: float) -> str:
     """Usage window length as a short label: 299 -> '5 hours', 10079 -> 'Week'."""
     hours = minutes / 60
     if hours >= 6.5 * 24:
@@ -58,13 +62,13 @@ def window_label(minutes):
     return f"{round(hours)} hours"
 
 
-def _same_folder(a, b):
+def _same_folder(a: str | Path | None, b: str | Path) -> bool:
     if not a:
         return False
     return os.path.normcase(os.path.abspath(str(a))) == os.path.normcase(os.path.abspath(str(b)))
 
 
-def model_label(model):
+def model_label(model: str | None) -> str:
     """'claude-opus-5-5' -> 'Opus 5.5'; 'claude-opus-5' -> 'Opus 5'; anything else is shown as it is."""
     match = re.match(r"claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:\b|$)", model or "")
     if match:
@@ -80,18 +84,21 @@ class ClaudeSource:
 
     name = "claude"
 
-    def __init__(self, home=None, token_refresh=5, probe=None, probe_enabled=None):
+    def __init__(self, home: str | Path | None = None, token_refresh: float = 5,
+                 probe: LimitsProbe | None = None, probe_enabled: Callable[[], bool] | None = None) -> None:
         """`probe` (LimitsProbe) checks the limits headlessly when `probe_enabled()` is true."""
         self.home = Path(home) if home else claude_home()
         self.probe = probe
         self.probe_enabled = probe_enabled or (lambda: False)
         self.token_refresh = token_refresh
-        self._token_at = 0
-        self._offsets = {}  # file -> how many bytes have been read already
-        self._seen = {}     # (message id, requestId) -> block; the same response shows up on several lines
-        self._buckets = defaultdict(lambda: [0, 0, 0, 0])  # (block, model) -> input, output, cache, responses
+        self._token_at: float = 0
+        self._offsets: dict[str, int] = {}  # file -> how many bytes have been read already
+        # (message id, requestId) -> block; the same response shows up on several lines
+        self._seen: dict[tuple[Any, Any], int] = {}
+        # (block, model) -> input, output, cache, responses
+        self._buckets: defaultdict[tuple[int, str], list[int]] = defaultdict(lambda: [0, 0, 0, 0])
 
-    def read(self):
+    def read(self) -> Json:
         if not self.home.is_dir():
             return {"installed": False}
         now = time.time()
@@ -101,7 +108,7 @@ class ClaudeSource:
         sessions = self._sessions()
         saved = load_limits()
         probing = bool(self.probe and self.probe_enabled())
-        if probing:
+        if probing and self.probe:
             active = any(s["status"] == "busy" or now - s["since"] < RECENT for s in sessions)
             self.probe.maybe_run(active, saved.get("updated_at") if saved else None)
         limits = self._limits(saved, now)
@@ -119,8 +126,8 @@ class ClaudeSource:
             "sessions": sessions,
         }
 
-    def _hint(self, probing):
-        if probing and not self.probe.available:
+    def _hint(self, probing: bool) -> str:
+        if probing and self.probe and not self.probe.available:
             return "The claude command was not found, so limits can't be checked."
         if probing:
             return "Checking limits while you use Claude Code..."
@@ -129,14 +136,14 @@ class ClaudeSource:
     # Limits (status line) ---------------------------------------------------
 
     @staticmethod
-    def _limits(saved, now):
-        windows = []
+    def _limits(saved: Json | None, now: float) -> list[Json]:
+        windows: list[Json] = []
         for key, window in ((saved or {}).get("rate_limits") or {}).items():
-            label = limit_label(key)
-            if not label or not isinstance(window, dict) or window.get("resets_at") is None:
+            found = limit_label(key)
+            if not found or not isinstance(window, dict) or window.get("resets_at") is None:
                 continue
             renewed = window["resets_at"] <= now  # the window rolled over after the last reading
-            label, weekly = label
+            label, weekly = found
             windows.append({
                 "label": label,
                 "percent": None if renewed else window.get("used_percentage"),
@@ -147,8 +154,8 @@ class ClaudeSource:
         windows.sort(key=lambda w: (w["weekly"], w["label"] != "Week"))  # 5 hours, week, then per model
         return windows
 
-    def _models_since(self, start):
-        tokens = Counter()
+    def _models_since(self, start: float) -> list[Json]:
+        tokens: Counter[str] = Counter()
         for (block, model), (inp, out, cache, _) in self._buckets.items():
             if block >= start - BUCKET + 1:
                 tokens[model] += inp + out + cache
@@ -156,9 +163,9 @@ class ClaudeSource:
 
     # Tokens -----------------------------------------------------------------
 
-    def _sum(self, keep):
-        total = {"input": 0, "output": 0, "cache_read": 0, "responses": 0}
-        models = Counter()
+    def _sum(self, keep: Callable[[int, str], bool]) -> Json:
+        total: Json = {"input": 0, "output": 0, "cache_read": 0, "responses": 0}
+        models: Counter[str] = Counter()
         for (block, model), (inp, out, cache, responses) in self._buckets.items():
             if keep(block, model):
                 total["input"] += inp
@@ -169,7 +176,7 @@ class ClaudeSource:
         total["models"] = dict(models.most_common())
         return total
 
-    def _scan_tokens(self, now):
+    def _scan_tokens(self, now: float) -> None:
         cutoff = now - KEEP
         for key in [k for k in self._buckets if k[0] < cutoff]:
             del self._buckets[key]
@@ -199,7 +206,7 @@ class ClaudeSource:
                 if b'"usage"' in line and b'"assistant"' in line:
                     self._add(line, cutoff)
 
-    def _add(self, line, cutoff):
+    def _add(self, line: bytes, cutoff: float) -> None:
         try:
             entry = json.loads(line)
         except ValueError:
@@ -231,8 +238,8 @@ class ClaudeSource:
 
     # Open sessions ----------------------------------------------------------
 
-    def _sessions(self):
-        sessions = []
+    def _sessions(self) -> list[Json]:
+        sessions: list[Json] = []
         for file in (self.home / "sessions").glob("*.json"):
             try:
                 info = json.loads(file.read_text(encoding="utf-8"))

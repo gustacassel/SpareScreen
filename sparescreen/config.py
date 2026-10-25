@@ -4,10 +4,14 @@ The settings screen on the phone sends changes via POST /config; the agent
 validates, saves and sends the config back along with the data (`config` field).
 """
 
+from __future__ import annotations
+
 import json
 import os
 import threading
 from pathlib import Path
+
+from .shapes import Json
 
 THEMES = ("graphite", "oled", "terracotta", "neon", "terminal", "light")
 SCREENS = ("hardware", "ai", "pc", "music")  # the game screen only shows in game mode
@@ -16,7 +20,7 @@ NIGHT_MODES = ("off", "dim", "clock")  # what the screen shows during night hour
 NIGHT_HOURS = ("22-7", "23-7", "0-8")  # "start-end", in the phone's local time
 USB_SCREEN = ("keep", "dim", "off")  # what to do with a USB phone's screen (see screen.py)
 
-DEFAULTS = {
+DEFAULTS: Json = {
     "theme": "graphite",
     "screens": list(SCREENS),
     "rotate": 20,
@@ -37,26 +41,26 @@ CONFIG_FILE = Path.home() / ".sparescreen" / "config.json"
 MAX_GAMES = 100
 
 
-def clean_games(saved):
+def clean_games(saved: object) -> Json:
     """The user's own game lists, kept on the PC only (they hold paths with the user name):
     "my_games" [{"exe", "name"}] counts as games, "not_games" [exe] never does."""
-    def exe(value):
+    def exe(value: object) -> str | None:
         return value.strip()[:400] if isinstance(value, str) and value.strip() else None
 
-    mine = []
+    mine: list[Json] = []
     for game in (saved.get("my_games") if isinstance(saved, dict) else None) or []:
         if isinstance(game, dict) and exe(game.get("exe")):
-            name = game.get("name") if isinstance(game.get("name"), str) else ""
+            name = game["name"] if isinstance(game.get("name"), str) else ""
             mine.append({"exe": exe(game["exe"]), "name": name.strip()[:60]})
     others = [exe(path) for path in (saved.get("not_games") if isinstance(saved, dict) else None) or []]
     return {"my_games": mine[:MAX_GAMES], "not_games": [p for p in others if p][:MAX_GAMES]}
 
 
-def clean(data):
+def clean(data: object) -> Json:
     """Keeps only valid keys and values; the rest is ignored."""
     if not isinstance(data, dict):
         return {}
-    out = {}
+    out: Json = {}
     if data.get("theme") in THEMES:
         out["theme"] = data["theme"]
     if isinstance(data.get("screens"), list):
@@ -92,7 +96,7 @@ class ConfigStore:
 
     name = "config"
 
-    def __init__(self, path=CONFIG_FILE):
+    def __init__(self, path: Path = CONFIG_FILE) -> None:
         self.path = path
         self._lock = threading.Lock()
         try:
@@ -108,23 +112,23 @@ class ConfigStore:
             known = ["hardware", "ai", "claude", "pc"]
         self._config["screens"] = [s for s in SCREENS if s in self._config["screens"] or s not in known]
 
-    def read(self):
+    def read(self) -> Json:
         with self._lock:
             return dict(self._config)
 
-    def games(self):
+    def games(self) -> Json:
         with self._lock:
             return {"my_games": [dict(g) for g in self._games["my_games"]],
                     "not_games": list(self._games["not_games"])}
 
-    def set_games(self, my_games=None, not_games=None):
+    def set_games(self, my_games: list[Json] | None = None, not_games: list[str] | None = None) -> None:
         """Changed from the PC window only (POST /config ignores these lists)."""
         with self._lock:
             self._games = clean_games({"my_games": self._games["my_games"] if my_games is None else my_games,
                                        "not_games": self._games["not_games"] if not_games is None else not_games})
         self.update({})
 
-    def update(self, changes):
+    def update(self, changes: object) -> Json:
         with self._lock:
             self._config.update(clean(changes))
             self.path.parent.mkdir(parents=True, exist_ok=True)

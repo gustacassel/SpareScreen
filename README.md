@@ -483,6 +483,21 @@ python -m unittest discover -s tests -t .
 ```
 
 They also run on GitHub Actions on Windows, Linux and macOS for every push.
+
+The Python code is fully typed (every function's parameters and return) and checked with
+[mypy](https://github.com/python/mypy) in CI, for each system's code paths:
+
+```bash
+pip install mypy types-psutil
+```
+
+```bash
+python -m mypy --platform win32
+```
+
+(`--platform linux` and `--platform darwin` too). Shared data shapes live in
+`sparescreen/shapes.py`; every module starts with `from __future__ import annotations`,
+so the annotations use modern syntax while the code still runs on Python 3.9.
 `sparescreen --demo` shows made-up data, handy when working on the page; it keeps its own
 settings and paired devices in `~/.sparescreen/demo`, so it never changes yours.
 

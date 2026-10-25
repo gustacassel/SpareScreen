@@ -12,6 +12,8 @@
   or osx-cpu-temp). `powermetrics` is skipped on purpose: it needs sudo.
 """
 
+from __future__ import annotations
+
 import glob
 import json
 import os
@@ -21,10 +23,15 @@ import subprocess
 import sys
 import time
 import urllib.request
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Mapping, Optional
 
 import psutil
 
 from .hwinfo import short_gpu_name
+from .shapes import Json
+
+if TYPE_CHECKING:
+    from psutil._ntuples import shwtemp
 
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _NUMBER = re.compile(r"-?\d+(?:[.,]\d+)?")
@@ -33,20 +40,20 @@ _SIZE_UNITS = {"B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3}
 MIB = 1024 * 1024
 
 
-def _number(text):
+def _number(text: Optional[str]) -> Optional[float]:
     """'45,3 °C' -> 45.3; '[N/A]' -> None. LHM formats numbers in the Windows locale."""
     match = _NUMBER.search(text or "")
     return float(match.group().replace(",", ".")) if match else None
 
 
-def _with_unit(text, units):
+def _with_unit(text: Optional[str], units: Mapping[str, int]) -> Optional[float]:
     """'111,6 KB/s' -> bytes per second; '1924,0 MB' -> bytes."""
     value = _number(text)
     unit = (text or "").split()[-1] if text else ""
     return value * units.get(unit, 1) if value is not None else None
 
 
-def _first(values, names):
+def _first(values: Mapping[str, Optional[float]], names: Iterable[str]) -> Optional[float]:
     """First non-empty value among `names`, in order of preference."""
     return next((values[n] for n in names if values.get(n) is not None), None)
 
@@ -55,16 +62,18 @@ class NvidiaGpu:
     QUERY = "name,utilization.gpu,temperature.gpu,memory.used,memory.total,power.draw,fan.speed,clocks.gr,clocks.mem"
     LIMIT_EVERY = 60  # seconds; the limit doesn't change, no need to ask every reading
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.exe = shutil.which("nvidia-smi")
-        self._limit, self._limit_at = None, 0
+        self._limit: Optional[int] = None
+        self._limit_at: float = 0
 
-    def temp_limit(self, temp):
+    def temp_limit(self, temp: float) -> Optional[int]:
         """Where the card starts to slow down to cool itself (°C), from the card. Newer
         drivers report "T.Limit", the degrees left until then; older ones the slowdown temp."""
         if time.time() - self._limit_at < self.LIMIT_EVERY:
             return self._limit
         self._limit_at = time.time()
+        assert self.exe is not None  # read() only asks when nvidia-smi was found
         try:
             result = subprocess.run([self.exe, "-q", "-d", "TEMPERATURE"], capture_output=True, text=True,
                                     timeout=5, creationflags=_NO_WINDOW)
@@ -73,7 +82,7 @@ class NvidiaGpu:
             self._limit = None
         return self._limit
 
-    def read(self):
+    def read(self) -> Optional[Json]:
         if not self.exe:
             return None
         result = subprocess.run(
@@ -84,9 +93,9 @@ class NvidiaGpu:
             return None
         # First card only, for now.
         fields = [p.strip() for p in result.stdout.splitlines()[0].split(",")]
-        name, util, temp, used, total, power, fan, clock, mem_clock = fields
-        used, total = _number(used), _number(total)
-        temp = _number(temp)
+        name, util, raw_temp, raw_used, raw_total, power, fan, clock, mem_clock = fields
+        used, total = _number(raw_used), _number(raw_total)
+        temp = _number(raw_temp)
         return {
             "name": short_gpu_name(name),
             "percent": _number(util),
@@ -111,12 +120,12 @@ class LibreHardwareMonitor:
     GPU_POWER_NAMES = ("GPU Package", "GPU Power", "GPU Core")
     RETRY_AFTER = 30  # if it did not answer, wait before trying again
 
-    def __init__(self, url="http://localhost:8085/data.json"):
+    def __init__(self, url: str = "http://localhost:8085/data.json") -> None:
         self.url = url
-        self._down_until = 0
-        self.hint = None  # what the user should do while it doesn't answer
+        self._down_until: float = 0
+        self.hint: Optional[str] = None  # what the user should do while it doesn't answer
 
-    def read(self):
+    def read(self) -> Optional[Json]:
         if time.time() < self._down_until:
             return None
         try:
@@ -128,8 +137,8 @@ class LibreHardwareMonitor:
             return None
         self.hint = None
 
-        result = {"cpu": None, "gpu": None, "fans": [], "drives": []}
-        gpus = []
+        result: Json = {"cpu": None, "gpu": None, "fans": [], "drives": []}
+        gpus: list[Json] = []
         for hardware in self._hardware(tree):
             kind = (hardware.get("ImageURL") or "").lower()
             is_gpu = (hardware.get("HardwareId") or "").startswith("/gpu")
@@ -146,7 +155,7 @@ class LibreHardwareMonitor:
         return result
 
     @classmethod
-    def _hardware(cls, node):
+    def _hardware(cls, node: Json) -> Iterator[Json]:
         """Every component, including those nested in others (the motherboard's sensor chip)."""
         for child in node.get("Children", []):
             if "HardwareId" in child:
@@ -155,19 +164,19 @@ class LibreHardwareMonitor:
                 yield from cls._hardware(child)
 
     @staticmethod
-    def _raw_group(hardware, name):
+    def _raw_group(hardware: Json, name: str) -> dict[str, Any]:
         """Sensors of a group ("Temperatures", "Data"...), merging groups that share a name."""
-        values = {}
+        values: dict[str, Any] = {}
         for group in hardware.get("Children", []):
             if group.get("Text") == name and "HardwareId" not in group:
                 values.update({s.get("Text"): s.get("Value") for s in group.get("Children", [])})
         return values
 
     @classmethod
-    def _group(cls, hardware, name):
+    def _group(cls, hardware: Json, name: str) -> dict[str, Optional[float]]:
         return {k: _number(v) for k, v in cls._raw_group(hardware, name).items()}
 
-    def _cpu(self, hardware):
+    def _cpu(self, hardware: Json) -> Json:
         temps = self._group(hardware, "Temperatures")
         temp = _first(temps, self.CPU_TEMP_NAMES)
         if temp is None:
@@ -176,7 +185,8 @@ class LibreHardwareMonitor:
         cores = [v for k, v in clocks.items() if k.startswith("Core #") and "Effective" not in k and v]
         average = clocks.get("Cores (Average)") or (sum(cores) / len(cores) if cores else None)
         # Intel reports how far each core is from TjMax, its throttling point: core + distance.
-        limit = next((temps[name[:-len(" Distance to TjMax")]] + value for name, value in temps.items()
+        limit = next((temps[name[:-len(" Distance to TjMax")]] + value  # type: ignore[operator]  # checked below
+                      for name, value in temps.items()
                       if name.endswith(" Distance to TjMax") and value is not None
                       and temps.get(name[:-len(" Distance to TjMax")]) is not None), None)
         return {
@@ -187,7 +197,7 @@ class LibreHardwareMonitor:
             "clock_max": max(cores) if cores else None,
         }
 
-    def _gpu(self, hardware):
+    def _gpu(self, hardware: Json) -> Json:
         data = self._raw_group(hardware, "Data")
         clocks = self._group(hardware, "Clocks")
         controls = self._group(hardware, "Controls")
@@ -204,7 +214,7 @@ class LibreHardwareMonitor:
             "integrated": "integrated" in (hardware.get("HardwareId") or ""),
         }
 
-    def _drive(self, hardware):
+    def _drive(self, hardware: Json) -> Json:
         temps = self._group(hardware, "Temperatures")
         rates = self._raw_group(hardware, "Throughput")
         return {
@@ -215,10 +225,10 @@ class LibreHardwareMonitor:
             "write": _with_unit(rates.get("Write Rate"), _RATE_UNITS),
         }
 
-    def _fans(self, hardware, gpu):
+    def _fans(self, hardware: Json, gpu: bool) -> list[Json]:
         rpms = self._group(hardware, "Fans")
         percents = self._group(hardware, "Controls")
-        fans = []
+        fans: list[Json] = []
         for name, rpm in rpms.items():
             if rpm is None or (rpm == 0 and not gpu):  # motherboard fan at 0 rpm: empty header
                 continue
@@ -231,7 +241,7 @@ class LibreHardwareMonitor:
         return fans
 
     @staticmethod
-    def _why_down():
+    def _why_down() -> str:
         # Open but silent usually means its web server is off (it isn't always remembered).
         for proc in psutil.process_iter(["name"]):
             if (proc.info["name"] or "").lower().startswith("librehardwaremonitor"):
@@ -239,7 +249,7 @@ class LibreHardwareMonitor:
         return "open LibreHardwareMonitor"
 
 
-def _read_file(path, scale=1.0):
+def _read_file(path: str, scale: float = 1.0) -> Optional[float]:
     """Number from a sysfs file (None if it does not exist)."""
     try:
         with open(path, encoding="utf-8") as f:
@@ -248,7 +258,7 @@ def _read_file(path, scale=1.0):
         return None
 
 
-def _current_dpm_clock(path):
+def _current_dpm_clock(path: str) -> Optional[float]:
     """Active clock from pp_dpm_sclk/pp_dpm_mclk: the line marked with '*' ('1: 2100Mhz *')."""
     try:
         with open(path, encoding="utf-8") as f:
@@ -260,7 +270,7 @@ def _current_dpm_clock(path):
     return None
 
 
-def linux_amd_gpu(drm="/sys/class/drm"):
+def linux_amd_gpu(drm: str = "/sys/class/drm") -> Optional[Json]:
     """AMD GPU on Linux via the amdgpu driver's sysfs files (no root needed)."""
     for card in sorted(glob.glob(os.path.join(drm, "card[0-9]*"))):
         dev = os.path.join(card, "device")
@@ -289,8 +299,9 @@ def linux_amd_gpu(drm="/sys/class/drm"):
     return None
 
 
-def linux_cpu_sensor():
-    temps = psutil.sensors_temperatures()
+def linux_cpu_sensor() -> Optional[shwtemp]:
+    # psutil only has it on Linux (tests stand it in on other systems).
+    temps: dict[str, list[shwtemp]] = psutil.sensors_temperatures()  # type: ignore[attr-defined, unused-ignore]
     for chip, labels in (("k10temp", ("Tctl", "Tdie")), ("zenpower", ("Tdie",)),
                          ("coretemp", ("Package id 0",)), ("cpu_thermal", ("",))):
         for sensor in temps.get(chip, []):
@@ -299,12 +310,12 @@ def linux_cpu_sensor():
     return None
 
 
-def linux_cpu_temp():
+def linux_cpu_temp() -> Optional[float]:
     sensor = linux_cpu_sensor()
     return sensor.current if sensor else None
 
 
-def linux_cpu_limit():
+def linux_cpu_limit() -> Optional[float]:
     """hwmon's own limit for the CPU sensor ("high", else a bit under "critical")."""
     sensor = linux_cpu_sensor()
     if not sensor:
@@ -314,9 +325,9 @@ def linux_cpu_limit():
     return sensor.critical - 5 if sensor.critical and sensor.critical > 45 else None
 
 
-def linux_fans():
-    fans = []
-    for chip, entries in (psutil.sensors_fans() or {}).items():
+def linux_fans() -> list[Json]:
+    fans: list[Json] = []
+    for chip, entries in (psutil.sensors_fans() or {}).items():  # type: ignore[attr-defined, unused-ignore]
         if chip == "amdgpu":  # shown as the GPU fan instead
             continue
         for i, fan in enumerate(entries):
@@ -331,7 +342,7 @@ class MacCpuTemp:
     osx-cpu-temp covers Intel (it prints 0.0 on Apple Silicon). None needs sudo.
     """
 
-    COMMANDS = (
+    COMMANDS: tuple[tuple[str, list[str]], ...] = (
         ("smctemp", ["-c", "-i25", "-n3"]),  # '64.2'; short interval and a few retries instead of 1 s
         ("macmon", ["pipe", "-s", "1", "-i", "200"]),  # one JSON line: {"temp": {"cpu_temp_avg": 43.7}}
         ("osx-cpu-temp", []),  # '61.8 °C'
@@ -339,14 +350,15 @@ class MacCpuTemp:
 
     RETRY_AFTER = 30  # none answered (e.g. osx-cpu-temp on Apple Silicon): don't spawn them every refresh
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.tools = [(name, shutil.which(name), args) for name, args in self.COMMANDS if shutil.which(name)]
-        self._down_until = 0
+        self._down_until: float = 0
 
-    def read(self):
+    def read(self) -> Optional[float]:
         if not self.tools or time.time() < self._down_until:
             return None
         for name, path, args in self.tools:
+            assert path is not None  # only tools that were found are kept
             try:
                 result = subprocess.run([path] + args, capture_output=True, text=True, timeout=3)
             except (OSError, subprocess.SubprocessError, ValueError):
@@ -359,8 +371,9 @@ class MacCpuTemp:
         return None
 
 
-def parse_mac_temp(tool, output):
+def parse_mac_temp(tool: str, output: Optional[str]) -> Optional[float]:
     """Celsius from one of MacCpuTemp's tools, or None. 0 (or below) means the sensor was not read."""
+    temp: Optional[float]
     if tool == "macmon":
         try:
             line = next(x for x in (output or "").splitlines() if x.strip().startswith("{"))
@@ -373,7 +386,7 @@ def parse_mac_temp(tool, output):
     return temp if temp is not None and 0 < temp < 150 else None
 
 
-def parse_nvidia_limit(text, temp):
+def parse_nvidia_limit(text: Optional[str], temp: Optional[float]) -> Optional[int]:
     """The slowdown point in `nvidia-smi -q -d TEMPERATURE` output, or None."""
     margin = re.search(r"GPU Current T\.Limit Temp\s*:\s*(-?[\d.]+)", text or "")
     if margin and temp is not None:
@@ -397,7 +410,7 @@ CPU_LIMITS = (
 )
 
 
-def cpu_limit(name):
+def cpu_limit(name: Optional[str]) -> Optional[int]:
     """Fallback limit by CPU family, or None for an unknown CPU."""
     for pattern, limit in CPU_LIMITS:
         if re.search(pattern, name or ""):
@@ -405,7 +418,7 @@ def cpu_limit(name):
     return None
 
 
-def lhm_url():
+def lhm_url() -> str:
     """LibreHardwareMonitor's data URL, on the port set in its config (8085 by default)."""
     from . import lhm
 
@@ -416,19 +429,23 @@ def lhm_url():
 class Sensors:
     """Combines the sources above and caches the result for a few seconds."""
 
-    def __init__(self, refresh=2):
+    def __init__(self, refresh: float = 2) -> None:
         self.refresh = refresh
         self.nvidia = NvidiaGpu()
         self.lhm = LibreHardwareMonitor(lhm_url()) if sys.platform == "win32" else None
         self.mac_temp = MacCpuTemp() if sys.platform == "darwin" else None
-        self._at = 0
-        self._cache = {"cpu_temp": None, "cpu_power": None, "cpu_clock": None, "cpu_clock_max": None,
+        self._at: float = 0
+        self._cache: Json = {"cpu_temp": None, "cpu_power": None, "cpu_clock": None, "cpu_clock_max": None,
                        "cpu_temp_limit": None, "gpu": None, "fans": [], "drives": [], "hint": None}
 
-    def read(self):
+    def read(self) -> Json:
         if time.time() - self._at < self.refresh:
             return self._cache
         self._at = time.time()
+        cpu: Json
+        fans: list[Json]
+        drives: list[Json]
+        gpu: Optional[Json]
         cpu, fans, drives, gpu = {}, [], [], None
         hint = None
         if self.lhm:

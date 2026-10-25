@@ -26,6 +26,23 @@ jobs:
       - name: Command line works
         run: python -m sparescreen --help
 
+  types:
+    name: Type check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        # Pillow is only a dependency on Windows; mypy needs it to check the icon code.
+        run: python -m pip install -e . pillow mypy==2.4.0 types-psutil==7.2.2.20260906
+      - name: mypy on each system's code paths
+        run: |
+          python -m mypy --platform win32
+          python -m mypy --platform linux
+          python -m mypy --platform darwin
+
   web:
     name: Page syntax
     runs-on: ubuntu-latest

@@ -92,6 +92,13 @@ class PanelTest(unittest.TestCase):
         with mock.patch.object(panel.shutil, "which", return_value=None):
             self.assertEqual(panel.Panel()._usb_check()["status"], "warn")
 
+    def test_demo_activity_works_in_the_window(self):
+        from sparescreen.demo import DemoActivity
+
+        p = panel.Panel(activity=DemoActivity())
+        self.assertEqual(p.games({})["running"], [])  # used to fail: the demo had no "running"
+        p.act("not_game_remove", {"exe": "x"})  # no config: nothing to edit, and no crash
+
     def test_unknown_action(self):
         self.assertEqual(panel.Panel().act("format-c"), {"ok": False})
 

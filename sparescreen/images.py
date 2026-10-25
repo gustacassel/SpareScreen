@@ -5,17 +5,20 @@ the server answers /art/<key> with the bytes. The version changes when the image
 does, so the phone's browser refreshes it without re-downloading every second.
 """
 
+from __future__ import annotations
+
 import hashlib
 import mimetypes
+import os
 import threading
 from pathlib import Path
 
 MAX_BYTES = 4 * 1024 * 1024  # covers and icons are small; ignore anything huge
 _lock = threading.Lock()
-_store = {}  # key -> (bytes, content type, version)
+_store: dict[str, tuple[bytes, str, str]] = {}  # key -> (bytes, content type, version)
 
 
-def put(key, data, content_type):
+def put(key: str, data: bytes | None, content_type: str) -> str | None:
     """Store an image and return its URL for the page (None if there's nothing usable)."""
     if not data or len(data) > MAX_BYTES:
         return None
@@ -27,7 +30,7 @@ def put(key, data, content_type):
     return f"art/{key}?v={version}"
 
 
-def put_file(key, path):
+def put_file(key: str, path: str | os.PathLike[str]) -> str | None:
     """Same as put(), reading the image from a file (e.g. Steam's cached game art)."""
     try:
         path = Path(path)
@@ -39,7 +42,7 @@ def put_file(key, path):
     return put(key, data, mimetypes.guess_type(path.name)[0] or "image/jpeg")
 
 
-def get(key):
+def get(key: str) -> tuple[bytes, str] | None:
     """(bytes, content type) or None."""
     with _lock:
         item = _store.get(key)

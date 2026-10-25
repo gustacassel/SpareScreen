@@ -6,18 +6,21 @@ A separate browser profile in ~/.sparescreen/window keeps the window's size and
 position and stays out of the user's own browsing.
 """
 
+from __future__ import annotations
+
 import os
 import shutil
 import subprocess
 import sys
 import webbrowser
 from pathlib import Path
+from typing import Iterator, Optional
 
 PROFILE = Path.home() / ".sparescreen" / "window"
 SIZE = "560,780"
 
 
-def _windows_browsers():
+def _windows_browsers() -> Iterator[str]:
     for env in ("ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA"):
         base = os.environ.get(env)
         if base:
@@ -25,7 +28,7 @@ def _windows_browsers():
             yield os.path.join(base, "Google", "Chrome", "Application", "chrome.exe")
 
 
-def find_browser(platform=None):
+def find_browser(platform: Optional[str] = None) -> Optional[str]:
     platform = platform or sys.platform
     if platform == "win32":
         return next((path for path in _windows_browsers() if os.path.isfile(path)), None)
@@ -39,12 +42,12 @@ def find_browser(platform=None):
     return next((shutil.which(name) for name in names if shutil.which(name)), None)
 
 
-def command(browser, url):
+def command(browser: str, url: str) -> list[str]:
     return [browser, f"--app={url}", f"--window-size={SIZE}", f"--user-data-dir={PROFILE}",
             "--no-first-run", "--no-default-browser-check"]
 
 
-def open_window(url):
+def open_window(url: str) -> bool:
     """Opens `url` as an app window; True if it worked, False if it fell back to a browser tab."""
     browser = find_browser()
     if browser:

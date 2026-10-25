@@ -6,13 +6,18 @@ has exactly the same shape as the real sources, and drifts slowly so the
 screens look alive.
 """
 
+from __future__ import annotations
+
 import math
 import time
+from typing import Optional
+
+from .shapes import Json, Source
 
 GB = 1024 ** 3
 
 
-def _wave(period, low, high, phase=0.0):
+def _wave(period: float, low: float, high: float, phase: float = 0.0) -> float:
     """A value that drifts smoothly between low and high."""
     t = time.time() / period * 2 * math.pi + phase
     return low + (high - low) * (math.sin(t) + 1) / 2
@@ -21,10 +26,10 @@ def _wave(period, low, high, phase=0.0):
 class DemoSystem:
     name = "system"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.started = time.time()
 
-    def read(self):
+    def read(self) -> Json:
         cores = [round(_wave(7 + i, 5, 70, i), 1) for i in range(12)]
         cpu = round(sum(cores) / len(cores), 1)
         gpu = round(_wave(23, 30, 95), 1)
@@ -84,7 +89,7 @@ class DemoSystem:
         }
 
 
-def _window(label, percent, resets_in, weekly):
+def _window(label: str, percent: float, resets_in: float, weekly: bool) -> Json:
     return {"label": label, "percent": percent, "resets_at": time.time() + resets_in,
             "renewed": False, "weekly": weekly}
 
@@ -93,7 +98,7 @@ class DemoClaude:
     name = "claude"
     CYCLE = 90  # every 90 s one session goes busy -> idle, showing the "finished" alert
 
-    def read(self):
+    def read(self) -> Json:
         now = time.time()
         busy = (now % self.CYCLE) < self.CYCLE * 0.6
         hour = 3600
@@ -124,7 +129,7 @@ class DemoClaude:
 class DemoCodex:
     name = "codex"
 
-    def read(self):
+    def read(self) -> Json:
         now = time.time()
         hour = 3600
         return {
@@ -154,13 +159,18 @@ class DemoActivity:
     # without hiding the other screens for good.
     CYCLE, PLAYING = 240, 60
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.started = time.time() - (47 * 60)
+        self.running: list[Json] = []  # the PC window's "It's a game" list: nothing to offer in the demo
+        self.game_exe: Optional[str] = None
 
-    def read(self):
+    def refresh_soon(self) -> None:
+        pass  # made-up data: nothing to look up again
+
+    def read(self) -> Json:
         playing = time.time() % self.CYCLE < self.PLAYING
-        game = {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB}
-        apps = [
+        game: Json = {"name": "Hollow Peaks", "cpu": round(_wave(11, 18, 32), 1), "mem": 6.4 * GB}
+        apps: list[Json] = [
             {"name": "Google Chrome", "cpu": 3.1, "mem": 2.3 * GB},
             {"name": "Visual Studio Code", "cpu": round(_wave(17, 1, 6), 1), "mem": 1.1 * GB},
             {"name": "Spotify", "cpu": 1.4, "mem": 0.4 * GB},
@@ -180,7 +190,7 @@ class DemoActivity:
 class DemoPhone:
     name = "phone"
 
-    def read(self):
+    def read(self) -> Json:
         return {"devices": [{"model": "Demo phone", "level": 87, "temp": round(_wave(120, 31, 36), 1),
                              "status": "charging", "health": "good", "plugged": True}]}
 
@@ -189,7 +199,7 @@ class DemoMedia:
     name = "media"
     DURATION = 228.0  # the song loops, so the progress bar keeps moving
 
-    def read(self):
+    def read(self) -> Json:
         return {"available": True, "playing": True, "title": "Midnight Drive", "artist": "Neon Arcade",
                 "album": "Night Shift", "app": "Spotify", "status": "playing",
                 "position": round(time.time() % self.DURATION, 1), "duration": self.DURATION,
@@ -199,10 +209,10 @@ class DemoMedia:
 class DemoFps:
     name = "fps"
 
-    def __init__(self, activity):
+    def __init__(self, activity: DemoActivity) -> None:
         self.activity = activity
 
-    def read(self):
+    def read(self) -> Json:
         if not self.activity.read()["game"]:
             return {"available": True, "playing": False}
         fps = round(_wave(9, 128, 152))
@@ -210,6 +220,6 @@ class DemoFps:
                 "low1": round(fps * 0.72), "frametime": round(1000 / fps, 1)}
 
 
-def demo_sources():
+def demo_sources() -> list[Source]:
     activity = DemoActivity()
     return [DemoSystem(), DemoClaude(), DemoCodex(), activity, DemoFps(activity), DemoPhone(), DemoMedia()]

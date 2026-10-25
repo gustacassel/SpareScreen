@@ -17,6 +17,9 @@ passed through unchanged. If it can't start, times out, or fails without
 printing anything, we print our own text instead, so the line never goes blank.
 """
 
+from __future__ import annotations
+
+import io
 import json
 import os
 import shutil
@@ -24,6 +27,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import cast
+
+from .shapes import Json
 
 LIMITS_FILE = Path.home() / ".sparescreen" / "claude-limits.json"
 WRAP_ENV = "SPARESCREEN_STATUSLINE_CMD"
@@ -31,21 +37,22 @@ WRAP_TIMEOUT = 5  # seconds; Claude Code refreshes often and a stuck script must
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
-def save_limits(limits):
+def save_limits(limits: Json) -> None:
     LIMITS_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp = LIMITS_FILE.with_suffix(f".{os.getpid()}.tmp")
     tmp.write_text(json.dumps({"updated_at": time.time(), "rate_limits": limits}), encoding="utf-8")
     os.replace(tmp, LIMITS_FILE)  # atomic swap: the agent never reads a half-written file
 
 
-def load_limits():
+def load_limits() -> Json | None:
     try:
-        return json.loads(LIMITS_FILE.read_text(encoding="utf-8"))
+        limits: Json = json.loads(LIMITS_FILE.read_text(encoding="utf-8"))
+        return limits
     except (OSError, ValueError):
         return None
 
 
-def status_text(data):
+def status_text(data: Json) -> str:
     parts = [(data.get("model") or {}).get("display_name") or "Claude"]
     ctx = (data.get("context_window") or {}).get("used_percentage")
     if ctx is not None:
@@ -58,7 +65,7 @@ def status_text(data):
     return " · ".join(parts)
 
 
-def wrapped_command(argv):
+def wrapped_command(argv: list[str]) -> tuple[list[str] | str, bool] | None:
     """The user's own status line as (command, use_shell), or None."""
     if "--" in argv:
         rest = argv[argv.index("--") + 1:]
@@ -71,7 +78,7 @@ def wrapped_command(argv):
     return (command, True) if command else None
 
 
-def run_wrapped(command, shell, raw):
+def run_wrapped(command: list[str] | str, shell: bool, raw: bytes) -> tuple[bytes, int] | None:
     """Run the user's status line with our stdin; (stdout bytes, exit code) or None."""
     env = dict(os.environ)
     env.pop(WRAP_ENV, None)  # if it calls sparescreen-statusline again, it must not wrap itself forever
@@ -95,8 +102,8 @@ def run_wrapped(command, shell, raw):
     return out, proc.returncode
 
 
-def main(argv=None):
-    sys.stdout.reconfigure(encoding="utf-8")
+def main(argv: list[str] | None = None) -> int | None:
+    cast(io.TextIOWrapper, sys.stdout).reconfigure(encoding="utf-8")
     raw = sys.stdin.buffer.read()  # kept as bytes so a wrapped command gets exactly the same input
     try:
         data = json.loads(raw.decode("utf-8") or "{}")
@@ -118,6 +125,7 @@ def main(argv=None):
             sys.stdout.buffer.flush()
             return result[1]
     print(status_text(data))
+    return None
 
 
 if __name__ == "__main__":

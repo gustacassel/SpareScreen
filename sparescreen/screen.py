@@ -9,19 +9,25 @@ The user picks it in the settings ("Phone screen (USB)": keep, dim or off). It a
 while this PC is locked, and during the night hours when night mode is on.
 """
 
+from __future__ import annotations
+
 import datetime
 import os
 import shutil
 import subprocess
 import sys
+from typing import TYPE_CHECKING, Any, Optional
 
 import psutil
+
+if TYPE_CHECKING:
+    from .config import ConfigStore
 
 ACTIONS = ("keep", "dim", "off")
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
-def in_night_hours(hours, now=None):
+def in_night_hours(hours: Any, now: Optional[datetime.datetime] = None) -> bool:
     """'23-7' -> True from 23:00 to 06:59 (the same rule the page uses)."""
     try:
         start, end = (int(part) for part in hours.split("-"))
@@ -31,7 +37,7 @@ def in_night_hours(hours, now=None):
     return start <= hour < end if start < end else hour >= start or hour < end
 
 
-def pc_locked():
+def pc_locked() -> bool:
     """True while this PC shows its lock screen; False if unknown (other systems)."""
     try:
         if sys.platform == "win32":
@@ -46,10 +52,11 @@ def pc_locked():
     return False
 
 
-def wanted(config, now=None, locked=None):
+def wanted(config: ConfigStore, now: Optional[datetime.datetime] = None,
+           locked: Optional[bool] = None) -> Optional[str]:
     """"dim", "off" or None (leave the screen as the user has it)."""
     settings = config.read()
-    action = settings.get("usb_screen", "keep")
+    action: str = settings.get("usb_screen", "keep")
     if action not in ("dim", "off"):
         return None
     night = settings.get("night_mode", "off") != "off" and in_night_hours(settings.get("night_hours"), now)

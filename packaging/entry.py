@@ -6,6 +6,8 @@ Build (see .github/workflows/release.yml):
 where <sep> is ";" on Windows and ":" elsewhere.
 """
 
+from __future__ import annotations
+
 import sys
 
 from sparescreen.cli import main

@@ -5,6 +5,8 @@ the same port on the PC, over the cable. No Wi-Fi or root needed, just USB
 debugging turned on on the phone.
 """
 
+from __future__ import annotations
+
 import glob
 import os
 import shutil
@@ -13,12 +15,15 @@ import sys
 import threading
 import time
 from pathlib import Path
+from typing import Callable
+
+from .shapes import Json
 
 # On Windows, avoids opening a console window on every adb call.
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
-def find_adb(explicit=None):
+def find_adb(explicit: str | None = None) -> str | None:
     """Looks for adb: the given path, PATH, the Android SDK and a winget install."""
     if explicit:
         return explicit if Path(explicit).is_file() else None
@@ -53,19 +58,19 @@ def find_adb(explicit=None):
 
 
 # Android battery codes (BatteryManager.BATTERY_STATUS_* / BATTERY_HEALTH_*)
-_STATUS = {2: "charging", 3: "discharging", 4: "not charging", 5: "full"}
-_HEALTH = {2: "good", 3: "overheat", 4: "dead", 5: "over voltage", 6: "failure", 7: "cold"}
+_STATUS: dict[int | None, str] = {2: "charging", 3: "discharging", 4: "not charging", 5: "full"}
+_HEALTH: dict[int | None, str] = {2: "good", 3: "overheat", 4: "dead", 5: "over voltage", 6: "failure", 7: "cold"}
 
 
-def parse_battery(text):
+def parse_battery(text: str) -> Json:
     """`adb shell dumpsys battery` -> {"level": 78, "temp": 32.5, "status": "charging", ...}."""
-    values = {}
+    values: dict[str, str] = {}
     for line in text.splitlines():
         key, sep, value = line.strip().partition(":")
         if sep:
             values[key.strip().lower()] = value.strip()
 
-    def number(key):
+    def number(key: str) -> int | None:
         try:
             return int(values[key])
         except (KeyError, ValueError):
@@ -88,23 +93,24 @@ class UsbBridge:
 
     BATTERY_EVERY = 30  # seconds between battery readings
 
-    def __init__(self, adb, port, open_page=True, stay_awake=False, poll_interval=3, screen=None):
+    def __init__(self, adb: str, port: int, open_page: bool = True, stay_awake: bool = False,
+                 poll_interval: float = 3, screen: Callable[[], str | None] | None = None) -> None:
         self.adb = adb
         self.port = port
         self.open_page = open_page
         self.stay_awake = stay_awake
         self.poll_interval = poll_interval
         self.screen = screen  # callable: "dim", "off" or None (see screen.py)
-        self._rested = {}     # serial -> how its screen was rested, and what to put back
-        self._ready = set()   # phones already set up on this connection
-        self._warned = set()  # phones we have already warned about some problem
-        self.batteries = {}   # serial -> latest battery reading (read by PhoneSource)
-        self.phones = {}      # serial -> model of the phones ready right now (for the PC window)
+        self._rested: dict[str, Json] = {}  # serial -> how its screen was rested, and what to put back
+        self._ready: set[str] = set()       # phones already set up on this connection
+        self._warned: set[str] = set()      # phones we have already warned about some problem
+        self.batteries: dict[str, Json] = {}  # serial -> latest battery reading (read by PhoneSource)
+        self.phones: dict[str, str] = {}      # serial -> model of the phones ready right now (for the PC window)
 
-    def start(self):
+    def start(self) -> None:
         threading.Thread(target=self._loop, name="usb", daemon=True).start()
 
-    def _loop(self):
+    def _loop(self) -> None:
         while True:
             try:
                 self._poll()
@@ -112,7 +118,7 @@ class UsbBridge:
                 print(f"[usb] error: {exc}", flush=True)
             time.sleep(self.poll_interval)
 
-    def _run(self, *args):
+    def _run(self, *args: str) -> str:
         result = subprocess.run(
             [self.adb, *args],
             capture_output=True, text=True, timeout=15, creationflags=_NO_WINDOW,
@@ -121,9 +127,9 @@ class UsbBridge:
             raise RuntimeError((result.stderr or result.stdout).strip() or f"adb {args[0]} failed")
         return result.stdout
 
-    def _devices(self):
+    def _devices(self) -> dict[str, tuple[str, str]]:
         """{serial: (state, model)} from `adb devices -l`."""
-        devices = {}
+        devices: dict[str, tuple[str, str]] = {}
         for line in self._run("devices", "-l").splitlines()[1:]:
             parts = line.split()
             if len(parts) < 2:
@@ -132,7 +138,7 @@ class UsbBridge:
             devices[parts[0]] = (parts[1], model.replace("_", " "))
         return devices
 
-    def _poll(self):
+    def _poll(self) -> None:
         devices = self._devices()
         for serial, (state, model) in devices.items():
             if state == "device":
@@ -164,7 +170,7 @@ class UsbBridge:
             except (RuntimeError, OSError, subprocess.SubprocessError):
                 pass  # tried again on the next round
 
-    def _rest_screen(self, serial, wanted):
+    def _rest_screen(self, serial: str, wanted: str | None) -> None:
         """Dims or turns off the phone's screen while `wanted`, and puts it back after."""
         rested = self._rested.get(serial)
         current = rested["how"] if rested else None
@@ -184,7 +190,7 @@ class UsbBridge:
             self._run("-s", serial, "shell", "input", "keyevent", "KEYCODE_SLEEP")
             self._rested[serial] = {"how": "off"}
 
-    def _wake(self, serial, rested):
+    def _wake(self, serial: str, rested: Json) -> None:
         if rested["how"] == "dim":
             for name in ("screen_brightness", "screen_brightness_mode"):
                 value = rested["saved"].get(name)
@@ -193,7 +199,7 @@ class UsbBridge:
         elif rested["how"] == "off":
             self._run("-s", serial, "shell", "input", "keyevent", "KEYCODE_WAKEUP")
 
-    def restore(self):
+    def restore(self) -> None:
         """Puts every rested screen back (SpareScreen is closing)."""
         for serial, rested in list(self._rested.items()):
             try:
@@ -202,7 +208,7 @@ class UsbBridge:
                 pass
         self._rested.clear()
 
-    def _read_battery(self, serial, model):
+    def _read_battery(self, serial: str, model: str) -> None:
         last = self.batteries.get(serial)
         if last and time.time() - last["at"] < self.BATTERY_EVERY:
             return
@@ -213,7 +219,7 @@ class UsbBridge:
         reading.update(model=model, at=time.time())
         self.batteries[serial] = reading
 
-    def _ensure(self, serial, model):
+    def _ensure(self, serial: str, model: str) -> None:
         rule = f"tcp:{self.port}"
         # The reverse is lost if the adb server restarts, so always check it.
         if f"{rule} {rule}" not in self._run("-s", serial, "reverse", "--list"):
@@ -243,10 +249,10 @@ class PhoneSource:
 
     name = "phone"
 
-    def __init__(self, bridge=None):
+    def __init__(self, bridge: UsbBridge | None = None) -> None:
         self.bridge = bridge
 
-    def read(self):
+    def read(self) -> Json:
         if not self.bridge:
             return {"devices": []}
         keys = ("model", "level", "temp", "status", "health", "plugged")

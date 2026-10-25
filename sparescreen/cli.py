@@ -1,11 +1,16 @@
 """Command line: everything `sparescreen` (or `python -m sparescreen`) does."""
 
+from __future__ import annotations
+
 import argparse
+import io
 import os
 import socket
 import subprocess
 import sys
+from http.server import ThreadingHTTPServer
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional, cast
 
 from . import __version__, autostart, dev, screen, tray
 from .appwindow import open_window
@@ -15,15 +20,20 @@ from .pairing import Pairing
 from .panel import Panel
 from .server import serve
 from .sources import default_sources
+from .shapes import Source
 from .usb import PhoneSource, UsbBridge, find_adb
 
+if TYPE_CHECKING:
+    from .shapes import Activity
 
-def lan_ip():
+
+def lan_ip() -> str:
     """This machine's IP on the local network (the one the phone should use)."""
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         try:
             s.connect(("10.255.255.255", 1))  # sends nothing, just picks the interface
-            return s.getsockname()[0]
+            ip: str = s.getsockname()[0]
+            return ip
         except OSError:
             return "127.0.0.1"
 
@@ -31,16 +41,17 @@ def lan_ip():
 LOG_FILE = Path.home() / ".sparescreen" / "sparescreen.log"
 
 
-def log_to_file():
+def log_to_file() -> None:
     """Without a console (--background, or the windowed executable), output goes to a log."""
     LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     log = open(LOG_FILE, "w", encoding="utf-8", errors="replace", buffering=1)
     sys.stdout = sys.stderr = log
 
 
-def without(argv, *flags):
+def without(argv: list[str], *flags: str) -> list[str]:
     """argv minus the given flags (and the value right after the ones that take one)."""
-    out, skip = [], False
+    out: list[str] = []
+    skip = False
     for arg in argv:
         if skip:
             skip = False
@@ -53,7 +64,7 @@ def without(argv, *flags):
     return out
 
 
-def autostart_args():
+def autostart_args() -> list[str]:
     """The options to start with at login: the ones given now, minus the one-off ones."""
     return without(sys.argv[1:], "--autostart", "--background", "--dev")
 
@@ -62,9 +73,11 @@ def autostart_args():
 DETACHED = "SPARESCREEN_DETACHED"
 
 
-def console_is_ours():
+def console_is_ours() -> bool:
     """True when Windows opened this console just for us (the .exe was double-clicked),
     false when it belongs to a terminal the user typed the command in."""
+    if sys.platform != "win32":
+        return False  # only asked on Windows; this lets type checkers on other OSes skip the rest
     import ctypes
 
     import psutil
@@ -83,7 +96,7 @@ def console_is_ours():
     return set(pids[:count]) <= ours
 
 
-def detach(greet):
+def detach(greet: bool) -> None:
     """Starts a copy of this .exe with no console window; the caller then exits, closing its own.
 
     Hiding the window instead doesn't work when Windows 11 opens console apps in
@@ -95,12 +108,13 @@ def detach(greet):
     # PYINSTALLER_RESET_ENVIRONMENT: the copy unpacks its own files instead of using
     # this process's temporary folder, which is deleted when this one exits.
     env = dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT="1", **{DETACHED: "greet" if greet else "quiet"})
+    # Windows-only constants, read by name so type checkers on other OSes accept them.
+    flags = getattr(subprocess, "CREATE_NO_WINDOW") | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP")
     subprocess.Popen(args, env=env, close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                     stderr=subprocess.DEVNULL,
-                     creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP)
+                     stderr=subprocess.DEVNULL, creationflags=flags)
 
 
-def handle_autostart(action):
+def handle_autostart(action: str) -> None:
     if action == "on":
         command = autostart.enable(autostart_args())
         print("SpareScreen will start when you log in:")
@@ -115,7 +129,7 @@ def handle_autostart(action):
             print("  " + current)
 
 
-def main():
+def main() -> Optional[int]:
     # The packaged executable has a single entry point, so the status line is a subcommand.
     if len(sys.argv) > 1 and sys.argv[1] == "statusline":
         from . import statusline
@@ -166,15 +180,15 @@ def main():
         log_to_file()
     else:
         # When output goes to a file/pipe, Windows would use cp1252 and mangle non-ASCII characters.
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        cast(io.TextIOWrapper, sys.stdout).reconfigure(encoding="utf-8", errors="replace")
 
     if args.autostart:
         handle_autostart(args.autostart)
-        return
+        return None
 
     if args.dev and not dev.is_child():
         dev.supervise(sys.argv[1:])
-        return
+        return None
 
     # The demo keeps its own settings and paired devices: trying it out never touches yours.
     demo_dir = Path.home() / ".sparescreen" / "demo"
@@ -186,7 +200,7 @@ def main():
         bridge = UsbBridge(adb, args.port, open_page=open_page, stay_awake=args.stay_awake,
                            screen=lambda: screen.wanted(config))
     if args.demo:
-        sources = demo_sources() + [config]
+        sources: list[Source] = demo_sources() + [config]
     else:
         sources = default_sources(config) + [PhoneSource(bridge), config]
     if args.dev:
@@ -201,7 +215,7 @@ def main():
     local_url = f"http://localhost:{args.port}"
     window_url = f"{local_url}/panel.html"  # the PC window: checks, devices, pairing
     info = {"phone_url": phone_url, "version": __version__}
-    activity = next((s for s in sources if s.name == "activity"), None)
+    activity = cast("Optional[Activity]", next((s for s in sources if s.name == "activity"), None))
     panel = Panel(pairing, bridge, usb=not args.no_usb, info=info, local_url=local_url,
                   autostart_args=autostart_args(), config=config, activity=activity)
     try:
@@ -232,7 +246,7 @@ def main():
             tray.run(server, local_url, window_url, phone_url, pairing, autostart_args(), greet=greet)
         finally:
             shut_down(server, bridge)
-        return
+        return None
     print("Press Ctrl+C to quit.", flush=True)
     try:
         server.serve_forever()
@@ -240,9 +254,10 @@ def main():
         pass
     finally:
         shut_down(server, bridge)
+    return None
 
 
-def shut_down(server, bridge):
+def shut_down(server: ThreadingHTTPServer, bridge: Optional[UsbBridge]) -> None:
     server.server_close()
     if bridge:
         bridge.restore()  # a dimmed or sleeping phone screen goes back to how it was

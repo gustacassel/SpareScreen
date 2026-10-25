@@ -9,6 +9,8 @@ every few minutes, and only while Claude Code is in use, so we never start a new
 writes (see statusline.py).
 """
 
+from __future__ import annotations
+
 import json
 import shutil
 import subprocess
@@ -16,6 +18,7 @@ import threading
 import time
 from pathlib import Path
 
+from .shapes import Json
 from .statusline import save_limits
 
 PROBE_DIR = Path.home() / ".sparescreen" / "probe"  # working folder, so its session is easy to hide
@@ -28,12 +31,12 @@ COMMAND = [
 ]
 
 
-def limits_from_event(event):
+def limits_from_event(event: Json) -> Json:
     """rate_limit_event -> the status line's rate_limits shape:
     {"five_hour": {"used_percentage": 19.0, "resets_at": 1792893600}, ...}."""
     info = event.get("rate_limit_info") or {}
     windows = info.get("unifiedWindows") or {}
-    limits = {}
+    limits: Json = {}
     for key, window in windows.items():
         if not isinstance(window, dict) or window.get("utilization") is None:
             continue
@@ -43,19 +46,19 @@ def limits_from_event(event):
 
 
 class LimitsProbe:
-    def __init__(self, interval=600, timeout=120, exe=None):
+    def __init__(self, interval: float = 600, timeout: float = 120, exe: str | None = None) -> None:
         self.interval = interval
         self.timeout = timeout
         self.exe = exe if exe is not None else shutil.which("claude")
-        self.last_attempt = 0
-        self.last_error = None
+        self.last_attempt: float = 0
+        self.last_error: str | None = None
         self._running = False
 
     @property
-    def available(self):
+    def available(self) -> bool:
         return bool(self.exe)
 
-    def maybe_run(self, active, updated_at):
+    def maybe_run(self, active: bool, updated_at: float | None) -> bool:
         """Start a check in the background if Claude is in use and the numbers are old."""
         now = time.time()
         fresh = updated_at is not None and now - updated_at < self.interval
@@ -66,8 +69,9 @@ class LimitsProbe:
         threading.Thread(target=self._run, name="claude-limits", daemon=True).start()
         return True
 
-    def _run(self):
+    def _run(self) -> None:
         try:
+            assert self.exe  # maybe_run only starts a check when there is one
             PROBE_DIR.mkdir(parents=True, exist_ok=True)
             result = subprocess.run(
                 [self.exe, *COMMAND], cwd=PROBE_DIR, capture_output=True, text=True,

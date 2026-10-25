@@ -18,6 +18,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
   corner on larger phones), black, with a big clock so it stays useful while waiting.
 - Under the hood: the dashboard script is split into one file per part (`web/app/`), and
   game detection moved into its own module (`games.py`).
+- The Python code is fully typed and checked with mypy in CI (Windows, Linux and macOS
+  code paths); shared data shapes in `sparescreen/shapes.py`.
+
+### Fixed
+
+- The SpareScreen window failed in `--demo` mode (its Games tab needed things the demo
+  didn't have).
 
 ## [0.10.0] - 2026-10-25
 

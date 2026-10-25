@@ -7,6 +7,8 @@ Then commit, push and publish the GitHub release (tag v0.10.0); the release work
 builds and attaches the executables.
 """
 
+from __future__ import annotations
+
 import datetime
 import re
 import sys
@@ -16,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 REPO = "https://github.com/gustacassel/SpareScreen"
 
 
-def bump(version, today=None, root=ROOT):
+def bump(version: str, today: str | None = None, root: Path = ROOT) -> None:
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         raise ValueError(f"Not a version like 1.2.3: {version}")
     init = root / "sparescreen" / "__init__.py"

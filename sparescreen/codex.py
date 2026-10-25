@@ -17,6 +17,8 @@ These are Codex's internal formats and may change between versions, so every
 field is optional here.
 """
 
+from __future__ import annotations
+
 import glob
 import json
 import os
@@ -24,8 +26,10 @@ import time
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Callable
 
 from .claude import window_label, model_label
+from .shapes import Json
 
 BUCKET = 15 * 60
 KEEP = 8 * 24 * 3600
@@ -36,11 +40,11 @@ BUSY_EVENTS = {"turn_started", "task_started"}
 IDLE_EVENTS = {"turn_complete", "task_complete", "turn_aborted"}
 
 
-def codex_home():
+def codex_home() -> Path:
     return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
 
 
-def _epoch(stamp):
+def _epoch(stamp: Any) -> float | None:
     try:
         return datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
     except (AttributeError, ValueError):
@@ -50,15 +54,15 @@ def _epoch(stamp):
 class _SessionFile:
     """What we know about one rollout file so far (it is read incrementally)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.offset = 0
-        self.id = None
+        self.id: str | None = None
         self.cwd = ""
-        self.title = None
+        self.title: str | None = None
         self.model = "?"
         self.status = "idle"
-        self.since = 0
-        self.last_totals = None  # previous cumulative usage, to turn totals into deltas
+        self.since: float = 0
+        self.last_totals: tuple[int, int, int] | None = None  # previous cumulative usage, to turn totals into deltas
 
 
 class CodexSource:
@@ -66,15 +70,16 @@ class CodexSource:
 
     name = "codex"
 
-    def __init__(self, home=None, refresh=5):
+    def __init__(self, home: str | Path | None = None, refresh: float = 5) -> None:
         self.home = Path(home) if home else codex_home()
         self.refresh = refresh
-        self._at = 0
-        self._files = {}
-        self._buckets = defaultdict(lambda: [0, 0, 0, 0])  # (bucket, model) -> input, output, cached, responses
-        self._limits = None  # (timestamp, rate_limits)
+        self._at: float = 0
+        self._files: dict[str, _SessionFile] = {}
+        # (bucket, model) -> input, output, cached, responses
+        self._buckets: defaultdict[tuple[int, str], list[int]] = defaultdict(lambda: [0, 0, 0, 0])
+        self._limits: tuple[float, Json] | None = None  # (timestamp, rate_limits)
 
-    def read(self):
+    def read(self) -> Json:
         if not (self.home / "sessions").is_dir():
             return {"installed": False}
         now = time.time()
@@ -98,7 +103,7 @@ class CodexSource:
 
     # Reading -------------------------------------------------------------------
 
-    def _scan(self, now):
+    def _scan(self, now: float) -> None:
         cutoff = now - KEEP
         for key in [k for k in self._buckets if k[0] < cutoff]:
             del self._buckets[key]
@@ -125,7 +130,7 @@ class CodexSource:
             for line in chunk[:end].splitlines():
                 self._line(info, line, cutoff)
 
-    def _line(self, info, line, cutoff):
+    def _line(self, info: _SessionFile, line: bytes, cutoff: float) -> None:
         try:
             entry = json.loads(line)
         except ValueError:
@@ -149,7 +154,7 @@ class CodexSource:
             elif event == "token_count":
                 self._token_count(info, payload, stamp, cutoff)
 
-    def _token_count(self, info, payload, stamp, cutoff):
+    def _token_count(self, info: _SessionFile, payload: Json, stamp: float | None, cutoff: float) -> None:
         limits = payload.get("rate_limits")
         if isinstance(limits, dict) and stamp and (self._limits is None or stamp >= self._limits[0]):
             self._limits = (stamp, limits)
@@ -171,11 +176,11 @@ class CodexSource:
 
     # Summaries -----------------------------------------------------------------
 
-    def _limit_windows(self, now):
+    def _limit_windows(self, now: float) -> list[Json]:
         if not self._limits:
             return []
         stamp, limits = self._limits
-        windows = []
+        windows: list[Json] = []
         for key in ("primary", "secondary"):
             w = limits.get(key)
             if not isinstance(w, dict) or w.get("used_percent") is None:
@@ -194,9 +199,9 @@ class CodexSource:
             })
         return windows
 
-    def _sum(self, keep):
-        total = {"input": 0, "output": 0, "cache_read": 0, "responses": 0}
-        models = Counter()
+    def _sum(self, keep: Callable[[int], bool]) -> Json:
+        total: Json = {"input": 0, "output": 0, "cache_read": 0, "responses": 0}
+        models: Counter[str] = Counter()
         for (block, model), (inp, out, cached, responses) in self._buckets.items():
             if keep(block):
                 total["input"] += inp
@@ -207,15 +212,15 @@ class CodexSource:
         total["models"] = dict(models.most_common())
         return total
 
-    def _models_since(self, start):
-        tokens = Counter()
+    def _models_since(self, start: float) -> list[Json]:
+        tokens: Counter[str] = Counter()
         for (block, model), (inp, out, cached, _) in self._buckets.items():
             if block >= start - BUCKET + 1:
                 tokens[model] += inp + out + cached
         return [{"model": m, "label": model_label(m), "tokens": t} for m, t in tokens.most_common(3)]
 
-    def _sessions(self, now):
-        sessions = []
+    def _sessions(self, now: float) -> list[Json]:
+        sessions: list[Json] = []
         for path, info in self._files.items():
             try:
                 touched = os.stat(path).st_mtime

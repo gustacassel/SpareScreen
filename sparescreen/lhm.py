@@ -9,12 +9,16 @@ its web server (sensors.py). From the PC window it can also:
 - install it with winget, in a console window where the user sees what happens.
 """
 
+from __future__ import annotations
+
 import glob
 import os
 import shutil
 import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Iterator, Optional, cast
 
 import psutil
 
@@ -26,7 +30,7 @@ SETTINGS = {"runWebServerMenuItem": "true", "startMinMenuItem": "true", "minTray
 CANCELLED = 1223  # Windows error when the user says no to the admin prompt
 
 
-def candidates():
+def candidates() -> Iterator[str]:
     """Where the usual ways of installing it put the executable."""
     env = os.environ.get
     patterns = [
@@ -41,23 +45,23 @@ def candidates():
         yield from sorted(glob.glob(pattern))
 
 
-def running():
+def running() -> bool:
     return any((p.info["name"] or "").lower() == EXE.lower() for p in psutil.process_iter(["name"]))
 
 
-def find():
+def find() -> Optional[str]:
     """Path of LibreHardwareMonitor.exe, or None if it isn't installed anywhere we know."""
     for proc in psutil.process_iter(["name", "exe"]):
         if (proc.info["name"] or "").lower() == EXE.lower() and proc.info["exe"]:
-            return proc.info["exe"]  # running from wherever the user unzipped it
+            return cast(str, proc.info["exe"])  # running from wherever the user unzipped it
     return next(iter(candidates()), None)
 
 
-def _config_path(exe):
+def _config_path(exe: str) -> Path:
     return Path(exe).with_name("LibreHardwareMonitor.config")
 
 
-def read_settings(exe):
+def read_settings(exe: str) -> dict[str | None, str | None]:
     """Its appSettings as a dict ({} when there's no config yet)."""
     try:
         root = ET.parse(_config_path(exe)).getroot()
@@ -66,7 +70,7 @@ def read_settings(exe):
     return {node.get("key"): node.get("value") for node in root.iter("add")}
 
 
-def port(exe):
+def port(exe: str) -> int:
     """The port its web server uses (the user may have changed it)."""
     try:
         return int(read_settings(exe).get("listenerPort") or DEFAULT_PORT)
@@ -74,7 +78,7 @@ def port(exe):
         return DEFAULT_PORT
 
 
-def enable_web_server(exe):
+def enable_web_server(exe: str) -> bool:
     """Turns on SETTINGS in its config file. False when the file can't be written
     (e.g. installed under Program Files); the user then turns it on in its menu."""
     path = _config_path(exe)
@@ -102,8 +106,10 @@ def enable_web_server(exe):
     return True
 
 
-def start(exe):
+def start(exe: str) -> Optional[str]:
     """Starts it (with the admin prompt Windows shows for it). Returns an error message or None."""
+    if sys.platform != "win32":  # os.startfile is Windows only; so is LibreHardwareMonitor
+        return "LibreHardwareMonitor only runs on Windows."
     configured = enable_web_server(exe)
     try:
         os.startfile(exe)  # the shell handles the elevation its manifest asks for
@@ -116,7 +122,7 @@ def start(exe):
     return None
 
 
-def install():
+def install() -> Optional[str]:
     """Installs it with winget in a visible console. Returns an error message or None."""
     winget = shutil.which("winget")
     if not winget:

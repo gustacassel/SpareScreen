@@ -11,14 +11,24 @@ activity.py walks the processes and hands each one to GameFinder; the window in 
 comes from there too, so this module doesn't talk to the OS about windows itself.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import sys
+from typing import TYPE_CHECKING, Callable, Optional, TypedDict, cast
 
 import psutil
 
 from . import icons, images
 from .gameart import GameArt
+from .shapes import Game, Json
+
+if TYPE_CHECKING:
+    from .config import ConfigStore
+    from .fps import AutoDetect
+
+Friendly = Callable[[str, Optional[str]], str]  # activity.friendly_name(name, exe)
 
 # (path fragment, lowercase with "/") -> the game name is the folder right after it
 GAME_DIRS = (
@@ -49,33 +59,33 @@ NEVER_AUTO = {
 }
 
 
-def game_name(exe):
+def game_name(exe: str | None) -> str | None:
     path = (exe or "").replace("\\", "/").lower()
     for marker in GAME_DIRS:
         start = path.find(marker)
         if start < 0:
             continue
-        rest = exe.replace("\\", "/")[start + len(marker):]
+        rest = (exe or "").replace("\\", "/")[start + len(marker):]
         folder = rest.split("/", 1)[0]
         if folder and folder.lower() not in NOT_GAMES:
             return folder
     return None
 
 
-def same_exe(path):
+def same_exe(path: str | None) -> str:
     """Paths compared the way the OS does (case-insensitive on Windows)."""
     path = os.path.normpath(path or "")
     return path.lower() if sys.platform == "win32" else path
 
 
-def file_name(exe):
+def file_name(exe: str) -> str:
     return re.split(r"[\\/]", exe)[-1].lower()  # Windows paths too, whatever the OS running this
 
 
-_own = []
+_own: list[str] = []
 
 
-def _own_exe():
+def _own_exe() -> str:
     if not _own:
         try:
             _own.append(same_exe(psutil.Process().exe()))  # the real one (a venv's python.exe is a launcher)
@@ -84,7 +94,7 @@ def _own_exe():
     return _own[0]
 
 
-def system_program(exe):
+def system_program(exe: str) -> bool:
     """Programs that ship with Windows, and SpareScreen itself: no point offering them as games."""
     if same_exe(exe) == _own_exe() or file_name(exe).startswith("sparescreen"):
         return True
@@ -92,8 +102,14 @@ def system_program(exe):
     return bool(windir) and same_exe(exe).startswith(same_exe(windir) + os.sep)
 
 
-def never_auto(exe):
+def never_auto(exe: str) -> bool:
     return file_name(exe) in NEVER_AUTO or system_program(exe)
+
+
+class _Detected(TypedDict, total=False):
+    name: str
+    hwnd: Optional[int]
+    icon: Optional[str]
 
 
 class GameFinder:
@@ -101,27 +117,29 @@ class GameFinder:
 
     SOURCES = {"mine": 3, "library": 2, "auto": 1}  # which wins when several programs qualify
 
-    def __init__(self, config=None, auto=None, art=None):
+    def __init__(self, config: ConfigStore | None = None, auto: AutoDetect | None = None,
+                 art: GameArt | None = None) -> None:
         self.config = config  # ConfigStore with the user's game lists
         self.auto = auto      # fps.AutoDetect, where it can work
         self.art = art or GameArt()
-        self.exe = None       # the current game's exe, for "not a game" (kept out of the data stream)
-        self._found = {}      # pid -> {"name", "hwnd", "icon"} of games detected automatically
-        self._icons = {}      # pid -> {"icon"} of "my games" (their window's icon)
+        self.exe: str | None = None  # the current game's exe, for "not a game" (kept out of the data stream)
+        self._found: dict[int, _Detected] = {}  # pid -> {"name", "hwnd", "icon"} of games detected automatically
+        self._icons: dict[int, _Detected] = {}  # pid -> {"icon"} of "my games" (their window's icon)
 
-    def begin(self):
+    def begin(self) -> None:
         lists = self.config.games() if self.config else {"my_games": [], "not_games": []}
-        self._mine = {same_exe(g["exe"]): g["name"] for g in lists["my_games"]}
-        self._not_games = {same_exe(path) for path in lists["not_games"]}
-        self._best = None
-        self._seen = set()
+        self._mine: dict[str, str] = {same_exe(g["exe"]): g["name"] for g in lists["my_games"]}
+        self._not_games: set[str] = {same_exe(path) for path in lists["not_games"]}
+        self._best: Json | None = None
+        self._seen: set[int] = set()
 
-    def consider(self, pid, name, exe, mem, key, friendly):
+    def consider(self, pid: int, name: str, exe: str | None, mem: int, key: str, friendly: Friendly) -> None:
         """One running process; `friendly(name, exe)` gives its display name."""
         self._seen.add(pid)
         exe_id = same_exe(exe) if exe else None
         if exe_id in self._not_games:
             return
+        title: str | None
         if exe_id in self._mine:
             title, source = self._mine[exe_id] or friendly(name, exe), "mine"
         elif pid in self._found:  # detected before: still a game in the background
@@ -134,7 +152,8 @@ class GameFinder:
         if self._best is None or rank > self._best["_rank"]:
             self._best = {"name": title, "source": source, "_rank": rank, "_key": key, "pid": pid}  # pid: FPS
 
-    def finish(self, programs, focus, focus_pid, window, friendly):
+    def finish(self, programs: dict[str, Json], focus: str | None, focus_pid: int | None, window: Json | None,
+               friendly: Friendly) -> Game | None:
         """The game (with cpu, mem, since, art and icon) or None. `programs` are the per-exe
         totals, `focus` the key of the app in front and `window` its window (or None)."""
         self._found = {pid: found for pid, found in self._found.items() if pid in self._seen}
@@ -158,9 +177,9 @@ class GameFinder:
         if game["source"] in ("auto", "mine"):
             # The window's own icon: for javaw.exe and the like, the exe's icon isn't the game's.
             game["icon"] = self._window_icon(game["pid"]) or game["icon"]
-        return game
+        return cast(Game, game)
 
-    def _window_icon(self, pid):
+    def _window_icon(self, pid: int) -> str | None:
         """Icon URL of the game's window, remembered per process once found (a game that's
         just starting may have no window yet, so it's tried again on the next reading)."""
         found = (self._found if pid in self._found else self._icons).setdefault(pid, {})
@@ -171,8 +190,10 @@ class GameFinder:
                 found["icon"] = images.put("game-icon", png, "image/png")
         return found.get("icon")
 
-    def _auto_game(self, pid, prog, key, window, friendly):
+    def _auto_game(self, pid: int | None, prog: Json, key: str, window: Json | None,
+                   friendly: Friendly) -> Json | None:
         """The full-screen app in front, if PresentMon says it draws like a game."""
+        assert pid is not None and self.auto is not None  # finish() checks both: it's the focused program
         exe = prog["exe"]
         if not exe or same_exe(exe) in self._not_games or never_auto(exe):
             return None

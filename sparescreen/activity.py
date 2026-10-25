@@ -6,6 +6,8 @@ swaymsg/hyprctl (Sway/Hyprland, the Wayland desktops that allow it); `lsappinfo`
 macOS. Anything else just shows no focused program.
 """
 
+from __future__ import annotations
+
 import ctypes
 import json
 import os
@@ -14,19 +16,27 @@ import shutil
 import subprocess
 import sys
 import time
+from typing import TYPE_CHECKING, Any, cast
 
 import psutil
 
 from .games import GameFinder, system_program
+from .shapes import Json
+
+if TYPE_CHECKING:
+    from .config import ConfigStore
+    from .fps import AutoDetect
 
 
 # ---- Friendly program name (Windows: the .exe "File description") -----------
 
-_descriptions = {}
+_descriptions: dict[str, str] = {}
 
 
-def _file_description(exe):
+def _file_description(exe: str) -> str | None:
     """'C:/.../chrome.exe' -> 'Google Chrome', read from the executable's version resource."""
+    if sys.platform != "win32":
+        return None
     version = ctypes.windll.version
     size = version.GetFileVersionInfoSizeW(exe, None)
     if not size:
@@ -40,13 +50,14 @@ def _file_description(exe):
         return None
     lang, codepage = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_uint16 * 2)).contents
     key = f"\\StringFileInfo\\{lang:04x}{codepage:04x}\\FileDescription"
-    if not version.VerQueryValueW(buf, key, ctypes.byref(ptr), ctypes.byref(length)) or not length.value:
+    if not version.VerQueryValueW(buf, key, ctypes.byref(ptr), ctypes.byref(length)) or not length.value \
+            or not ptr.value:
         return None
     # Some files report a length past the end of the text: stop at the first null.
     return ctypes.wstring_at(ptr.value, length.value).split("\x00", 1)[0].strip() or None
 
 
-def friendly_name(name, exe):
+def friendly_name(name: str, exe: str | None) -> str:
     key = exe or name
     if key not in _descriptions:
         desc = None
@@ -64,7 +75,7 @@ def friendly_name(name, exe):
 
 # ---- Focused window ----------------------------------------------------------
 
-def _run(args):
+def _run(args: list[str]) -> str | None:
     """stdout of a quick helper command, or None if it is missing, slow or fails."""
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=1)
@@ -73,7 +84,7 @@ def _run(args):
     return result.stdout if result.returncode == 0 else None
 
 
-def _pid(value):
+def _pid(value: Any) -> int | None:
     """A real PID or None (helpers report 0 or -1 when nothing has focus)."""
     try:
         pid = int(value)
@@ -82,7 +93,9 @@ def _pid(value):
     return pid if pid > 0 else None
 
 
-def _windows_foreground_pid():
+def _windows_foreground_pid() -> int | None:
+    if sys.platform != "win32":
+        return None
     user32 = ctypes.windll.user32
     hwnd = user32.GetForegroundWindow()
     if not hwnd:
@@ -92,7 +105,7 @@ def _windows_foreground_pid():
     return pid.value or None
 
 
-def _x11_foreground_pid():
+def _x11_foreground_pid() -> int | None:
     xdotool = shutil.which("xdotool")
     if xdotool:
         pid = _pid((_run([xdotool, "getactivewindow", "getwindowpid"]) or "").strip())
@@ -110,7 +123,7 @@ def _x11_foreground_pid():
     return _pid(match.group(1)) if match else None
 
 
-def _sway_focused(node):
+def _sway_focused(node: Json) -> int | None:
     """Focused window in `swaymsg -t get_tree`, searching tiled and floating windows."""
     if node.get("focused") and _pid(node.get("pid")):
         return _pid(node["pid"])
@@ -121,20 +134,20 @@ def _sway_focused(node):
     return None
 
 
-def _wayland_foreground_pid():
+def _wayland_foreground_pid() -> int | None:
     """Wayland hides other apps' windows on purpose; only some compositors tell us via their CLI."""
     try:
         if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"):
-            data = json.loads(_run([shutil.which("hyprctl"), "activewindow", "-j"]) or "{}")
+            data = json.loads(_run([cast(str, shutil.which("hyprctl")), "activewindow", "-j"]) or "{}")
             return _pid(data.get("pid"))
         if os.environ.get("SWAYSOCK") and shutil.which("swaymsg"):
-            return _sway_focused(json.loads(_run([shutil.which("swaymsg"), "-t", "get_tree"]) or "{}"))
+            return _sway_focused(json.loads(_run([cast(str, shutil.which("swaymsg")), "-t", "get_tree"]) or "{}"))
     except (ValueError, TypeError, AttributeError):
         pass
     return None
 
 
-def _mac_foreground_pid():
+def _mac_foreground_pid() -> int | None:
     # lsappinfo ships with macOS and, unlike AppleScript/System Events, needs no Automation permission.
     lsappinfo = shutil.which("lsappinfo")
     if not lsappinfo:
@@ -146,7 +159,9 @@ def _mac_foreground_pid():
     return _pid(match.group(1)) if match else None
 
 
-def _windows_foreground_window():
+def _windows_foreground_window() -> Json | None:
+    if sys.platform != "win32":
+        return None
     from ctypes import wintypes
 
     class MonitorInfo(ctypes.Structure):
@@ -173,7 +188,7 @@ def _windows_foreground_window():
     return {"title": title.value.strip(), "fullscreen": fullscreen, "hwnd": hwnd}
 
 
-def foreground_window():
+def foreground_window() -> Json | None:
     """{"title", "fullscreen"} of the window in front (Windows), else None."""
     if sys.platform != "win32":
         return None
@@ -183,7 +198,7 @@ def foreground_window():
         return None
 
 
-def foreground_pid():
+def foreground_pid() -> int | None:
     """PID of the focused window, or None where the OS doesn't tell (see the module docstring)."""
     try:
         if sys.platform == "win32":
@@ -206,28 +221,32 @@ class ActivitySource:
     name = "activity"
     IGNORE = {"system idle process", "idle", "system", "registry", "memory compression"}
 
-    def __init__(self, refresh=3, top=6, config=None, auto=None):
+    def __init__(self, refresh: float = 3, top: int = 6, config: ConfigStore | None = None,
+                 auto: AutoDetect | None = None) -> None:
         self.refresh = refresh
         self.top = top
         self.games = GameFinder(config, auto)
         self.cores = psutil.cpu_count() or 1
-        self.running = []  # programs the PC window can mark as games: [{"exe", "name"}]
+        self.running: list[dict[str, str]] = []  # programs the PC window can mark as games: [{"exe", "name"}]
+        self._at: float = 0
+        self._cache: Json = {"game": None, "focus": None, "top": []}
+
+    def refresh_soon(self) -> None:
         self._at = 0
-        self._cache = {"game": None, "focus": None, "top": []}
 
     @property
-    def game_exe(self):
+    def game_exe(self) -> str | None:
         """The current game's exe, for "not a game" (kept out of the data stream)."""
         return self.games.exe
 
-    def read(self):
+    def read(self) -> Json:
         if time.time() - self._at < self.refresh:
             return self._cache
         self._at = time.time()
 
         focus_pid = foreground_pid()
-        programs = {}  # exe (or name) -> totals
-        focus = None
+        programs: dict[str, Json] = {}  # exe (or name) -> totals
+        focus: str | None = None
         self.games.begin()
         for proc in psutil.process_iter(["name", "exe", "memory_info", "create_time"]):
             info = proc.info
@@ -254,7 +273,7 @@ class ActivitySource:
         window = foreground_window() if focus in programs else None
         game = self.games.finish(programs, focus, focus_pid, window, friendly_name)
 
-        def describe(prog):
+        def describe(prog: Json) -> Json:
             return {
                 "name": friendly_name(prog["name"], prog["exe"]),
                 "cpu": round(prog["cpu"], 1),
@@ -275,7 +294,7 @@ class ActivitySource:
             if prog["exe"] and not system_program(prog["exe"]) and \
                     all(r["exe"] != prog["exe"] for r in self.running):
                 name = friendly_name(prog["name"], prog["exe"])
-                if prog is programs.get(focus) and window and window["title"]:
+                if focus is not None and prog is programs.get(focus) and window and window["title"]:
                     name = window["title"]  # e.g. "Minecraft 1.21" instead of "Java(TM) Platform SE binary"
                 self.running.append({"exe": prog["exe"], "name": name[:60]})
             if len(self.running) >= 8:

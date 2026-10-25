@@ -5,6 +5,8 @@ web/panel.html, opened in an app window (appwindow.py). Checks are built from th
 latest data snapshot, so they show what the dashboard actually gets.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import shutil
@@ -12,9 +14,17 @@ import subprocess
 import sys
 import time
 import webbrowser
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from . import autostart, fps, lhm, names
 from .games import same_exe
+from .shapes import Activity, Check, Json
+
+if TYPE_CHECKING:
+    from .config import ConfigStore
+    from .pairing import Pairing
+    from .server import Hub
+    from .usb import UsbBridge
 
 # Shown as the device name; modern browsers hide the phone model, so this stays generic.
 _SYSTEMS = (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("CrOS", "ChromeOS"),
@@ -23,7 +33,7 @@ _BROWSERS = (("SamsungBrowser", "Samsung Internet"), ("Edg/", "Edge"), ("OPR/", 
              ("Firefox", "Firefox"), ("Chrome", "Chrome"), ("Safari", "Safari"))
 
 
-def describe_agent(agent):
+def describe_agent(agent: Optional[str]) -> str:
     """'Mozilla/5.0 (Linux; Android 14; SM-A556E) ... Chrome/120' -> 'Android (SM-A556E) · Chrome'."""
     agent = agent or ""
     system = next((name for key, name in _SYSTEMS if key in agent), "Device")
@@ -34,13 +44,14 @@ def describe_agent(agent):
     return system + (f" · {browser}" if browser else "")
 
 
-def _mobile(agent):
+def _mobile(agent: Optional[str]) -> bool:
     return any(key in (agent or "") for key in ("Android", "iPhone", "iPad", "Mobile"))
 
 
 class Panel:
-    def __init__(self, pairing=None, bridge=None, usb=True, info=None, local_url="", autostart_args=(),
-                 config=None, activity=None):
+    def __init__(self, pairing: Optional[Pairing] = None, bridge: Optional[UsbBridge] = None, usb: bool = True,
+                 info: Optional[Json] = None, local_url: str = "", autostart_args: Iterable[str] = (),
+                 config: Optional[ConfigStore] = None, activity: Optional[Activity] = None) -> None:
         self.pairing = pairing
         self.config = config
         self.activity = activity
@@ -49,14 +60,14 @@ class Panel:
         self.info = info or {}
         self.local_url = local_url
         self.autostart_args = list(autostart_args)
-        self.hub = None  # set by server.serve()
-        self.message = None  # result of the last action, shown once
-        self.reachable = {}  # PC name -> when a phone last reached SpareScreen by it
+        self.hub: Optional[Hub] = None  # set by server.serve()
+        self.message: Optional[str] = None  # result of the last action, shown once
+        self.reachable: dict[str, float] = {}  # PC name -> when a phone last reached SpareScreen by it
 
-    def name_works(self, name):
+    def name_works(self, name: str) -> None:
         self.reachable[name] = time.time()
 
-    def addresses(self):
+    def addresses(self) -> list[Json]:
         """The PC's names (the ones a phone has reached first) and its IP, as URLs."""
         port = self.local_url.rsplit(":", 1)[-1] if self.local_url.count(":") == 2 else "8765"
         found = [{"url": f"http://{name}:{port}", "works": name in self.reachable}
@@ -66,7 +77,7 @@ class Panel:
 
     # ---- state ---------------------------------------------------------------
 
-    def state(self, clients):
+    def state(self, clients: list[Json]) -> Json:
         snapshot = self.hub.snapshot if self.hub else {}
         message, self.message = self.message, None
         return {
@@ -84,14 +95,14 @@ class Panel:
             "message": message,
         }
 
-    def _waiting(self):
+    def _waiting(self) -> Optional[Json]:
         waiting = self.pairing.waiting() if self.pairing else None
         if not waiting:
             return None
         return {"name": describe_agent(waiting["device"]), "address": waiting["address"],
                 "ago": int(time.time() - waiting["at"])}
 
-    def games(self, snapshot):
+    def games(self, snapshot: Json) -> Json:
         """The game now (and how it was recognized), the user's lists, and what's running."""
         game = (snapshot.get("activity") or {}).get("game")
         lists = self.config.games() if self.config else {"my_games": [], "not_games": []}
@@ -105,7 +116,7 @@ class Panel:
             "auto": fps.AutoDetect.ready(),
         }
 
-    def devices(self, clients):
+    def devices(self, clients: list[Json]) -> Json:
         """What's connected now (open dashboards), the paired Wi-Fi device and USB phones."""
         usb_phones = dict(self.bridge.phones) if self.bridge else {}
         batteries = self.bridge.batteries if self.bridge else {}
@@ -131,7 +142,7 @@ class Panel:
                                "added": device.get("added")})
         return {"open": open_now, "usb": phones, "paired": paired}
 
-    def checks(self, snapshot):
+    def checks(self, snapshot: Json) -> list[Check]:
         """[{"id", "status": ok|warn|error|info, "title", "detail", "action": {"id", "label"}|None}]"""
         system = snapshot.get("system") or {}
         items = [self._sensors_check(system), self._gpu_check(system), self._fps_check(snapshot),
@@ -139,11 +150,12 @@ class Panel:
         return [item for item in items if item]
 
     @staticmethod
-    def _check(id, status, title, detail="", action=None, label=None):
+    def _check(id: str, status: str, title: str, detail: str = "", action: Optional[str] = None,
+               label: str = "") -> Check:
         return {"id": id, "status": status, "title": title, "detail": detail,
                 "action": {"id": action, "label": label} if action else None}
 
-    def _sensors_check(self, system):
+    def _sensors_check(self, system: Json) -> Check:
         cpu = system.get("cpu") or {}
         temp = cpu.get("temp")
         if sys.platform == "win32":
@@ -170,7 +182,7 @@ class Panel:
         return self._check("sensors", "warn", "CPU sensors",
                            "No CPU temperature sensor found (on many PCs the lm-sensors package helps).")
 
-    def _gpu_check(self, system):
+    def _gpu_check(self, system: Json) -> Check:
         gpu = system.get("gpu")
         if gpu:
             return self._check("gpu", "ok", "GPU", gpu.get("name") or "Reading the GPU")
@@ -178,7 +190,7 @@ class Panel:
         detail += "; AMD and Intel need LibreHardwareMonitor." if sys.platform == "win32" else "."
         return self._check("gpu", "info", "GPU", detail)
 
-    def _fps_check(self, snapshot):
+    def _fps_check(self, snapshot: Json) -> Optional[Check]:
         if sys.platform != "win32":
             return None  # PresentMon is Windows only
         title = "FPS in games"
@@ -197,7 +209,7 @@ class Panel:
                            "downloaded once) and asks Windows once for permission to read frame "
                            "timings (the \"Performance Log Users\" group).", "fps_enable", "Enable")
 
-    def _usb_check(self):
+    def _usb_check(self) -> Check:
         if not self.usb:
             return self._check("usb", "info", "USB cable", "Turned off (--no-usb).")
         if not self.bridge:
@@ -213,14 +225,14 @@ class Panel:
         return self._check("usb", "ok", "USB cable",
                            "Ready: plug in an Android phone with USB debugging on.")
 
-    def _wifi_check(self):
+    def _wifi_check(self) -> Check:
         url = self.info.get("phone_url")
         if url:
             return self._check("wifi", "ok", "Wi-Fi", f"On a phone on the same network, open {url}")
         return self._check("wifi", "info", "Wi-Fi", "Off: SpareScreen only listens on this PC (--host).")
 
     @staticmethod
-    def _ai_check(snapshot):
+    def _ai_check(snapshot: Json) -> Check:
         found = [(snapshot.get(key) or {}).get("name") or label
                  for key, label in (("claude", "Claude Code"), ("codex", "Codex"))
                  if (snapshot.get(key) or {}).get("installed")]
@@ -229,7 +241,7 @@ class Panel:
         return Panel._check("ai", "info", "AI tools", "No Claude Code or Codex found: the AI screen stays hidden.")
 
     @staticmethod
-    def _media_check(snapshot):
+    def _media_check(snapshot: Json) -> Check:
         media = snapshot.get("media") or {}
         if media.get("available"):
             return Panel._check("media", "ok", "Now playing", media.get("title") or "Nothing playing right now")
@@ -237,7 +249,8 @@ class Panel:
 
     # ---- actions ------------------------------------------------------------
 
-    def _edit_games(self, action, data):
+    def _edit_games(self, action: str, data: Json) -> None:
+        assert self.config is not None  # act() only edits the lists with a config
         lists = self.config.games()
         mine, others = lists["my_games"], lists["not_games"]
         exe = data.get("exe") if isinstance(data.get("exe"), str) else None
@@ -256,9 +269,9 @@ class Panel:
             self.message = "Won't be taken for a game again."
         self.config.set_games(mine, others)
         if self.activity:
-            self.activity._at = 0  # look again now, not in a few seconds
+            self.activity.refresh_soon()  # look again now, not in a few seconds
 
-    def act(self, action, data=None):
+    def act(self, action: str, data: Optional[Json] = None) -> Json:
         data = data or {}
         if action == "lhm_start":
             exe = lhm.find()
@@ -280,7 +293,8 @@ class Panel:
                 self.message = "winget isn't available: see the README to install adb."
         elif action == "unpair" and self.pairing:
             try:
-                self.pairing.remove(int(data.get("index")))
+                index: Any = data.get("index")  # from the page: int() checks it
+                self.pairing.remove(int(index))
             except (TypeError, ValueError):
                 return {"ok": False}
             self.message = "Device removed. It will ask for the code again."

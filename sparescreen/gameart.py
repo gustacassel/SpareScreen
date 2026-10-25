@@ -16,6 +16,8 @@ The appid comes from the appmanifest_<appid>.acf whose "installdir" is the game'
 folder, in the same Steam library as the game. Nothing is downloaded.
 """
 
+from __future__ import annotations
+
 import glob
 import io
 import json
@@ -23,8 +25,10 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import Iterable, Optional, TypedDict, cast
 
 from . import icons, images
+from .shapes import Art
 
 # Preferred first: wide images without the title on them fit the game screen best
 # (the name is shown below the art anyway, and the art gets cropped in landscape).
@@ -34,7 +38,18 @@ _INSTALLDIR = re.compile(r'"installdir"\s+"([^"]+)"', re.I)
 _APPID = re.compile(r'"appid"\s+"(\d+)"', re.I)
 
 
-def steam_roots():
+class _Xbox(TypedDict):
+    name: Optional[str]
+    art: Optional[Path]
+    logo: Optional[Path]
+
+
+class _Gog(TypedDict):
+    name: Optional[str]
+    ico: Optional[Path]
+
+
+def steam_roots() -> list[Path]:
     """Folders where Steam itself (and so its art cache) may be installed."""
     home = Path.home()
     roots = []
@@ -57,7 +72,7 @@ def steam_roots():
     return roots
 
 
-def steam_appid(exe, folder):
+def steam_appid(exe: str, folder: str) -> str | None:
     """appid of the Steam game installed in `folder`, found next to its library, or None."""
     path = str(exe).replace("\\", "/")
     cut = path.lower().find("/steamapps/common/")
@@ -76,7 +91,7 @@ def steam_appid(exe, folder):
     return None
 
 
-def steam_art(appid, roots):
+def steam_art(appid: str, roots: Iterable[str | os.PathLike[str]]) -> Path | None:
     """Path of the best cached library image for `appid`, or None."""
     for root in roots:
         cache = Path(root) / "appcache" / "librarycache"
@@ -89,7 +104,7 @@ def steam_art(appid, roots):
     return None
 
 
-def _game_root(exe, marker):
+def _game_root(exe: str, marker: str) -> Path | None:
     """The game's own folder: the one right after `marker` ("/xboxgames/"...) in its path."""
     path = str(exe).replace("\\", "/")
     start = path.lower().find(marker)
@@ -99,12 +114,12 @@ def _game_root(exe, marker):
     return Path(path[:start + len(marker)] + folder) if folder else None
 
 
-def _attribute(text, name):
+def _attribute(text: str, name: str) -> str | None:
     match = re.search(r'\b' + re.escape(name) + r'="([^"]+)"', text)
     return match.group(1) if match else None
 
 
-def _image_file(folder, relative):
+def _image_file(folder: Path, relative: str | None) -> Path | None:
     """An image named in a manifest; Store packages often only ship qualified copies
     (Logo.scale-200.png, Logo.targetsize-256.png...), so take the biggest one."""
     if not relative:
@@ -116,7 +131,7 @@ def _image_file(folder, relative):
     return max(variants, key=lambda p: p.stat().st_size) if variants else None
 
 
-def xbox_visuals(exe):
+def xbox_visuals(exe: str) -> _Xbox | None:
     """Xbox / Game Pass games describe themselves in Content/MicrosoftGame.config (or a
     Store appxmanifest.xml): proper name, splash screen (wide art) and logos."""
     root = _game_root(exe, "/xboxgames/")
@@ -139,12 +154,12 @@ def xbox_visuals(exe):
     return None
 
 
-def gog_files(exe):
+def gog_files(exe: str) -> _Gog | None:
     """GOG games keep goggame-<id>.ico (up to 256 px) and goggame-<id>.info (with the name)."""
     root = _game_root(exe, "/gog galaxy/games/") or _game_root(exe, "/gog games/")
     if not root:
         return None
-    found = {"name": None, "ico": next(iter(sorted(root.glob("goggame-*.ico"))), None)}
+    found: _Gog = {"name": None, "ico": next(iter(sorted(root.glob("goggame-*.ico"))), None)}
     for info in sorted(root.glob("goggame-*.info")):
         try:
             found["name"] = json.loads(info.read_text(encoding="utf-8", errors="replace")).get("name")
@@ -154,7 +169,7 @@ def gog_files(exe):
     return found
 
 
-def epic_manifest_dirs():
+def epic_manifest_dirs() -> list[Path]:
     if sys.platform == "win32":
         return [Path(os.environ.get("ProgramData", "C:/ProgramData"), "Epic", "EpicGamesLauncher", "Data", "Manifests")]
     if sys.platform == "darwin":
@@ -162,7 +177,7 @@ def epic_manifest_dirs():
     return []
 
 
-def epic_name(exe, dirs=None):
+def epic_name(exe: str, dirs: Iterable[str | os.PathLike[str]] | None = None) -> str | None:
     """The proper name of an Epic game (its folders are often like "RocketLeague")."""
     path = str(exe).replace("\\", "/").lower()
     for folder in (epic_manifest_dirs() if dirs is None else dirs):
@@ -173,11 +188,11 @@ def epic_name(exe, dirs=None):
                 continue
             location = str(data.get("InstallLocation") or "").replace("\\", "/").rstrip("/").lower()
             if location and path.startswith(location + "/") and data.get("DisplayName"):
-                return data["DisplayName"]
+                return cast(str, data["DisplayName"])
     return None
 
 
-def ico_png(path):
+def ico_png(path: str | os.PathLike[str]) -> bytes | None:
     """The biggest image in an .ico file, as PNG bytes (needs Pillow; None without it)."""
     try:
         from PIL import Image
@@ -198,14 +213,14 @@ class GameArt:
     for_game() gives {"art", "icon"} URLs, plus "name" when the store knows a better one
     than the folder (Xbox, GOG, Epic)."""
 
-    def __init__(self, roots=None):
+    def __init__(self, roots: list[str | os.PathLike[str]] | None = None) -> None:
         self.roots = roots
-        self._last = (None, {"art": None, "icon": None, "name": None})
+        self._last: tuple[str | None, Art] = (None, {"art": None, "icon": None, "name": None})
 
-    def for_game(self, exe, folder):
+    def for_game(self, exe: str | None, folder: str) -> Art:
         if self._last[0] == exe:
             return self._last[1]
-        found = {"art": None, "icon": None, "name": None}
+        found: Art = {"art": None, "icon": None, "name": None}
         try:
             art = icon_png = icon_file = None
             appid = steam_appid(exe, folder) if exe else None

@@ -1,12 +1,19 @@
 """Data sources shown on the dashboard."""
 
+from __future__ import annotations
+
 import sys
 import time
+from typing import TYPE_CHECKING, Optional
 
 import psutil
 
 from .hwinfo import cpu_name, ram_name
 from .sensors import Sensors, cpu_limit
+from .shapes import Json, Source
+
+if TYPE_CHECKING:
+    from .config import ConfigStore
 
 
 class SystemSource:
@@ -14,17 +21,17 @@ class SystemSource:
 
     name = "system"
 
-    def __init__(self):
+    def __init__(self) -> None:
         # psutil's first reading always returns 0%; throw it away.
         psutil.cpu_percent(percpu=True)
         self.sensors = Sensors()
         self.cpu_name = cpu_name()
         self.ram_name = ram_name(psutil.virtual_memory().total)
         self._net = (time.time(), psutil.net_io_counters())
-        self._disks_at = 0
-        self._disks = []
+        self._disks_at: float = 0
+        self._disks: list[Json] = []
 
-    def read(self):
+    def read(self) -> Json:
         per_core = psutil.cpu_percent(percpu=True)
         mem = psutil.virtual_memory()
         swap = psutil.swap_memory()
@@ -60,7 +67,7 @@ class SystemSource:
             "sensors_hint": sensors.get("hint"),  # what to do when sensors are missing, or None
         }
 
-    def _net_rates(self):
+    def _net_rates(self) -> dict[str, float]:
         now, counters = time.time(), psutil.net_io_counters()
         then, before = self._net
         self._net = (now, counters)
@@ -70,12 +77,12 @@ class SystemSource:
             "up": (counters.bytes_sent - before.bytes_sent) / elapsed,
         }
 
-    def _partitions(self):
+    def _partitions(self) -> list[Json]:
         """Space on each drive (C:, D:...), read every 30 s."""
         if time.time() - self._disks_at < 30:
             return self._disks
         self._disks_at = time.time()
-        disks = []
+        disks: list[Json] = []
         for part in psutil.disk_partitions(all=False):
             if "cdrom" in part.opts or part.fstype in ("", "squashfs", "tmpfs"):
                 continue
@@ -93,7 +100,7 @@ class SystemSource:
         return disks
 
 
-def default_sources(config=None):
+def default_sources(config: Optional[ConfigStore] = None) -> list[Source]:
     from .activity import ActivitySource
     from .claude import ClaudeSource
     from .claude_probe import LimitsProbe

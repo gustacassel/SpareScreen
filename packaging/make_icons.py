@@ -9,6 +9,8 @@ with a transparent background, then Pillow to make the sizes:
 - sparescreen/web/icon-180.png: the tray icon and the iPhone home screen icon.
 """
 
+from __future__ import annotations
+
 import subprocess
 import sys
 import tempfile
@@ -23,7 +25,7 @@ from sparescreen.appwindow import find_browser  # noqa: E402
 ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256]
 
 
-def render(svg, size=512):
+def render(svg: Path, size: int = 512) -> Image.Image:
     browser = find_browser()
     if not browser:
         sys.exit("Needs Edge or Chrome to draw the SVG.")
@@ -41,14 +43,15 @@ def render(svg, size=512):
         return Image.open(out).convert("RGBA").copy()
 
 
-def main():
+def main() -> None:
     big = render(ROOT / "assets" / "logo.svg")
-    if big.getpixel((256, 20))[3] == 0 or big.getpixel((2, 2))[3] != 0:
+    alpha = big.getchannel("A")
+    if alpha.getpixel((256, 20)) == 0 or alpha.getpixel((2, 2)) != 0:
         sys.exit("The render looks wrong (tile missing or corners not transparent).")
-    big.resize((256, 256), Image.LANCZOS).save(ROOT / "assets" / "icon-256.png", optimize=True)
-    big.resize((180, 180), Image.LANCZOS).save(ROOT / "sparescreen" / "web" / "icon-180.png", optimize=True)
-    big.resize((256, 256), Image.LANCZOS).save(ROOT / "assets" / "icon.ico",
-                                               sizes=[(s, s) for s in ICO_SIZES])
+    big.resize((256, 256), Image.Resampling.LANCZOS).save(ROOT / "assets" / "icon-256.png", optimize=True)
+    big.resize((180, 180), Image.Resampling.LANCZOS).save(ROOT / "sparescreen" / "web" / "icon-180.png", optimize=True)
+    big.resize((256, 256), Image.Resampling.LANCZOS).save(ROOT / "assets" / "icon.ico",
+                                                          sizes=[(s, s) for s in ICO_SIZES])
     print("Icons written.")
 
 

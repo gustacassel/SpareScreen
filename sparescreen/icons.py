@@ -6,6 +6,8 @@ Windows, no extra dependency). Other systems: None for now, the page
 just doesn't show an icon. Results are cached per file, including failures.
 """
 
+from __future__ import annotations
+
 import base64
 import os
 import subprocess
@@ -13,7 +15,7 @@ import sys
 import threading
 
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-_cache = {}
+_cache: dict[str | tuple[str, int], bytes | None] = {}
 _lock = threading.Lock()
 
 SIZE = 256  # big enough to fill the game screen when there's no store art
@@ -52,7 +54,7 @@ _WINDOW = (
 )
 
 
-def _run(script, env, key):
+def _run(script: str, env: dict[str, str], key: str | tuple[str, int]) -> bytes | None:
     if sys.platform != "win32":
         return None
     with _lock:
@@ -75,22 +77,22 @@ def _run(script, env, key):
     return data
 
 
-def exe_icon_png(path):
+def exe_icon_png(path: str | None) -> bytes | None:
     """PNG bytes of the program's icon, or None."""
     return _run(_EXTRACT, {"SPARESCREEN_EXE": str(path)}, path) if path else None
 
 
-def main_window(pid):
+def main_window(pid: int | None) -> int | None:
     """The visible, titled top-level window of a process (Windows), or None."""
     if sys.platform != "win32" or not pid:
         return None
     import ctypes
 
     user32 = ctypes.windll.user32
-    found = []
+    found: list[int] = []
 
     @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
-    def check(hwnd, _):
+    def check(hwnd: int, _: int | None) -> bool:
         owner = ctypes.c_ulong()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
         if owner.value == pid and user32.IsWindowVisible(hwnd) and user32.GetWindowTextLengthW(hwnd) \
@@ -106,6 +108,6 @@ def main_window(pid):
     return found[0] if found else None
 
 
-def window_icon_png(hwnd):
+def window_icon_png(hwnd: int | None) -> bytes | None:
     """PNG bytes of a window's icon, or None."""
     return _run(_WINDOW, {"SPARESCREEN_HWND": str(int(hwnd))}, ("window", int(hwnd))) if hwnd else None

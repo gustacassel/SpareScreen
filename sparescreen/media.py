@@ -13,6 +13,8 @@ artUrl, media-control's artwork) and are never downloaded from the internet.
 The player's icon is only found on Windows, from the running program.
 """
 
+from __future__ import annotations
+
 import base64
 import binascii
 import datetime
@@ -24,16 +26,20 @@ import shutil
 import subprocess
 import sys
 import time
+from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, Union
 from urllib.parse import unquote, urlparse
 
 import psutil
 
 from . import icons, images
+from .shapes import Json
 
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-UNAVAILABLE = {"available": False}
-NOTHING = {"available": True, "playing": False}
+UNAVAILABLE: Json = {"available": False}
+NOTHING: Json = {"available": True, "playing": False}
+
+Loader = Callable[[str], Optional[str]]  # image key -> its URL (images.put), loaded only when needed
 
 # Friendly names for the ids each OS reports: Windows AUMIDs ("Spotify.exe",
 # "Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic"), MPRIS names
@@ -57,7 +63,7 @@ _APPS = (
 _HEX_ID = re.compile(r"^[0-9a-f]{12,}$")
 
 
-def friendly_app(raw):
+def friendly_app(raw: object) -> str:
     """Player id as reported by the OS -> a name people recognize ("" if it's just a hash)."""
     raw = str(raw or "").strip()
     low = raw.lower()
@@ -75,23 +81,24 @@ def friendly_app(raw):
     return name[0].upper() + name[1:] if name.islower() else name
 
 
-def _seconds(value):
+def _seconds(value: Any) -> float | None:
     """Number, or None when missing, invalid or not positive."""
     try:
-        value = float(value)
+        number = float(value)
     except (TypeError, ValueError):
         return None
-    return value if value > 0 and value == value and value != float("inf") else None
+    return number if number > 0 and number == number and number != float("inf") else None
 
 
-def track(title, artist="", album="", app="", status="playing", position=None, duration=None):
+def track(title: object, artist: object = "", album: object = "", app: str = "", status: str = "playing",
+          position: object = None, duration: object = None) -> Json | None:
     """The "playing" shape every backend returns; None when there is no title."""
     title = str(title or "").strip()
     if not title:
         return None
     duration = _seconds(duration)
     position = (_seconds(position) or 0.0) if duration else None  # a position without a length means nothing
-    if position is not None:
+    if position is not None and duration:
         position = round(min(position, duration), 1)
     return {
         "available": True,
@@ -108,7 +115,7 @@ def track(title, artist="", album="", app="", status="playing", position=None, d
     }
 
 
-def image_type(data):
+def image_type(data: bytes) -> str:
     """Content type from the first bytes; covers are almost always JPEG or PNG."""
     if data[:8] == b"\x89PNG\r\n\x1a\n":
         return "image/png"
@@ -119,14 +126,14 @@ def image_type(data):
     return "image/jpeg"
 
 
-def _pick(tracks):
+def _pick(tracks: Iterable[Json | None]) -> Json | None:
     """First playing track, else first paused one (each backend lists the main session first)."""
-    tracks = [t for t in tracks if t]
-    playing = [t for t in tracks if t["status"] == "playing"]
-    return (playing or tracks or [None])[0]
+    found = [t for t in tracks if t]
+    playing = [t for t in found if t["status"] == "playing"]
+    return next(iter(playing or found), None)
 
 
-def _run(args, timeout=2.0):
+def _run(args: Sequence[str], timeout: float = 2.0) -> str | None:
     """stdout of a command, or None if it could not run. Exit codes vary by tool, callers decide."""
     try:
         result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -136,7 +143,7 @@ def _run(args, timeout=2.0):
     return result.stdout or ""
 
 
-def _find(name, extra_dirs=()):
+def _find(name: str, extra_dirs: Iterable[str] = ()) -> str | None:
     """A tool on PATH, or in well-known folders (autostart may run with a minimal PATH)."""
     found = shutil.which(name)
     if found:
@@ -154,19 +161,20 @@ def _find(name, extra_dirs=()):
 _WIN_STATUS = {4: "playing", 5: "paused"}
 
 
-def _timedelta_seconds(value):
+def _timedelta_seconds(value: Any) -> float | None:
     """TimeSpan comes as a timedelta from pywinrt; tolerate raw 100 ns ticks too."""
     if value is None:
         return None
     if hasattr(value, "total_seconds"):
-        return value.total_seconds()
+        return float(value.total_seconds())
     try:
         return float(value) / 1e7
     except (TypeError, ValueError):
         return None
 
 
-def windows_position(timeline, status, now=None):
+def windows_position(timeline: Any, status: str,
+                     now: datetime.datetime | None = None) -> tuple[float | None, float | None]:
     """(position, duration) in seconds from a session's timeline properties.
 
     Players only update the timeline on events (play, seek...), so while playing
@@ -194,11 +202,11 @@ class WindowsMedia:
 
     WAIT = 1.0  # seconds; these WinRT calls usually answer in a few ms
 
-    def __init__(self):
-        self._control = None
-        self._manager = None
+    def __init__(self) -> None:
+        self._control: Any = None  # the winrt module once imported, False if it can't be
+        self._manager: Any = None
 
-    def available(self):
+    def available(self) -> bool:
         if self._control is None:
             try:
                 from winrt.windows.media import control
@@ -212,11 +220,11 @@ class WindowsMedia:
                     pass
         return bool(self._control)
 
-    def _wait(self, operation):
+    def _wait(self, operation: Any) -> Any:
         operation.wait(self.WAIT)
         return operation.get_results()  # raises if it did not complete
 
-    def read(self):
+    def read(self) -> Json | None:
         try:
             if self._manager is None:
                 manager_class = self._control.GlobalSystemMediaTransportControlsSessionManager
@@ -226,10 +234,10 @@ class WindowsMedia:
             self._manager = None  # start over next time (e.g. the media service restarted)
             raise
 
-    def _read(self, manager):
+    def _read(self, manager: Any) -> Json | None:
         current = manager.get_current_session()
         sessions = ([current] if current is not None else []) + list(manager.get_sessions() or [])
-        candidates = []
+        candidates: list[tuple[bool, int, str, Any]] = []
         for session in sessions:
             status = _WIN_STATUS.get(int(session.get_playback_info().playback_status))
             if status:
@@ -250,7 +258,7 @@ class WindowsMedia:
                 return found
         return None
 
-    def _thumbnail(self, reference, key):
+    def _thumbnail(self, reference: Any, key: str) -> str | None:
         """The cover the player gave Windows (an IRandomAccessStreamReference) -> image URL."""
         from winrt.windows.storage.streams import Buffer, InputStreamOptions
 
@@ -271,13 +279,14 @@ class WindowsMedia:
         return images.put(key, data, content_type)
 
 
-def _processes():
+def _processes() -> Iterator[tuple[str, str | None]]:
     """(name, exe path) of running programs; exe is None for those we can't inspect."""
     for proc in psutil.process_iter(["name", "exe"]):
         yield proc.info.get("name") or "", proc.info.get("exe")
 
 
-def windows_app_icon(aumid, key, processes=None):
+def windows_app_icon(aumid: object, key: str,
+                     processes: Iterable[tuple[str, str | None]] | None = None) -> str | None:
     """Icon of the player behind a Windows media session -> image URL, or None.
 
     Desktop players report their exe name ("Spotify.exe") or a short name
@@ -307,7 +316,7 @@ def windows_app_icon(aumid, key, processes=None):
 _MANIFEST_LOGOS = ("Square150x150Logo", "Square44x44Logo")
 
 
-def package_logo(exe, key):
+def package_logo(exe: str, key: str) -> str | None:
     """A Store app's logo, from the AppxManifest.xml next to its exe (or a few folders up)."""
     folder = os.path.dirname(exe)
     for _ in range(4):
@@ -344,7 +353,7 @@ _PLAYERCTL_FORMAT = _SEP.join(("{{status}}", "{{playerName}}", "{{title}}", "{{a
 _MPRIS_STATUS = {"Playing": "playing", "Paused": "paused"}
 
 
-def file_art(url):
+def file_art(url: object) -> Loader | None:
     """Loader for an MPRIS artUrl, only when it's a local file: covers are never downloaded."""
     parsed = urlparse(str(url or "").strip())
     if parsed.scheme != "file" or parsed.netloc not in ("", "localhost") or not parsed.path:
@@ -353,21 +362,21 @@ def file_art(url):
     return lambda key: images.put_file(key, path)
 
 
-def _with_art(found, loader):
+def _with_art(found: Json | None, loader: Loader | None) -> Json | None:
     if found and loader:
         found["_art"] = loader
     return found
 
 
-def parse_playerctl(text):
+def parse_playerctl(text: str | None) -> Json | None:
     """`playerctl --all-players metadata --format ...` -> track. Times are in microseconds."""
     tracks = []
     for line in (text or "").splitlines():
         fields = line.split(_SEP)
         if len(fields) != 8:
             continue
-        status, player, title, artist, album, position, length, art = fields
-        status = _MPRIS_STATUS.get(status.strip())
+        state, player, title, artist, album, position, length, art = fields
+        status = _MPRIS_STATUS.get(state.strip())
         if status:
             found = track(title, artist, album, friendly_app(player), status,
                           (_seconds(position) or 0) / 1e6, (_seconds(length) or 0) / 1e6)
@@ -375,7 +384,7 @@ def parse_playerctl(text):
     return _pick(tracks)
 
 
-def _dbus_value(body):
+def _dbus_value(body: str) -> str | float:
     """'string "Playing"' -> 'Playing'; 'int64 1234' -> 1234.0."""
     kind, _, value = body.partition(" ")
     value = value.strip()
@@ -387,19 +396,21 @@ def _dbus_value(body):
         return value
 
 
-def parse_dbus_names(text):
+def parse_dbus_names(text: str | None) -> list[str]:
     """`dbus-send ... ListNames` -> the MPRIS player bus names."""
     names = re.findall(r'string "(org\.mpris\.MediaPlayer2\.[^"]+)"', text or "")
     return [n for n in names if not n.startswith("org.mpris.MediaPlayer2.playerctld")]  # a proxy, not a player
 
 
-def parse_dbus_properties(text):
+def parse_dbus_properties(text: str | None) -> Json:
     """`dbus-send --print-reply ... Properties.GetAll` -> flat {key: value}, Metadata included.
 
     The output lists each dict entry as a `string "key"` line followed by a
     `variant ...` line; string arrays (artists) span lines until `]`.
     """
-    values, key, collecting = {}, None, None
+    values: Json = {}
+    key: Any = None
+    collecting: list[Any] | None = None
     for line in (text or "").splitlines():
         line = line.strip()
         if collecting is not None:
@@ -424,8 +435,8 @@ def parse_dbus_properties(text):
     return values
 
 
-def dbus_track(name, values):
-    status = _MPRIS_STATUS.get(values.get("PlaybackStatus"))
+def dbus_track(name: str, values: Json) -> Json | None:
+    status = _MPRIS_STATUS.get(values.get("PlaybackStatus", ""))
     if not status:
         return None
     length = _seconds(values.get("mpris:length"))
@@ -439,17 +450,18 @@ def dbus_track(name, values):
 class LinuxMedia:
     """MPRIS players over D-Bus: `playerctl` if installed, else plain `dbus-send`."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.playerctl = _find("playerctl")
         self.dbus_send = None if self.playerctl else _find("dbus-send")
 
-    def available(self):
+    def available(self) -> bool:
         return bool(self.playerctl or self.dbus_send)
 
-    def read(self):
+    def read(self) -> Json | None:
         if self.playerctl:
             return parse_playerctl(_run([self.playerctl, "--all-players", "metadata", "--format",
                                          _PLAYERCTL_FORMAT]))
+        assert self.dbus_send is not None  # only read when available()
         names = parse_dbus_names(_run([self.dbus_send, "--session", "--print-reply", "--reply-timeout=1000",
                                        "--dest=org.freedesktop.DBus", "/org/freedesktop/DBus",
                                        "org.freedesktop.DBus.ListNames"]))
@@ -468,12 +480,12 @@ _BREW_DIRS = ("/opt/homebrew/bin", "/usr/local/bin")
 _NOWPLAYING_FIELDS = ("title", "artist", "album", "duration", "elapsedTime", "playbackRate")
 
 
-def base64_art(encoded, content_type=None):
+def base64_art(encoded: object, content_type: object = None) -> Loader | None:
     """Loader for artwork sent as base64 (media-control's artworkData)."""
     if not encoded or not isinstance(encoded, str):
         return None
 
-    def load(key):
+    def load(key: str) -> str | None:
         try:
             data = base64.b64decode(encoded)
         except (binascii.Error, ValueError):
@@ -483,7 +495,7 @@ def base64_art(encoded, content_type=None):
     return load
 
 
-def parse_media_control(text):
+def parse_media_control(text: str | None) -> Json | None:
     """`media-control get --now` -> track. It prints `null` when nothing is playing."""
     try:
         data = json.loads(text or "null")
@@ -500,7 +512,7 @@ def parse_media_control(text):
     return _with_art(found, base64_art(data.get("artworkData"), data.get("artworkMimeType")))
 
 
-def parse_nowplaying(text):
+def parse_nowplaying(text: str | None) -> Json | None:
     """`nowplaying-cli get title artist ...` -> track. One value per line, `null` when missing."""
     lines = (text or "").splitlines()
     if len(lines) < len(_NOWPLAYING_FIELDS):
@@ -514,23 +526,27 @@ def parse_nowplaying(text):
 class MacMedia:
     """Best effort: `media-control` (works on macOS 15.4+) or `nowplaying-cli`, if installed."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.media_control = _find("media-control", _BREW_DIRS)
         self.nowplaying = None if self.media_control else _find("nowplaying-cli", _BREW_DIRS)
 
-    def available(self):
+    def available(self) -> bool:
         return bool(self.media_control or self.nowplaying)
 
-    def read(self):
+    def read(self) -> Json | None:
         if self.media_control:
             # With the artwork (base64, decoded only when the track changes).
             return parse_media_control(_run([self.media_control, "get", "--now"], timeout=3))
+        assert self.nowplaying is not None  # only read when available()
         return parse_nowplaying(_run([self.nowplaying, "get"] + list(_NOWPLAYING_FIELDS)))
 
 
 # --- Source --------------------------------------------------------------------------------
 
-def default_backend(platform=None):
+Backend = Union[WindowsMedia, MacMedia, LinuxMedia]
+
+
+def default_backend(platform: str | None = None) -> Backend | None:
     platform = platform or sys.platform
     if platform == "win32":
         return WindowsMedia()
@@ -549,11 +565,13 @@ class _Image:
     found, it keeps trying up to `tries` times (some players send it late).
     """
 
-    def __init__(self, key, always, tries):
+    _url: str | None
+
+    def __init__(self, key: str, always: int, tries: int) -> None:
         self.key, self.always, self.tries = key, always, tries
         self._id, self._url, self._loads = object(), None, 0
 
-    def get(self, ident, loader):
+    def get(self, ident: object, loader: Loader | None) -> str | None:
         if ident != self._id:
             self._id, self._url, self._loads = ident, None, 0
         if loader and (self._loads < self.always or (self._url is None and self._loads < self.tries)):
@@ -571,20 +589,20 @@ class MediaSource:
     name = "media"
     INTERVAL = 2
 
-    def __init__(self, backend=None):
+    def __init__(self, backend: Backend | None = None) -> None:
         self.backend = backend if backend is not None else default_backend()
-        self._at = None
+        self._at: float | None = None
         self._last = UNAVAILABLE
         self._art = _Image("media-art", always=2, tries=4)
         self._icon = _Image("media-app-icon", always=1, tries=3)
 
-    def read(self):
+    def read(self) -> Json:
         try:
             return self._read()
         except Exception:
             return dict(NOTHING)
 
-    def _read(self):
+    def _read(self) -> Json:
         now = time.time()
         if self._at is None or now - self._at >= self.INTERVAL:
             self._at = now
@@ -594,7 +612,7 @@ class MediaSource:
             data["position"] = round(min(data["position"] + now - self._at, data["duration"]), 1)
         return data
 
-    def _fetch(self):
+    def _fetch(self) -> Json:
         if self.backend is None or not self.backend.available():
             return UNAVAILABLE
         try:

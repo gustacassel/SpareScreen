@@ -8,12 +8,15 @@ Each OS has its own per-user mechanism; none of them needs admin rights:
 The agent starts with --background: no window, output goes to a log file.
 """
 
+from __future__ import annotations
+
 import os
 import plistlib
 import shlex
 import subprocess
 import sys
 from pathlib import Path
+from typing import Iterable
 
 APP = "SpareScreen"
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -21,7 +24,7 @@ DESKTOP_FILE = Path.home() / ".config" / "autostart" / "sparescreen.desktop"
 LAUNCH_AGENT = Path.home() / "Library" / "LaunchAgents" / "io.github.gustacassel.sparescreen.plist"
 
 
-def launch_command(extra_args):
+def launch_command(extra_args: Iterable[str]) -> list[str]:
     """How to start this same installation in the background, with the user's options."""
     if getattr(sys, "frozen", False):  # a packaged executable (PyInstaller)
         base = [sys.executable]
@@ -32,7 +35,7 @@ def launch_command(extra_args):
     return base + list(extra_args) + ["--background"]
 
 
-def enable(extra_args=()):
+def enable(extra_args: Iterable[str] = ()) -> list[str]:
     command = launch_command(extra_args)
     if sys.platform == "win32":
         import winreg
@@ -55,7 +58,7 @@ def enable(extra_args=()):
     return command
 
 
-def disable():
+def disable() -> None:
     if sys.platform == "win32":
         import winreg
 
@@ -72,14 +75,15 @@ def disable():
             pass
 
 
-def status():
+def status() -> str | None:
     """The registered command line, or None when autostart is off."""
     if sys.platform == "win32":
         import winreg
 
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
-                return winreg.QueryValueEx(key, APP)[0]
+                command: str = winreg.QueryValueEx(key, APP)[0]
+                return command
         except FileNotFoundError:
             return None
     path = LAUNCH_AGENT if sys.platform == "darwin" else DESKTOP_FILE

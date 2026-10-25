@@ -15,6 +15,8 @@ Setting it up is the user's choice, from the PC window ("Enable"):
 Other systems: no FPS for now (Linux could read MangoHud's logs later).
 """
 
+from __future__ import annotations
+
 import collections
 import csv
 import hashlib
@@ -26,6 +28,9 @@ import threading
 import time
 import urllib.request
 from pathlib import Path
+from typing import Callable, List, cast
+
+from .shapes import FrameSummary, Json, Source
 
 VERSION = "2.6.0"
 URL = f"https://github.com/GameTechDev/PresentMon/releases/download/v{VERSION}/PresentMon-{VERSION}-x64.exe"
@@ -39,14 +44,14 @@ _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 # ---- setup -------------------------------------------------------------------
 
-def find_presentmon():
+def find_presentmon() -> str | None:
     """Our pinned download, or a PresentMon the user already has on the PATH."""
     if EXE.is_file():
         return str(EXE)
     return shutil.which("PresentMon") or shutil.which("PresentMon-x64")
 
 
-def download():
+def download() -> str | None:
     """Downloads the pinned PresentMon and checks its hash. Returns an error message or None."""
     TOOLS.mkdir(parents=True, exist_ok=True)
     tmp = EXE.with_suffix(".part")
@@ -63,7 +68,7 @@ def download():
     return None
 
 
-def allowed():
+def allowed() -> bool:
     """True when this process may start ETW sessions: in the group (after signing back in) or elevated."""
     if sys.platform != "win32":
         return False
@@ -86,13 +91,15 @@ def allowed():
 REQUESTED = TOOLS / "fps-permission-requested"  # joined the group; waiting for a new sign-in
 
 
-def requested():
+def requested() -> bool:
     return REQUESTED.is_file()
 
 
-def join_group():
+def join_group() -> str | None:
     """Asks Windows (admin prompt) to add this user to "Performance Log Users".
     Returns an error message or None; it takes effect after signing out and back in."""
+    if sys.platform != "win32":
+        return "FPS needs Windows."  # the PC window only offers it there
     import ctypes
 
     user = f"{os.environ.get('USERDOMAIN', '')}\\{os.environ.get('USERNAME', '')}".lstrip("\\")
@@ -107,7 +114,7 @@ def join_group():
     return None
 
 
-def enable():
+def enable() -> str:
     """The PC window's "Enable": download PresentMon if needed, then ask for the permission.
     Returns the message to show."""
     if not find_presentmon():
@@ -130,19 +137,19 @@ def enable():
 CAPTURE_OPTIONS = ["--no_console_stats", "--no_track_gpu", "--no_track_input"]
 
 
-def capture_command(exe, pid, path, seconds, session):
+def capture_command(exe: str, pid: int, path: Path, seconds: float, session: str) -> list[str]:
     return [exe, "--process_id", str(pid), "--output_file", str(path), "--timed", str(seconds),
             "--terminate_after_timed", "--session_name", session, "--stop_existing_session"] + CAPTURE_OPTIONS
 
 
-def _remove(path):
+def _remove(path: Path) -> None:
     try:
         path.unlink()
     except OSError:
         pass
 
 
-def frame_column(header):
+def frame_column(header: list[str]) -> int | None:
     """Index of the frame-to-frame time in PresentMon's CSV header (named differently over versions)."""
     for name in ("MsBetweenPresents", "FrameTime", "MsBetweenAppStart"):
         if name in header:
@@ -155,13 +162,13 @@ class FrameStats:
 
     RECENT = 4.0  # seconds counted as "now" (frames arrive in ~2 s batches)
 
-    def __init__(self, window=10.0, now=time.monotonic):
+    def __init__(self, window: float = 10.0, now: Callable[[], float] = time.monotonic) -> None:
         self.window = window
         self.now = now
-        self._frames = collections.deque()  # (arrival time, frame time in ms)
+        self._frames: collections.deque[tuple[float, float]] = collections.deque()  # (arrival time, frame time in ms)
         self._lock = threading.Lock()
 
-    def add(self, ms):
+    def add(self, ms: float) -> None:
         if not 0 < ms < 5000:  # pauses and loading screens aren't frames worth counting
             return
         with self._lock:
@@ -170,7 +177,7 @@ class FrameStats:
             while self._frames and now - self._frames[0][0] > self.window:
                 self._frames.popleft()
 
-    def summary(self):
+    def summary(self) -> FrameSummary | None:
         with self._lock:
             now = self.now()
             recent = [ms for at, ms in self._frames if now - at <= self.RECENT]  # what's on screen now
@@ -196,16 +203,16 @@ class AutoDetect:
     MIN_FPS = 20
     RECHECK = 300  # seconds before asking again about a program that wasn't a game
 
-    def __init__(self):
-        self._verdicts = {}  # exe -> (is it a game, when)
+    def __init__(self) -> None:
+        self._verdicts: dict[str, tuple[bool, float]] = {}  # exe -> (is it a game, when)
         self._busy = False
         self._lock = threading.Lock()
 
     @staticmethod
-    def ready():
+    def ready() -> bool:
         return sys.platform == "win32" and bool(find_presentmon()) and allowed()
 
-    def is_game(self, pid, exe):
+    def is_game(self, pid: int, exe: str) -> bool:
         """True once confirmed; False while unknown (a check runs in the background)."""
         with self._lock:
             verdict = self._verdicts.get(exe)
@@ -217,12 +224,14 @@ class AutoDetect:
         threading.Thread(target=self._check, args=(pid, exe), daemon=True).start()
         return False
 
-    def _check(self, pid, exe):
+    def _check(self, pid: int, exe: str) -> None:
         path = TOOLS / f"check-{os.getpid()}.csv"
         try:
             TOOLS.mkdir(parents=True, exist_ok=True)
             _remove(path)
-            subprocess.run(capture_command(find_presentmon(), pid, path, self.SECONDS, SESSION + "Check"),
+            presentmon = find_presentmon()
+            assert presentmon  # is_game only checks when ready()
+            subprocess.run(capture_command(presentmon, pid, path, self.SECONDS, SESSION + "Check"),
                            capture_output=True, timeout=self.SECONDS + 15, creationflags=_NO_WINDOW)
             game = path.is_file() and self.looks_like_a_game(path.read_text(encoding="utf-8-sig", errors="replace"))
         except (OSError, subprocess.SubprocessError):
@@ -234,7 +243,7 @@ class AutoDetect:
             self._busy = False
 
     @classmethod
-    def looks_like_a_game(cls, output):
+    def looks_like_a_game(cls, output: str) -> bool:
         times = frame_times(output)
         # Steady drawing: enough frames over the whole check, at a game-like rate.
         return len(times) >= cls.MIN_FPS * cls.SECONDS * 0.8 and 1000 / (sum(times) / len(times)) >= cls.MIN_FPS
@@ -247,17 +256,17 @@ class FpsSource:
 
     STRETCH = 2  # seconds per recording; FPS updates this often
 
-    def __init__(self, activity):
+    def __init__(self, activity: Source) -> None:
         self.activity = activity
-        self._proc = None
-        self._pid = None
-        self._stats = None
-        self._error = None
-        self._stopped = None  # threading.Event of the current capture
+        self._proc: subprocess.Popen[bytes] | None = None
+        self._pid: int | None = None
+        self._stats: FrameStats | None = None
+        self._error: str | None = None
+        self._stopped: threading.Event | None = None  # of the current capture
         for left in list(TOOLS.glob("frames-*.csv")) + list(TOOLS.glob("check-*.csv")):
             _remove(left)  # from a run that was closed mid-recording
 
-    def read(self):
+    def read(self) -> Json:
         if sys.platform != "win32":
             return {"available": False}
         game = (self.activity.read() or {}).get("game")
@@ -271,7 +280,7 @@ class FpsSource:
         summary = self._stats.summary() if self._stats else None
         return dict({"available": True, "playing": True, "error": self._error}, **(summary or {}))
 
-    def _start(self, pid):
+    def _start(self, pid: int) -> None:
         self._pid, self._error = pid, None
         exe = find_presentmon()
         if not exe:
@@ -284,7 +293,7 @@ class FpsSource:
         self._stopped = threading.Event()
         threading.Thread(target=self._capture, args=(exe, pid, self._stats, self._stopped), daemon=True).start()
 
-    def _capture(self, exe, pid, stats, stopped):
+    def _capture(self, exe: str, pid: int, stats: FrameStats, stopped: threading.Event) -> None:
         # PresentMon keeps its file locked while writing, so it records short stretches
         # back to back and each one is read when it ends.
         path = TOOLS / f"frames-{os.getpid()}.csv"
@@ -312,7 +321,7 @@ class FpsSource:
                 pass  # no frames this time (game paused, minimized...)
         _remove(path)
 
-    def _stop(self):
+    def _stop(self) -> None:
         proc, self._proc, self._stats, self._pid = self._proc, None, None, None
         if self._stopped:
             self._stopped.set()
@@ -320,18 +329,21 @@ class FpsSource:
             proc.terminate()
             # A killed PresentMon leaves its trace session behind: close it properly.
             try:
-                subprocess.run([proc.args[0], "--terminate_existing_session", "--session_name", SESSION],
+                subprocess.run([cast(List[str], proc.args)[0], "--terminate_existing_session",
+                                "--session_name", SESSION],
                                capture_output=True, timeout=10, creationflags=_NO_WINDOW)
             except (OSError, subprocess.SubprocessError):
                 pass
 
 
-def frame_times(text):
+def frame_times(text: str) -> list[float]:
     """Frame-to-frame times (ms) in one of PresentMon's CSV files."""
     rows = list(csv.reader(text.splitlines()))
     column = frame_column(rows[0]) if rows else None
-    times = []
-    for row in rows[1:] if column is not None else []:
+    times: list[float] = []
+    if column is None:
+        return times
+    for row in rows[1:]:
         try:
             times.append(float(row[column]))
         except (IndexError, ValueError):
@@ -339,6 +351,6 @@ def frame_times(text):
     return times
 
 
-def read_frames(text, stats):
+def read_frames(text: str, stats: FrameStats) -> None:
     for ms in frame_times(text):
         stats.add(ms)
