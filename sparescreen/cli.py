@@ -1,12 +1,14 @@
 """Command line: everything `sparescreen` (or `python -m sparescreen`) does."""
 
 import argparse
+import os
 import socket
+import subprocess
 import sys
 import webbrowser
 from pathlib import Path
 
-from . import __version__, autostart, dev
+from . import __version__, autostart, dev, tray
 from .config import ConfigStore
 from .demo import demo_sources
 from .pairing import Pairing
@@ -50,9 +52,56 @@ def without(argv, *flags):
     return out
 
 
+def autostart_args():
+    """The options to start with at login: the ones given now, minus the one-off ones."""
+    return without(sys.argv[1:], "--autostart", "--background", "--dev")
+
+
+# Set on the windowless copy of the .exe: "greet" when the user double-clicked it.
+DETACHED = "SPARESCREEN_DETACHED"
+
+
+def console_is_ours():
+    """True when Windows opened this console just for us (the .exe was double-clicked),
+    false when it belongs to a terminal the user typed the command in."""
+    import ctypes
+
+    import psutil
+
+    pids = (ctypes.c_ulong * 32)()
+    count = ctypes.windll.kernel32.GetConsoleProcessList(pids, 32)
+    if not 0 < count <= 32:
+        return False
+    ours = {os.getpid()}
+    try:
+        parent = psutil.Process().parent()
+        if parent and parent.exe() == sys.executable:  # PyInstaller's one-file launcher
+            ours.add(parent.pid)
+    except psutil.Error:
+        pass
+    return set(pids[:count]) <= ours
+
+
+def detach(greet):
+    """Starts a copy of this .exe with no console window; the caller then exits, closing its own.
+
+    Hiding the window instead doesn't work when Windows 11 opens console apps in
+    Windows Terminal, so a fresh windowless process is the reliable way.
+    """
+    args = [sys.executable] + sys.argv[1:]
+    if "--background" not in args:
+        args.append("--background")
+    # PYINSTALLER_RESET_ENVIRONMENT: the copy unpacks its own files instead of using
+    # this process's temporary folder, which is deleted when this one exits.
+    env = dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT="1", **{DETACHED: "greet" if greet else "quiet"})
+    subprocess.Popen(args, env=env, close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL,
+                     creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP)
+
+
 def handle_autostart(action):
     if action == "on":
-        command = autostart.enable(without(sys.argv[1:], "--autostart", "--background", "--dev"))
+        command = autostart.enable(autostart_args())
         print("SpareScreen will start when you log in:")
         print("  " + " ".join(command))
     elif action == "off":
@@ -98,15 +147,20 @@ def main():
     start.add_argument("--autostart", choices=("on", "off", "status"),
                        help="start SpareScreen when you log in (keeps the other options you pass)")
     start.add_argument("--background", action="store_true",
-                       help=f"run without a window; output goes to {LOG_FILE}")
+                       help=f"run without a window, with a tray icon where possible; output goes to {LOG_FILE}")
+    start.add_argument("--no-tray", action="store_true", help="no tray icon in --background mode")
     args = parser.parse_args()
 
-    if args.background and sys.platform == "win32" and frozen:
-        # The packaged .exe is a console app (so double-clicking it shows the address and
-        # code); when started at login, let go of that window right away.
-        import ctypes
+    # The .exe is a console app, so typed in a terminal it prints the address and code
+    # there. Double-clicked (or started at login) it would leave a black window open:
+    # run a windowless copy in the tray instead and close this one.
+    detached = os.environ.get(DETACHED)
+    if frozen and sys.platform == "win32" and not detached and not args.autostart:
+        if args.background or console_is_ours():
+            detach(greet=not args.background)
+            return 0
+    greet = detached == "greet"  # double-clicked: open the page and say where the icon is
 
-        ctypes.windll.kernel32.FreeConsole()
     if args.background or sys.stdout is None:
         log_to_file()
     else:
@@ -144,7 +198,7 @@ def main():
     except OSError as exc:
         print(f"Can't use port {args.port} ({exc}). Is SpareScreen already running? "
               f"Open {local_url}, or pick another port with --port.", flush=True)
-        if frozen and not args.background:
+        if frozen and (greet or not args.background):
             webbrowser.open(local_url)  # double-clicked again: show the one that is running
         return 1
     print(f"SpareScreen running on port {args.port}." + (" Demo mode: showing made-up data." if args.demo else ""))
@@ -159,9 +213,16 @@ def main():
     elif not args.no_usb:
         print("  USB:   adb not found. Install Android Platform Tools to use the cable (see the README).")
     print(f"  On this PC: {local_url} (address and pairing code are in its settings)")
-    print("Press Ctrl+C to quit.", flush=True)
-    if frozen and not args.background:
+    if frozen and (greet or not args.background):
         webbrowser.open(local_url)  # the packaged app has no terminal to read: show the page
+    if args.background and not args.no_tray and tray.available():
+        print("Tray icon on; quit from its menu.", flush=True)
+        try:
+            tray.run(server, local_url, phone_url, pairing, autostart_args(), greet=greet)
+        finally:
+            server.server_close()
+        return
+    print("Press Ctrl+C to quit.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

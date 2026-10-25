@@ -69,6 +69,12 @@ When you start it by hand it opens the dashboard in your browser; its settings s
 address and pairing code for your phone. The files aren't code-signed yet, which is why
 the systems warn the first time.
 
+On Windows, double-clicking it runs SpareScreen in the background with an icon in the
+tray (next to the clock): no window to keep open. Right-click the icon to open the
+dashboard, see the phone address and pairing code, turn **Start with Windows** on or off,
+or quit. Windows 11 puts new icons behind the **^** arrow; drag it onto the taskbar to keep
+it in sight. Typed in a terminal, it runs right there, as before.
+
 ### From source
 
 You need [Git](https://git-scm.com/) and [Python](https://www.python.org/) 3.9 or newer.
@@ -132,7 +138,8 @@ The cable must carry data (some cheap cables only charge). If the agent can't fi
 
 ### Start with your PC
 
-To have SpareScreen start by itself when you log in, in the background with no window:
+On Windows the easiest way is the tray icon's **Start with Windows**. Or, on any system,
+to have SpareScreen start by itself when you log in, in the background with no window:
 
 ```bash
 sparescreen --autostart on
@@ -144,6 +151,10 @@ per user, without admin rights: a *Run* entry on Windows, `~/.config/autostart` 
 and a LaunchAgent on macOS (from the next login). In the background the output goes to
 `~/.sparescreen/sparescreen.log`. With the downloaded executable it's the same:
 `sparescreen-windows-x64.exe --autostart on`.
+
+In the background SpareScreen shows a tray icon (quit from its menu). It's built in on
+Windows; on Linux and macOS it shows up if `pystray` and `pillow` are installed
+(`pip install pystray pillow`) and the desktop supports tray icons. `--no-tray` turns it off.
 
 ### Options
 
@@ -158,10 +169,11 @@ and a LaunchAgent on macOS (from the next login). In the background the output g
 | `--stay-awake` | | Turns on the phone's "stay awake while plugged in" setting (saved on the phone) |
 | `--no-pairing` | | Let any device on the network see the data without a code (trusted networks only) |
 | `--reset-pairing` | | Forget every paired device before starting |
+| `--background` | | Run without a window (tray icon where possible), output to `~/.sparescreen/sparescreen.log` |
+| `--no-tray` | | No tray icon in the background |
 | `--dev` | | Development mode (see below) |
 | `--demo` | | Show made-up data instead of this PC's (for screenshots, demos or trying it out) |
 | `--autostart` | | `on`, `off` or `status`: start SpareScreen when you log in (see above) |
-| `--background` | | Run without a window; output goes to `~/.sparescreen/sparescreen.log` |
 | `--version` | | Print the version |
 
 ## On the phone
@@ -438,6 +450,7 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   `~/.sparescreen/devices.json`) and the lockout after wrong codes.
 - `sparescreen/cli.py`: the command line (`python -m sparescreen` and the executables run it).
 - `sparescreen/autostart.py`: `--autostart` per OS.
+- `sparescreen/tray.py`: the tray icon in background mode (pystray).
 - `packaging/entry.py` and `.github/workflows/release.yml`: the PyInstaller executables
   built for every release.
 - `sparescreen/dev.py`: `--dev` mode (a supervisor that restarts the agent, plus the code version).

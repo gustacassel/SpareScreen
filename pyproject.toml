@@ -16,6 +16,9 @@ dependencies = [
     "winrt-Windows.Foundation>=3.2; sys_platform == 'win32'",
     "winrt-Windows.Foundation.Collections>=3.2; sys_platform == 'win32'",
     "winrt-Windows.Storage.Streams>=3.2; sys_platform == 'win32'",  # reads the album cover
+    # Tray icon in background mode; optional elsewhere (see sparescreen/tray.py).
+    "pystray>=0.19; sys_platform == 'win32'",
+    "pillow>=9; sys_platform == 'win32'",
 ]
 
 [project.scripts]

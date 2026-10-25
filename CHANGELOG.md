@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 ## [Unreleased]
 
+### Added
+
+- Tray icon: double-clicking the Windows executable runs SpareScreen in the background
+  with an icon next to the clock (open the dashboard, phone address and pairing code,
+  Start with Windows, Quit) instead of a console window that had to stay open. Also in
+  `--background` mode (autostart); on Linux/macOS when `pystray` is installed.
+
 ### Changed
 
 - The PC screen no longer repeats the game and now playing while they have their own
@@ -15,6 +22,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 - `--demo` has an album cover and game art (original drawings), and its game comes and
   goes so game mode can be seen.
 - Devices set to reduce motion get no animations.
+
+### Fixed
+
+- Starting at login with the Windows executable no longer leaves a console window open.
 
 ## [0.4.0] - 2026-10-24
 
