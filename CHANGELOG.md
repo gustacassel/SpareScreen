@@ -4,7 +4,7 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] - 2026-10-24
 
 ### Added
 
@@ -14,7 +14,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 - AI screen (formerly "Claude"): one card per AI coding tool installed on the PC.
   Codex CLI support: sessions, tokens and its 5-hour and weekly usage limits, read from
   `~/.codex/sessions`. Saved settings that used the old `claude` screen name keep working.
-
 - Claude Code limits without the terminal: *Settings > Check Claude limits* runs a tiny
   headless `claude -p` request every 10 minutes while Claude Code is in use and reads the
   `rate_limit_event` it reports. Works with the desktop app and IDEs. Off by default.
@@ -52,4 +51,5 @@ First public version.
   the page while developing.
 - Tests (standard library `unittest`) running on GitHub Actions on Windows, Linux and macOS.
 
+[0.2.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.2.0
 [0.1.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.1.0
