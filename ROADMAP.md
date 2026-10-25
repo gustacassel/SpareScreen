@@ -86,6 +86,17 @@ and with no mandatory app. That's this project's niche.
    get any data or can change settings (done after 0.1.0).
 2. ✅ **Install for non-programmers.** Executables per OS on every release and
    `--autostart`. Still to do: code signing, so Windows/macOS stop warning.
+   - Today the browser (Edge/Chrome download protection) and then Windows SmartScreen
+     warn about the .exe ("not commonly downloaded", several clicks on *Keep*) because it
+     is unsigned and every release is a brand-new file with no reputation.
+   - Free or cheap options: [SignPath Foundation](https://signpath.org/) (free code
+     signing for open source, works from GitHub Actions); Azure Trusted Signing (about
+     US$10/month, needs identity verification); a Certum open source certificate.
+     Signing gives the file a known publisher; reputation still builds with downloads.
+   - Ways around the browser warning: publish to winget (`winget install SpareScreen`),
+     a Scoop bucket or the Microsoft Store (free for individual developers).
+   - macOS: notarization needs a paid Apple Developer account (US$99/year); Homebrew is
+     the free route.
 3. **Generic AI data.** ✅ "Tokens this week per model", the AI screen with Claude Code
    and Codex, and a status line that wraps the user's own. Still to do: more tools that
    keep local data (e.g. Gemini CLI).
