@@ -77,6 +77,8 @@ and with no mandatory app. That's this project's niche.
   sessions; Codex limits come straight from its session files.
 - Claude Code limits for desktop/IDE users: optional headless check (`claude -p`) every
   10 minutes while Claude Code is in use.
+- Phone battery level and temperature in the top bar, with a "battery is hot" alert
+  (temperature over USB only).
 
 ## Gaps, by priority
 

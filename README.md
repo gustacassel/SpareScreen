@@ -143,6 +143,20 @@ Themes: Graphite, OLED, Terracotta, Neon, Terminal and Light.
 For testing you can force things in the address: `…:8765/?screen=pc` pins one screen
 (`hardware`, `ai` or `pc`) and `…:8765/?theme=neon` forces a theme.
 
+## Phone battery
+
+Leaving an old phone plugged in all day (and maybe inside a warm PC case) is hard on its
+battery: heat and age are what make lithium batteries swell. So the top bar shows the
+phone's own battery:
+
+- **Over USB:** level and temperature, read with `adb` every 30 seconds. It turns yellow
+  from 38 °C, and from 42 °C (or when Android itself reports "overheat") it turns red and
+  shows an alert with a chime, so you can unplug the phone or give it more air.
+- **Over Wi-Fi:** only the level, and only where the browser reports it; browsers don't
+  expose the temperature.
+
+If the back of the phone ever starts to bulge, unplug it and stop using it.
+
 ## Games and apps
 
 - **Game running:** any program running from a store's game library folder
@@ -284,7 +298,8 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/server.py`: standard-library HTTP server. The page gets the data through
   Server-Sent Events on `/events`, once per second.
 - `sparescreen/usb.py`: every 3 seconds checks `adb devices`, sets up `adb reverse` on
-  connected phones and opens the page on them.
+  connected phones and opens the page on them; every 30 seconds reads their battery
+  (`dumpsys battery`) for the top bar.
 - `sparescreen/activity.py`: running game, app in focus and top apps.
 - `sparescreen/config.py`: preferences saved in `~/.sparescreen/config.json` (POST `/config`).
 - `sparescreen/pairing.py`: pairing code, device tokens (only their hashes are stored, in

@@ -164,5 +164,13 @@ class DemoActivity:
         }
 
 
+class DemoPhone:
+    name = "phone"
+
+    def read(self):
+        return {"devices": [{"model": "Demo phone", "level": 87, "temp": round(_wave(120, 31, 36), 1),
+                             "status": "charging", "health": "good", "plugged": True}]}
+
+
 def demo_sources():
-    return [DemoSystem(), DemoClaude(), DemoCodex(), DemoActivity()]
+    return [DemoSystem(), DemoClaude(), DemoCodex(), DemoActivity(), DemoPhone()]

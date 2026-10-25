@@ -166,6 +166,13 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 @keyframes pulse { 50% { opacity: .35; } }
 
 
+/* Phone battery in the top bar: warm from 38 °C, hot (and an alert) from 42 °C */
+.phone-batt { display: none; align-self: center; margin-left: 10px; font-size: 13px; color: var(--muted);
+              white-space: nowrap; font-variant-numeric: tabular-nums; }
+.phone-batt .icon { width: 16px; height: 16px; margin-right: 3px; vertical-align: -3px; }
+.phone-batt.warm { color: var(--warn); }
+.phone-batt.hot { color: var(--hot); }
+
 /* Gear (opens the settings) */
 .gear { align-self: center; margin: -8px -6px -8px 6px; padding: 8px; color: var(--muted); }
 .gear .icon { width: 18px; height: 18px; vertical-align: middle; }

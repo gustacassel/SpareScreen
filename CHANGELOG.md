@@ -19,6 +19,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
   headless `claude -p` request every 10 minutes while Claude Code is in use and reads the
   `rate_limit_event` it reports. Works with the desktop app and IDEs. Off by default.
 - Model-specific weekly limits (e.g. "Week · Opus") are shown when Claude Code reports them.
+- Phone battery in the top bar: level and temperature over USB (via `adb`), level only over
+  Wi-Fi. Turns yellow from 38 °C; from 42 °C or an Android "overheat" report it turns red
+  and shows a "Phone battery is hot" alert.
 
 ### Changed
 

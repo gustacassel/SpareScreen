@@ -52,8 +52,41 @@ def find_adb(explicit=None):
     return None
 
 
+# Android battery codes (BatteryManager.BATTERY_STATUS_* / BATTERY_HEALTH_*)
+_STATUS = {2: "charging", 3: "discharging", 4: "not charging", 5: "full"}
+_HEALTH = {2: "good", 3: "overheat", 4: "dead", 5: "over voltage", 6: "failure", 7: "cold"}
+
+
+def parse_battery(text):
+    """`adb shell dumpsys battery` -> {"level": 78, "temp": 32.5, "status": "charging", ...}."""
+    values = {}
+    for line in text.splitlines():
+        key, sep, value = line.strip().partition(":")
+        if sep:
+            values[key.strip().lower()] = value.strip()
+
+    def number(key):
+        try:
+            return int(values[key])
+        except (KeyError, ValueError):
+            return None
+
+    temp = number("temperature")  # tenths of a degree Celsius
+    level, scale = number("level"), number("scale") or 100
+    return {
+        "level": round(100 * level / scale) if level is not None else None,
+        "temp": temp / 10 if temp is not None else None,
+        "status": _STATUS.get(number("status"), "unknown"),
+        "health": _HEALTH.get(number("health"), "unknown"),
+        "plugged": any(values.get(k) == "true" for k in ("ac powered", "usb powered", "wireless powered")),
+    }
+
+
 class UsbBridge:
-    """Watches the phones plugged in over USB and keeps `adb reverse` active."""
+    """Watches the phones plugged in over USB, keeps `adb reverse` active and
+    reads their battery (level, temperature, health) for the dashboard."""
+
+    BATTERY_EVERY = 30  # seconds between battery readings
 
     def __init__(self, adb, port, open_page=True, stay_awake=False, poll_interval=3):
         self.adb = adb
@@ -63,6 +96,7 @@ class UsbBridge:
         self.poll_interval = poll_interval
         self._ready = set()   # phones already set up on this connection
         self._warned = set()  # phones we have already warned about some problem
+        self.batteries = {}   # serial -> latest battery reading (read by PhoneSource)
 
     def start(self):
         threading.Thread(target=self._loop, name="usb", daemon=True).start()
@@ -110,6 +144,23 @@ class UsbBridge:
             print(f"[usb] phone {serial} disconnected.", flush=True)
         self._ready &= connected
         self._warned &= set(devices)
+        for serial in list(self.batteries):
+            if serial not in connected:
+                del self.batteries[serial]
+
+        for serial in connected:
+            self._read_battery(serial, devices[serial][1])
+
+    def _read_battery(self, serial, model):
+        last = self.batteries.get(serial)
+        if last and time.time() - last["at"] < self.BATTERY_EVERY:
+            return
+        try:
+            reading = parse_battery(self._run("-s", serial, "shell", "dumpsys", "battery"))
+        except (RuntimeError, OSError, subprocess.SubprocessError):
+            return
+        reading.update(model=model, at=time.time())
+        self.batteries[serial] = reading
 
     def _ensure(self, serial, model):
         rule = f"tcp:{self.port}"
@@ -133,3 +184,19 @@ class UsbBridge:
                 "-a", "android.intent.action.VIEW", "-d", url,
                 "--es", "com.android.browser.application_id", "sparescreen",
             )
+
+
+class PhoneSource:
+    """Battery of the phones on USB (level, temperature, health), for the top bar and
+    the "battery is hot" alert. Phones on Wi-Fi only have what their browser reports."""
+
+    name = "phone"
+
+    def __init__(self, bridge=None):
+        self.bridge = bridge
+
+    def read(self):
+        if not self.bridge:
+            return {"devices": []}
+        keys = ("model", "level", "temp", "status", "health", "plugged")
+        return {"devices": [{k: b.get(k) for k in keys} for b in self.bridge.batteries.values()]}

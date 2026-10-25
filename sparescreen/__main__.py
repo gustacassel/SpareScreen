@@ -10,7 +10,7 @@ from .demo import demo_sources
 from .pairing import Pairing
 from .server import serve
 from .sources import default_sources
-from .usb import UsbBridge, find_adb
+from .usb import PhoneSource, UsbBridge, find_adb
 
 
 def lan_ip():
@@ -53,7 +53,15 @@ def main():
         return
 
     config = ConfigStore()
-    sources = (demo_sources() if args.demo else default_sources(config)) + [config]
+    adb = None if args.no_usb else find_adb(args.adb)
+    bridge = None
+    if adb:
+        open_page = not args.no_open and not dev.is_restart()
+        bridge = UsbBridge(adb, args.port, open_page=open_page, stay_awake=args.stay_awake)
+    if args.demo:
+        sources = demo_sources() + [config]
+    else:
+        sources = default_sources(config) + [PhoneSource(bridge), config]
     if args.dev:
         sources.append(dev.DevSource())
     pairing = None if args.no_pairing else Pairing()
@@ -66,14 +74,11 @@ def main():
         if pairing:
             print(f"         pairing code for new devices: {pairing.code}")
 
-    if not args.no_usb:
-        adb = find_adb(args.adb)
-        if adb:
-            print("  USB:   plug the phone in (with USB debugging on) and the page opens by itself.")
-            open_page = not args.no_open and not dev.is_restart()
-            UsbBridge(adb, args.port, open_page=open_page, stay_awake=args.stay_awake).start()
-        else:
-            print("  USB:   adb not found. Install Android Platform Tools to use the cable (see the README).")
+    if bridge:
+        print("  USB:   plug the phone in (with USB debugging on) and the page opens by itself.")
+        bridge.start()
+    elif not args.no_usb:
+        print("  USB:   adb not found. Install Android Platform Tools to use the cable (see the README).")
     print("Press Ctrl+C to quit.", flush=True)
     try:
         server.serve_forever()
