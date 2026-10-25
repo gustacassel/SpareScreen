@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sparescreen"
-version = "0.5.0"
+version = "0.5.1"
 description = "Turn an old phone (or any device with a browser) into a live dashboard for your PC."
 license = { text = "MIT" }
 readme = "README.md"
