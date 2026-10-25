@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to build and attach the executables to (e.g. v0.4.0)"
+        description: "Release tag to build and attach the executables to (e.g. v0.5.0)"
         required: true
 
 permissions:
