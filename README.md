@@ -242,8 +242,8 @@ normal rotation; the game still shows on the PC screen.
 
 Shows what the PC is playing (Spotify, a browser tab, any player that reports to the
 system): the **Music** screen with the album cover, title, artist, album, player and
-progress (or, with that screen turned off, a small block on the PC screen). Paused media is shown dimmed; with nothing
-playing the block is hidden and the Music screen leaves the rotation.
+progress (or, with that screen turned off, a small block on the PC screen). Paused media
+is shown dimmed; with nothing playing the Music screen leaves the rotation.
 
 Covers only come from the PC itself, never from the internet. The player's icon is
 Windows only.
