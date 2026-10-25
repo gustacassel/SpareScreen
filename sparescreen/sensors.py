@@ -7,6 +7,9 @@
   fans and drives. Windows only exposes these sensors to programs that ship
   their own driver.
 - Linux: `psutil.sensors_temperatures()` and `sensors_fans()` (hwmon).
+- macOS: no public, permission-free API for temperatures, so the CPU temperature
+  comes from a free command-line tool if the user installed one (smctemp, macmon
+  or osx-cpu-temp). `powermetrics` is skipped on purpose: it needs sudo.
 """
 
 import glob
@@ -272,6 +275,55 @@ def linux_fans():
     return fans
 
 
+class MacCpuTemp:
+    """CPU temperature on macOS from the first optional tool that answers.
+
+    smctemp reads the SMC on Intel and Apple Silicon; macmon covers Apple Silicon;
+    osx-cpu-temp covers Intel (it prints 0.0 on Apple Silicon). None needs sudo.
+    """
+
+    COMMANDS = (
+        ("smctemp", ["-c", "-i25", "-n3"]),  # '64.2'; short interval and a few retries instead of 1 s
+        ("macmon", ["pipe", "-s", "1", "-i", "200"]),  # one JSON line: {"temp": {"cpu_temp_avg": 43.7}}
+        ("osx-cpu-temp", []),  # '61.8 °C'
+    )
+
+    RETRY_AFTER = 30  # none answered (e.g. osx-cpu-temp on Apple Silicon): don't spawn them every refresh
+
+    def __init__(self):
+        self.tools = [(name, shutil.which(name), args) for name, args in self.COMMANDS if shutil.which(name)]
+        self._down_until = 0
+
+    def read(self):
+        if not self.tools or time.time() < self._down_until:
+            return None
+        for name, path, args in self.tools:
+            try:
+                result = subprocess.run([path] + args, capture_output=True, text=True, timeout=3)
+            except (OSError, subprocess.SubprocessError, ValueError):
+                continue
+            if result.returncode == 0:
+                temp = parse_mac_temp(name, result.stdout)
+                if temp is not None:
+                    return temp
+        self._down_until = time.time() + self.RETRY_AFTER
+        return None
+
+
+def parse_mac_temp(tool, output):
+    """Celsius from one of MacCpuTemp's tools, or None. 0 (or below) means the sensor was not read."""
+    if tool == "macmon":
+        try:
+            line = next(x for x in (output or "").splitlines() if x.strip().startswith("{"))
+            temp = (json.loads(line).get("temp") or {}).get("cpu_temp_avg")
+            temp = float(temp) if temp is not None else None
+        except (StopIteration, ValueError, TypeError, AttributeError):
+            return None
+    else:
+        temp = _number(output)
+    return temp if temp is not None and 0 < temp < 150 else None
+
+
 class Sensors:
     """Combines the sources above and caches the result for a few seconds."""
 
@@ -279,6 +331,7 @@ class Sensors:
         self.refresh = refresh
         self.nvidia = NvidiaGpu()
         self.lhm = LibreHardwareMonitor() if sys.platform == "win32" else None
+        self.mac_temp = MacCpuTemp() if sys.platform == "darwin" else None
         self._at = 0
         self._cache = {"cpu_temp": None, "cpu_power": None, "cpu_clock": None, "cpu_clock_max": None,
                        "gpu": None, "fans": [], "drives": []}
@@ -295,6 +348,8 @@ class Sensors:
             freq = psutil.cpu_freq()
             cpu, fans = {"temp": linux_cpu_temp(), "clock": freq.current if freq else None}, linux_fans()
             gpu = linux_amd_gpu()
+        elif self.mac_temp:
+            cpu = {"temp": self.mac_temp.read()}
 
         # nvidia-smi is the most reliable source for NVIDIA cards, so it wins when present.
         gpu = self.nvidia.read() or gpu

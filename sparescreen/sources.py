@@ -94,6 +94,7 @@ def default_sources(config=None):
     from .claude import ClaudeSource
     from .claude_probe import LimitsProbe
     from .codex import CodexSource
+    from .media import MediaSource
 
     claude = ClaudeSource(probe=LimitsProbe(), probe_enabled=lambda: bool(config and config.read()["claude_limits"]))
-    return [SystemSource(), claude, CodexSource(), ActivitySource()]
+    return [SystemSource(), claude, CodexSource(), ActivitySource(), MediaSource()]

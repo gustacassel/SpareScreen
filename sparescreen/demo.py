@@ -172,5 +172,15 @@ class DemoPhone:
                              "status": "charging", "health": "good", "plugged": True}]}
 
 
+class DemoMedia:
+    name = "media"
+    DURATION = 228.0  # the song loops, so the progress bar keeps moving
+
+    def read(self):
+        return {"available": True, "playing": True, "title": "Midnight Drive", "artist": "Neon Arcade",
+                "album": "Night Shift", "app": "Spotify", "status": "playing",
+                "position": round(time.time() % self.DURATION, 1), "duration": self.DURATION}
+
+
 def demo_sources():
-    return [DemoSystem(), DemoClaude(), DemoCodex(), DemoActivity(), DemoPhone()]
+    return [DemoSystem(), DemoClaude(), DemoCodex(), DemoActivity(), DemoPhone(), DemoMedia()]

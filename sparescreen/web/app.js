@@ -130,7 +130,8 @@
   // ---- Configuration (comes from the PC) -----------------------------------
 
   var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc"], rotate: 20, notify: true, sound: true,
-              fan_names: {}, cpu_fan: null, claude_limits: false };
+              fan_names: {}, cpu_fan: null, claude_limits: false,
+              burn_in: true, night_mode: "off", night_hours: "23-7" };
   var fanKeys = [];  // original fan names from the last reading ("Fan 1", "GPU"...)
 
   function fanName(key) { return (cfg.fan_names && cfg.fan_names[key]) || key; }
@@ -169,7 +170,50 @@
     $("time").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
     var date = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
     $("date").textContent = date.charAt(0).toUpperCase() + date.slice(1);
+    updateNight(now);
   }
+
+  // ---- Burn-in protection and night mode -----------------------------------
+  // A dashboard shows the same things in the same place for hours, which can burn
+  // into OLED screens. Every minute the whole page moves a few pixels (invisible to
+  // the eye), and at night it can dim or show only a clock that wanders around.
+
+  var nightOn = false;
+  var nightWakeUntil = 0;  // a tap at night shows the dashboard for a while
+
+  function shiftContent() {
+    var x = cfg.burn_in ? Math.round(Math.random() * 6 - 3) : 0;
+    var y = cfg.burn_in ? Math.round(Math.random() * 6 - 3) : 0;
+    var t = "translate(" + x + "px," + y + "px)";
+    document.body.style.webkitTransform = t;
+    document.body.style.transform = t;
+  }
+  setInterval(shiftContent, 60000);
+
+  function isNightTime(now) {
+    var parts = (cfg.night_hours || "23-7").split("-");
+    var start = Number(parts[0]), end = Number(parts[1]), h = now.getHours();
+    return start > end ? (h >= start || h < end) : (h >= start && h < end);
+  }
+
+  function moveNightClock() {
+    var t = $("night-time");
+    t.style.left = Math.round(5 + Math.random() * 50) + "%";
+    t.style.top = Math.round(10 + Math.random() * 50) + "%";
+  }
+
+  function updateNight(now) {
+    var wasOn = nightOn;
+    nightOn = cfg.night_mode !== "off" && isNightTime(now) && Date.now() > nightWakeUntil;
+    $("night-dim").className = "night-dim" + (nightOn && cfg.night_mode === "dim" ? " on" : "");
+    var clock = nightOn && cfg.night_mode === "clock";
+    $("night-clock").className = "night-clock" + (clock ? " on" : "");
+    if (clock) {
+      $("night-time").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
+      if (!wasOn || now.getSeconds() === 0) moveNightClock();
+    }
+  }
+
   tickClock();
   setInterval(tickClock, 1000);
 
@@ -359,6 +403,15 @@
     fillChips("set-claude-limits", [[false, "Off"], [true, "Every 10 min while in use"]].map(function (opt) {
       return chip(opt[1], cfg.claude_limits === opt[0], function () { saveConfig({ claude_limits: opt[0] }); });
     }));
+    fillChips("set-burn-in", [[true, "On"], [false, "Off"]].map(function (opt) {
+      return chip(opt[1], cfg.burn_in === opt[0], function () { saveConfig({ burn_in: opt[0] }); shiftContent(); });
+    }));
+    fillChips("set-night-mode", [["off", "Off"], ["dim", "Dim"], ["clock", "Clock only"]].map(function (opt) {
+      return chip(opt[1], cfg.night_mode === opt[0], function () { saveConfig({ night_mode: opt[0] }); });
+    }));
+    fillChips("set-night-hours", [["22-7", "22:00–07:00"], ["23-7", "23:00–07:00"], ["0-8", "00:00–08:00"]].map(function (opt) {
+      return chip(opt[1], cfg.night_hours === opt[0], function () { saveConfig({ night_hours: opt[0] }); });
+    }));
   }
 
   // One field per fan. Does not redraw while someone is typing.
@@ -392,6 +445,28 @@
     stopRotation();
     renderSettings();
     $("settings").className = "settings open";
+    renderConnect();
+  }
+
+  // "Connect a phone": address and pairing code, only when this page runs on the PC itself
+  // (the agent answers /info to this machine only).
+  function renderConnect() {
+    var box = $("set-connect");
+    box.innerHTML = "";
+    request("GET", "info", null, function (status, info) {
+      if (status !== 200) return;
+      var lines = [];
+      if (info.phone_url) lines.push(["Phone address", info.phone_url]);
+      if (info.code) lines.push(["Pairing code", info.code]);
+      lines.push(["USB", "plug the phone in with USB debugging on"]);
+      for (var i = 0; i < lines.length; i++) {
+        var row = el("div", "connect-row");
+        row.appendChild(el("span", "connect-label", lines[i][0]));
+        row.appendChild(el("b", "", lines[i][1]));
+        box.appendChild(row);
+      }
+      if (info.version) box.appendChild(el("div", "detail small", "SpareScreen " + info.version));
+    });
   }
 
   function closeSettings() {
@@ -429,6 +504,11 @@
   document.addEventListener("click", function () {
     unlockAudio();
     if (longPressed) { longPressed = false; return; }
+    if (nightOn) {  // at night a tap just wakes the dashboard up for a minute
+      nightWakeUntil = Date.now() + 60000;
+      updateNight(new Date());
+      return;
+    }
     // Fullscreen is requested on the frame (index.html), so it survives reloads of this page.
     var doc = window.parent !== window ? parent.document : document;
     var root = doc.documentElement;
@@ -785,11 +865,44 @@
   var browserBattery = null;
   if (navigator.getBattery) {
     try {
-      navigator.getBattery().then(function (b) { browserBattery = b; }, function () {});
+      navigator.getBattery().then(function (b) {
+        // Desktops without a battery report "full and charging": not worth showing.
+        var noBattery = b.level === 1 && b.charging && b.chargingTime === 0;
+        if (!noBattery) browserBattery = b;
+      }, function () {});
     } catch (e) { /* not allowed here */ }
   }
 
   function known(value) { return value !== null && value !== undefined; }
+
+  // ---- Now playing (PC screen) ------------------------------------------------
+
+  function minutes(seconds) {
+    var s = Math.max(0, Math.round(seconds));
+    return Math.floor(s / 60) + ":" + pad(s % 60);
+  }
+
+  function renderMedia(media) {
+    var block = $("media-block");
+    if (!media || !media.available || !media.playing || !media.title) {
+      block.style.display = "none";
+      return;
+    }
+    block.style.display = "";
+    block.className = "now-block" + (media.status === "paused" ? " paused" : "");
+    $("media-title").textContent = media.title;
+    var meta = [];
+    if (media.artist) meta.push(media.artist);
+    if (media.app) meta.push(media.app);
+    if (media.status === "paused") meta.push("paused");
+    var hasTime = known(media.position) && media.duration;
+    if (hasTime) meta.push(minutes(media.position) + " / " + minutes(media.duration));
+    $("media-meta").textContent = meta.join(" · ");
+    var fill = $("media-bar");
+    fill.style.transition = "none";
+    fill.style.width = hasTime ? Math.min(100, 100 * media.position / media.duration) + "%" : "0";
+    fill.parentNode.style.display = hasTime ? "" : "none";
+  }
 
   function renderPhone(phone) {
     var box = $("phone-batt");
@@ -843,6 +956,7 @@
     renderAi(data, data.time);
     renderPc(data.system, data.activity, data.time);
     renderPhone(data.phone);
+    renderMedia(data.media);
   }
 
   function request(method, url, body, done) {

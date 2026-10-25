@@ -12,6 +12,8 @@ from pathlib import Path
 THEMES = ("graphite", "oled", "terracotta", "neon", "terminal", "light")
 SCREENS = ("hardware", "ai", "pc")
 ROTATE = (0, 10, 20, 30, 60)  # seconds; 0 = does not switch by itself
+NIGHT_MODES = ("off", "dim", "clock")  # what the screen shows during night hours
+NIGHT_HOURS = ("22-7", "23-7", "0-8")  # "start-end", in the phone's local time
 
 DEFAULTS = {
     "theme": "graphite",
@@ -22,6 +24,9 @@ DEFAULTS = {
     "fan_names": {},  # original name -> user-given name (e.g. "Fan 2" -> "Radiator")
     "cpu_fan": None,  # which fan shows on the CPU card (user's choice; none by default)
     "claude_limits": False,  # headless check of Claude Code limits (spends a tiny bit of quota)
+    "burn_in": True,  # shift the content a few pixels every minute (protects OLED screens)
+    "night_mode": "off",
+    "night_hours": "23-7",
 }
 
 CONFIG_FILE = Path.home() / ".sparescreen" / "config.json"
@@ -41,9 +46,13 @@ def clean(data):
             out["screens"] = screens
     if data.get("rotate") in ROTATE:
         out["rotate"] = data["rotate"]
-    for key in ("notify", "sound", "claude_limits"):
+    for key in ("notify", "sound", "claude_limits", "burn_in"):
         if isinstance(data.get(key), bool):
             out[key] = data[key]
+    if data.get("night_mode") in NIGHT_MODES:
+        out["night_mode"] = data["night_mode"]
+    if data.get("night_hours") in NIGHT_HOURS:
+        out["night_hours"] = data["night_hours"]
     if "cpu_fan" in data and (data["cpu_fan"] is None or isinstance(data["cpu_fan"], str)):
         out["cpu_fan"] = data["cpu_fan"][:20] if data["cpu_fan"] else None
     names = data.get("fan_names")

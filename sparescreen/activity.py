@@ -3,11 +3,18 @@
 A game is detected by its executable path: anything running from inside the store
 library folders (Steam, Epic, GOG, Xbox, Riot, EA, Ubisoft...). The game name is
 the folder name, which in these stores is usually the pretty name.
+
+The focused program comes from the OS: user32 on Windows; on Linux xdotool/xprop
+(X11) or swaymsg/hyprctl (Sway/Hyprland, the Wayland desktops that allow it);
+`lsappinfo` on macOS. Anything else just shows no focused program.
 """
 
 import ctypes
+import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import time
 
@@ -78,14 +85,34 @@ def friendly_name(name, exe):
                 desc = _file_description(exe)
             except (OSError, AttributeError, ValueError):
                 desc = None
+        elif sys.platform != "win32" and exe and name and name.islower():
+            # Linux process names are usually the lowercase binary ('firefox' -> 'Firefox').
+            desc = name[:1].upper() + name[1:]
         _descriptions[key] = desc or os.path.splitext(name or "?")[0]
     return _descriptions[key]
 
 
-def foreground_pid():
-    """PID of the focused window (Windows only, for now)."""
-    if sys.platform != "win32":
+# ---- Focused window ----------------------------------------------------------
+
+def _run(args):
+    """stdout of a quick helper command, or None if it is missing, slow or fails."""
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=1)
+    except (OSError, subprocess.SubprocessError, ValueError):
         return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def _pid(value):
+    """A real PID or None (helpers report 0 or -1 when nothing has focus)."""
+    try:
+        pid = int(value)
+    except (TypeError, ValueError):
+        return None
+    return pid if pid > 0 else None
+
+
+def _windows_foreground_pid():
     user32 = ctypes.windll.user32
     hwnd = user32.GetForegroundWindow()
     if not hwnd:
@@ -93,6 +120,77 @@ def foreground_pid():
     pid = ctypes.c_ulong()
     user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
     return pid.value or None
+
+
+def _x11_foreground_pid():
+    xdotool = shutil.which("xdotool")
+    if xdotool:
+        pid = _pid((_run([xdotool, "getactivewindow", "getwindowpid"]) or "").strip())
+        if pid:
+            return pid
+    xprop = shutil.which("xprop")
+    if not xprop:
+        return None
+    # '_NET_ACTIVE_WINDOW(WINDOW): window id # 0x3a00007'; 0x0 when nothing has focus
+    match = re.search(r"0x[0-9a-fA-F]+", _run([xprop, "-root", "_NET_ACTIVE_WINDOW"]) or "")
+    if not match or int(match.group(), 16) == 0:
+        return None
+    # '_NET_WM_PID(CARDINAL) = 12345'; '_NET_WM_PID:  not found.' for windows that don't say
+    match = re.search(r"=\s*(\d+)", _run([xprop, "-id", match.group(), "_NET_WM_PID"]) or "")
+    return _pid(match.group(1)) if match else None
+
+
+def _sway_focused(node):
+    """Focused window in `swaymsg -t get_tree`, searching tiled and floating windows."""
+    if node.get("focused") and _pid(node.get("pid")):
+        return _pid(node["pid"])
+    for child in (node.get("nodes") or []) + (node.get("floating_nodes") or []):
+        pid = _sway_focused(child)
+        if pid:
+            return pid
+    return None
+
+
+def _wayland_foreground_pid():
+    """Wayland hides other apps' windows on purpose; only some compositors tell us via their CLI."""
+    try:
+        if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"):
+            data = json.loads(_run([shutil.which("hyprctl"), "activewindow", "-j"]) or "{}")
+            return _pid(data.get("pid"))
+        if os.environ.get("SWAYSOCK") and shutil.which("swaymsg"):
+            return _sway_focused(json.loads(_run([shutil.which("swaymsg"), "-t", "get_tree"]) or "{}"))
+    except (ValueError, TypeError, AttributeError):
+        pass
+    return None
+
+
+def _mac_foreground_pid():
+    # lsappinfo ships with macOS and, unlike AppleScript/System Events, needs no Automation permission.
+    lsappinfo = shutil.which("lsappinfo")
+    if not lsappinfo:
+        return None
+    front = (_run([lsappinfo, "front"]) or "").strip()  # 'ASN:0x0-0x1d01d:'
+    if not front.startswith("ASN:"):
+        return None
+    match = re.search(r'"pid"\s*=\s*(\d+)', _run([lsappinfo, "info", "-only", "pid", front]) or "")
+    return _pid(match.group(1)) if match else None
+
+
+def foreground_pid():
+    """PID of the focused window, or None where the OS doesn't tell (see the module docstring)."""
+    try:
+        if sys.platform == "win32":
+            return _windows_foreground_pid()
+        if sys.platform == "darwin":
+            return _mac_foreground_pid()
+        if os.environ.get("WAYLAND_DISPLAY"):
+            # Don't fall back to xprop here: XWayland only knows about X apps, so it would lie.
+            return _wayland_foreground_pid()
+        if os.environ.get("DISPLAY"):
+            return _x11_foreground_pid()
+    except (OSError, AttributeError, ValueError):
+        pass
+    return None
 
 
 class ActivitySource:

@@ -48,7 +48,7 @@ def start_sampler(hub, sources, interval):
     threading.Thread(target=loop, name="sampler", daemon=True).start()
 
 
-def make_handler(hub, config, pairing):
+def make_handler(hub, config, pairing, info):
     class Handler(BaseHTTPRequestHandler):
         def _trusted(self):
             return pairing is None or pairing.is_trusted(self.client_address[0], self.headers.get("Cookie"))
@@ -81,6 +81,12 @@ def make_handler(hub, config, pairing):
                 # Only this PC may read the code (the page on the PC can show it).
                 local = pairing is not None and self.client_address[0] in LOCAL_ADDRESSES
                 self._send_json(200 if local else 403, {"code": pairing.code} if local else {})
+            elif path == "/info":
+                # "Connect a phone" details for the settings screen, only on this PC.
+                if self.client_address[0] not in LOCAL_ADDRESSES:
+                    self._send_json(403, {})
+                else:
+                    self._send_json(200, dict(info or {}, code=pairing.code if pairing else None))
             else:
                 self._serve_static("index.html" if path == "/" else path.lstrip("/"))
 
@@ -152,11 +158,12 @@ def make_handler(hub, config, pairing):
     return Handler
 
 
-def serve(host, port, sources, interval, config=None, pairing=None):
+def serve(host, port, sources, interval, config=None, pairing=None, info=None):
     """`config` (ConfigStore) receives the changes made on the settings screen.
-    `pairing` (Pairing), when given, restricts the data to paired devices."""
+    `pairing` (Pairing), when given, restricts the data to paired devices.
+    `info` ({"phone_url", "version"}) is shown on this PC's settings screen."""
     hub = Hub()
-    start_sampler(hub, sources, interval)
-    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing))
+    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing, info))
+    start_sampler(hub, sources, interval)  # only once the port is ours (a busy port fails above)
     server.daemon_threads = True
     return server

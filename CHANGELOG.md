@@ -4,6 +4,33 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-10-24
+
+### Added
+
+- Downloadable executables for Windows, Linux and macOS (Apple Silicon), built with
+  PyInstaller and attached to every release. No Python needed.
+- Start with the PC: `--autostart on|off|status` (Windows Run entry, Linux XDG autostart,
+  macOS LaunchAgent; no admin rights) and `--background` (no window, output to
+  `~/.sparescreen/sparescreen.log`).
+- Settings opened on the PC show the phone address, the pairing code and the version.
+- Now playing on the PC screen: title, artist, player and progress from the system's media
+  session (Windows media controls, MPRIS on Linux, `media-control`/`nowplaying-cli` on macOS).
+- Burn-in protection (the page shifts a few pixels every minute, on by default) and night
+  mode (dim, or a wandering clock only, during chosen hours; a tap wakes the dashboard).
+- The status line can wrap an existing one: `sparescreen-statusline -- your command`
+  (or `SPARESCREEN_STATUSLINE_CMD`), keeping its output while still capturing the limits.
+- "In focus" on Linux (X11 via xdotool/xprop, Sway, Hyprland) and macOS (`lsappinfo`).
+- CPU temperature on macOS when `smctemp`, `macmon` or `osx-cpu-temp` is installed.
+- `--version`, and `sparescreen statusline` as a subcommand (used by the executables).
+
+### Changed
+
+- The command line moved to `sparescreen/cli.py` so it can be bundled; `python -m sparescreen`
+  and the `sparescreen` command work as before.
+- A busy port now gives a clear message (SpareScreen may already be running).
+- Desktops without a battery no longer show a "100%" phone battery.
+
 ## [0.2.0] - 2026-10-24
 
 ### Added
@@ -51,5 +78,6 @@ First public version.
   the page while developing.
 - Tests (standard library `unittest`) running on GitHub Actions on Windows, Linux and macOS.
 
+[0.3.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.3.0
 [0.2.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.2.0
 [0.1.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.1.0

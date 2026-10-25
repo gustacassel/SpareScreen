@@ -32,8 +32,9 @@ The page has three screens that rotate on their own (or with a tap):
 - **AI:** for each AI coding tool installed on the PC (Claude Code and Codex for now):
   usage limits (5-hour and weekly windows), tokens used today and this week per model,
   and your sessions (and which ones are working).
-- **PC:** the game you're playing (and for how long), the app in focus, the heaviest
-  apps, fans, network, free disk space and drive temperatures.
+- **PC:** the game you're playing (and for how long), what's playing (any music or video
+  player), the app in focus, the heaviest apps, fans, network, free disk space and drive
+  temperatures.
 
 When a Claude Code or Codex session finishes, the page jumps to the AI screen, shows
 the session name and plays a short chime (sound only works after the first tap on the
@@ -43,6 +44,23 @@ Runs on Windows, Linux and macOS, with any device that has a browser.
 Free and open source (MIT license). Ideas and next steps in [ROADMAP.md](ROADMAP.md).
 
 ## Getting started
+
+### Download (easiest)
+
+Grab the file for your system from the [latest release](https://github.com/gustacassel/SpareScreen/releases/latest)
+and run it. No Python needed.
+
+| System | File | How to run |
+|---|---|---|
+| Windows | `sparescreen-windows-x64.exe` | Double-click it. Windows SmartScreen may warn about an unknown app: *More info > Run anyway*. |
+| Linux | `sparescreen-linux-x64` | `chmod +x sparescreen-linux-x64` once, then `./sparescreen-linux-x64` |
+| macOS (Apple Silicon) | `sparescreen-macos-arm64` | `chmod +x sparescreen-macos-arm64`, then run it from Terminal. The first time macOS blocks it: *System Settings > Privacy & Security > Open Anyway*. |
+
+When you start it by hand it opens the dashboard in your browser; its settings show the
+address and pairing code for your phone. The files aren't code-signed yet, which is why
+the systems warn the first time.
+
+### From source
 
 You need [Git](https://git-scm.com/) and [Python](https://www.python.org/) 3.9 or newer.
 Download the project and enter the folder:
@@ -103,6 +121,21 @@ phone reaches the agent at `http://localhost:8765` through the cable.
 The cable must carry data (some cheap cables only charge). If the agent can't find
 `adb`, use `--adb PATH`. On Windows, some phones need the manufacturer's USB driver.
 
+### Start with your PC
+
+To have SpareScreen start by itself when you log in, in the background with no window:
+
+```bash
+sparescreen --autostart on
+```
+
+Any other options you pass are kept (e.g. `sparescreen --stay-awake --autostart on`).
+`--autostart off` undoes it and `--autostart status` shows what is registered. It works
+per user, without admin rights: a *Run* entry on Windows, `~/.config/autostart` on Linux
+and a LaunchAgent on macOS (from the next login). In the background the output goes to
+`~/.sparescreen/sparescreen.log`. With the downloaded executable it's the same:
+`sparescreen-windows-x64.exe --autostart on`.
+
 ### Options
 
 | Option | Default | What it does |
@@ -118,6 +151,9 @@ The cable must carry data (some cheap cables only charge). If the agent can't fi
 | `--reset-pairing` | | Forget every paired device before starting |
 | `--dev` | | Development mode (see below) |
 | `--demo` | | Show made-up data instead of this PC's (for screenshots, demos or trying it out) |
+| `--autostart` | | `on`, `off` or `status`: start SpareScreen when you log in (see above) |
+| `--background` | | Run without a window; output goes to `~/.sparescreen/sparescreen.log` |
+| `--version` | | Print the version |
 
 ## On the phone
 
@@ -126,9 +162,10 @@ The cable must carry data (some cheap cables only charge). If the agent can't fi
    (or closes an open notification).
 3. Long press (hold ~1 second) switches the theme.
 4. The gear icon in the top corner opens **settings**: theme, which screens rotate,
-   how often to switch, Claude alerts, sound, fan names and which fan shows on the
-   CPU card. Everything is saved on the PC (`~/.sparescreen/config.json`), so it
-   survives reloading the page.
+   how often to switch, Claude alerts, sound, fan names, which fan shows on the CPU card,
+   burn-in protection and night mode. Everything is saved on the PC
+   (`~/.sparescreen/config.json`), so it survives reloading the page. Opened on the PC
+   itself, the settings also show the phone address and the pairing code.
 5. To keep the screen on: use `--stay-awake` over USB, or keep the phone charging and
    turn on *Developer options > Stay awake*.
 
@@ -142,6 +179,18 @@ Themes: Graphite, OLED, Terracotta, Neon, Terminal and Light.
 
 For testing you can force things in the address: `…:8765/?screen=pc` pins one screen
 (`hardware`, `ai` or `pc`) and `…:8765/?theme=neon` forces a theme.
+
+## Burn-in protection and night mode
+
+A dashboard shows the same things in the same place for hours, which can burn into
+OLED/AMOLED screens (many older phones have one).
+
+- **Burn-in protection** (on by default): every minute the whole page moves a few pixels,
+  too little to notice.
+- **Night mode** (off by default): during the night hours you pick (22–7, 23–7 or 0–8),
+  the screen either dims or shows only a dim clock that moves around every minute.
+  Tap it to see the dashboard for a minute. Alerts (session finished, battery hot) still
+  show up on top.
 
 ## Phone battery
 
@@ -162,17 +211,37 @@ If the back of the phone ever starts to bulge, unplug it and stop using it.
 - **Game running:** any program running from a store's game library folder
   (Steam `steamapps/common`, Epic Games, GOG, Xbox, Riot, EA, Ubisoft, Battle.net).
   The name shown is the game's folder name. Games installed elsewhere don't show up.
-- **In focus:** the app of the active window (Windows only, for now).
+- **In focus:** the app of the active window. Windows: yes. Linux on X11: yes with
+  `xdotool` or `xprop` installed (usually already there; on Debian/Ubuntu the `x11-utils`
+  package). Linux on Wayland: Sway and Hyprland only; GNOME, KDE and other Wayland
+  desktops don't let apps see the focused window, so the row is hidden. macOS: yes, via
+  the built-in `lsappinfo` (no permission prompt).
 - **Top apps:** processes added up per executable (all Chrome tabs count as one),
   sorted by CPU. The % is of the whole processor.
 - No FPS yet: on Windows that needs tools such as PresentMon.
+
+## Now playing
+
+Shows what the PC is playing (Spotify, a browser tab, any player that reports to the
+system), with title, artist, player and progress, on the PC screen. Paused media is shown
+dimmed; with nothing playing the block is hidden.
+
+- **Windows:** works out of the box. It reads the same info as the volume flyout (System
+  Media Transport Controls), through the `winrt-Windows.Media.Control` packages that are
+  installed automatically on Windows.
+- **Linux:** reads MPRIS players over D-Bus. Install `playerctl` for best results; otherwise
+  `dbus-send` (part of D-Bus, usually present) is used.
+- **macOS:** best effort. Install `media-control` (`brew install media-control`, works on
+  macOS 15.4 and later) or `nowplaying-cli`. Without either, the block is hidden.
+  AppleScript is not used, so there are no permission prompts.
 
 ## Temperatures, fans and GPU
 
 | | Windows | Linux | macOS |
 |---|---|---|---|
 | CPU usage, RAM, disks, network | ✅ | ✅ | ✅ |
-| CPU temperature, fans, drive temps | LibreHardwareMonitor | ✅ hwmon | ❌ not yet |
+| CPU temperature | LibreHardwareMonitor | ✅ hwmon | with a free tool (see below) |
+| Fans, drive temps | LibreHardwareMonitor | ✅ hwmon | ❌ |
 | GPU NVIDIA | ✅ `nvidia-smi` | ✅ `nvidia-smi` | ❌ |
 | GPU AMD / Intel | LibreHardwareMonitor | AMD ✅ (`amdgpu`), Intel ❌ | ❌ |
 
@@ -187,6 +256,13 @@ If the back of the phone ever starts to bulge, unplug it and stop using it.
      *Minimize To Tray* and *Run On Windows Startup*.
 - **Linux:** CPU temperature (`k10temp`/`coretemp`) and fans come straight from `hwmon`;
   AMD GPUs from the `amdgpu` driver's sysfs files. No root needed.
+- **macOS:** Apple has no public, permission-free API for temperatures. If
+  [smctemp](https://github.com/narugit/smctemp) (Intel and Apple Silicon),
+  [macmon](https://github.com/vladkens/macmon) (Apple Silicon) or
+  [osx-cpu-temp](https://github.com/lavoiesl/osx-cpu-temp) (Intel) is installed and on your
+  PATH (e.g. `brew install smctemp`), SpareScreen reads the CPU temperature from it.
+  Otherwise the card shows "no temperature sensor". `powermetrics` isn't used because it
+  needs sudo.
 - **Fans:** motherboard fans show up as "Fan 1", "Fan 2"... (the header number). Fans at
   0 rpm are hidden, since they're usually empty headers. The GPU fan shows "stopped"
   when the card turns it off at idle. Every board wires things differently, so
@@ -237,11 +313,34 @@ amount of your plan's usage. Off by default.
 (On Linux/macOS: `.venv/bin/sparescreen-statusline`.) The status line also shows the
 model, context usage and limits in Claude Code's own bar, e.g. `Opus · ctx 34% · 5h 23% · week 41%`.
 
+### Keeping your existing status line
+
+If you already have a status line, you don't have to give it up. Put your current command
+after `--` and SpareScreen runs it for you. It gets the same input from Claude Code, its
+output (including multi-line output) is shown unchanged, and SpareScreen still captures
+the usage limits in the background. If your command fails, prints nothing or takes longer
+than 5 seconds, SpareScreen's own short status line is shown instead. Commands that need
+pipes or other shell features can be passed as one quoted argument, e.g.
+`-- "my-status | head -1"`. You can also put the command in the
+`SPARESCREEN_STATUSLINE_CMD` environment variable instead of after `--`.
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "sparescreen-statusline -- bash ~/.claude/my-status.sh"
+  }
+}
+```
+
+With the downloaded executable, use `sparescreen-windows-x64.exe statusline` (or the Linux/macOS
+file) as the command, with the same `--` form.
+
 Limitations:
 
 - Only on Pro and Max plans.
 - The status line only runs in the terminal; the desktop app and IDEs don't run it
-  (use option 1 there). It also replaces any status line you already have.
+  (use option 1 there).
 - Model-specific weekly limits (e.g. "Week · Opus") show up when Claude Code reports them.
   The card also shows the tokens used this week per model, counted from this PC's history
   (usage on claude.ai or other computers is not included).
@@ -301,9 +400,14 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   connected phones and opens the page on them; every 30 seconds reads their battery
   (`dumpsys battery`) for the top bar.
 - `sparescreen/activity.py`: running game, app in focus and top apps.
+- `sparescreen/media.py`: now playing (Windows media controls, MPRIS on Linux, optional tools on macOS).
 - `sparescreen/config.py`: preferences saved in `~/.sparescreen/config.json` (POST `/config`).
 - `sparescreen/pairing.py`: pairing code, device tokens (only their hashes are stored, in
   `~/.sparescreen/devices.json`) and the lockout after wrong codes.
+- `sparescreen/cli.py`: the command line (`python -m sparescreen` and the executables run it).
+- `sparescreen/autostart.py`: `--autostart` per OS.
+- `packaging/entry.py` and `.github/workflows/release.yml`: the PyInstaller executables
+  built for every release.
 - `sparescreen/dev.py`: `--dev` mode (a supervisor that restarts the agent, plus the code version).
 - `sparescreen/hwinfo.py`: short CPU, GPU and memory names.
 - `sparescreen/demo.py`: made-up data for `--demo`, same shape as the real sources.

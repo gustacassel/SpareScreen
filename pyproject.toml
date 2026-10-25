@@ -4,15 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sparescreen"
-version = "0.2.0"
+version = "0.3.0"
 description = "Turn an old phone (or any device with a browser) into a live dashboard for your PC."
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["psutil>=5.9"]
+dependencies = [
+    "psutil>=5.9",
+    # "Now playing" on Windows (System Media Transport Controls); other OSes use their own tools.
+    "winrt-Windows.Media.Control>=3.2; sys_platform == 'win32'",
+    "winrt-Windows.Foundation>=3.2; sys_platform == 'win32'",
+    "winrt-Windows.Foundation.Collections>=3.2; sys_platform == 'win32'",
+]
 
 [project.scripts]
-sparescreen = "sparescreen.__main__:main"
+sparescreen = "sparescreen.cli:main"
 sparescreen-statusline = "sparescreen.statusline:main"
 
 [tool.setuptools]

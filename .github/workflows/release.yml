@@ -1,0 +1,63 @@
+name: Build executables
+
+# Builds a single-file executable per OS with PyInstaller and attaches it to the release,
+# so people can download and run SpareScreen without installing Python.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and attach the executables to (e.g. v0.3.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: sparescreen-windows-x64.exe
+            built: dist/sparescreen.exe
+          - os: ubuntu-latest
+            asset: sparescreen-linux-x64
+            built: dist/sparescreen
+          - os: macos-latest
+            asset: sparescreen-macos-arm64
+            built: dist/sparescreen
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install . pyinstaller pillow
+      - name: Build
+        run: |
+          SEP=$(python -c "import os; print(os.pathsep)")
+          pyinstaller --noconfirm --onefile --name sparescreen --paths . \
+            --add-data "sparescreen/web${SEP}sparescreen/web" \
+            --icon assets/icon-256.png packaging/entry.py
+      - name: Smoke test
+        run: |
+          ./${{ matrix.built }} --version
+          echo '{"model":{"display_name":"Test"}}' | ./${{ matrix.built }} statusline
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp "${{ matrix.built }}" "${{ matrix.asset }}"
+          gh release upload "$TAG" "${{ matrix.asset }}" --clobber

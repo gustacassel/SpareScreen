@@ -84,26 +84,26 @@ and with no mandatory app. That's this project's niche.
 
 1. ✅ **Local network security.** Devices must pair with a 6-digit code before they
    get any data or can change settings (done after 0.1.0).
-2. **Install for non-programmers.** Today it needs Python + venv. Idea: one executable
-   per OS (PyInstaller) and start with the system.
-3. **Generic AI data.** ✅ "Tokens this week per model" replaced the Fable-only row, and
-   the AI screen shows Claude Code and Codex. Still to do: a status line that coexists
-   with one the user already has; more tools that keep local data (e.g. Gemini CLI).
-4. **Complete macOS and Linux.** Temperature/fans on macOS; "app in focus" on Linux;
-   Intel GPUs on Linux.
+2. ✅ **Install for non-programmers.** Executables per OS on every release and
+   `--autostart`. Still to do: code signing, so Windows/macOS stop warning.
+3. **Generic AI data.** ✅ "Tokens this week per model", the AI screen with Claude Code
+   and Codex, and a status line that wraps the user's own. Still to do: more tools that
+   keep local data (e.g. Gemini CLI).
+4. **Complete macOS and Linux.** ✅ "App in focus" on Linux (X11, Sway, Hyprland) and
+   macOS; ✅ CPU temperature on macOS with a free tool. Still to do: fans and GPU on
+   macOS, Intel GPUs on Linux, focus on GNOME/KDE Wayland (not allowed by those desktops).
 5. **Translations.** The interface is English only; maybe add other languages later.
 6. **Test real devices:** iPhone/iPad over Wi-Fi, very old Android, tablets; USB with a
    data cable; AMD and Intel GPUs on real machines.
 7. **More widgets:** photos and scrolling text (the original idea), history charts, FPS.
-   - **Now playing:** whatever the PC is playing (Spotify, YouTube, any player), not tied
-     to one app: Windows' media controls (the ones in the volume flyout), MPRIS on Linux,
-     the Now Playing info on macOS.
+   - ✅ **Now playing:** whatever the PC is playing, from the system's media session.
 8. Optional: a tiny Android app (WebView kiosk, minSdk 23) that opens by itself, full
    screen, screen always on.
 
 ## To think about
 
-- **Screen burn-in.** A dashboard showing the same thing in the same place for hours can
+- ✅ **Screen burn-in** (done: pixel shift every minute and night mode; still to do:
+  real backlight control over USB and dimming when the PC is locked). A dashboard showing the same thing in the same place for hours can
   burn in the screen, like the "always on display" complaints on phones. It's a real
   risk on **AMOLED/OLED** screens (many older Samsung phones); on **LCD** the risk is
   lower (at most temporary image retention), but the backlight ages too.

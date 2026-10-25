@@ -32,6 +32,7 @@
     <symbol id="i-disk" viewBox="0 0 24 24"><path d="M22 12H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11zM6 16h.01M10 16h.01"/></symbol>
     <symbol id="i-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
     <symbol id="i-battery" viewBox="0 0 24 24"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2M6 10v4M10 10v4"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
   </svg>
@@ -123,6 +124,12 @@
             <div id="game-name" class="now-name"></div>
             <div id="game-meta" class="detail"></div>
           </div>
+          <div class="now-block" id="media-block">
+            <h2><svg class="icon"><use xlink:href="#i-music"></use></svg>NOW PLAYING</h2>
+            <div id="media-title" class="now-name small"></div>
+            <div id="media-meta" class="detail"></div>
+            <div class="bar media-bar"><div id="media-bar" class="bar-fill"></div></div>
+          </div>
           <div class="now-block" id="focus-block">
             <h2><svg class="icon"><use xlink:href="#i-window"></use></svg>IN FOCUS</h2>
             <div id="focus-name" class="now-name small"></div>
@@ -150,6 +157,11 @@
     </section>
   </main>
 
+  <!-- Night mode: dims everything, or shows only a clock that moves around (see settings).
+       Placed before the toast so alerts still show on top at night. -->
+  <div id="night-dim" class="night-dim"></div>
+  <div id="night-clock" class="night-clock"><span id="night-time">--:--</span></div>
+
   <!-- Toast shown on top (session finished, theme changed...) -->
   <div id="toast" class="toast">
     <svg class="icon toast-icon"><use id="toast-icon" xlink:href="#i-check"></use></svg>
@@ -174,12 +186,16 @@
   <div id="settings" class="settings">
     <div class="settings-panel">
       <h2><svg class="icon"><use xlink:href="#i-sliders"></use></svg>SETTINGS</h2>
+      <div id="set-connect" class="set-connect"></div>
       <div class="set-row"><span class="set-label">Theme</span><div id="set-theme" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Screens</span><div id="set-screens" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Switch screens</span><div id="set-rotate" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Claude alerts</span><div id="set-notify" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Alert sound</span><div id="set-sound" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Check Claude limits</span><div id="set-claude-limits" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Burn-in protection</span><div id="set-burn-in" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Night mode</span><div id="set-night-mode" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Night hours</span><div id="set-night-hours" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Fan names</span><div id="set-fans" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Fan on CPU card</span><div id="set-cpu-fan" class="chips"></div></div>
       <button id="set-close" class="set-close">Close</button>

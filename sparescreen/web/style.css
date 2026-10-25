@@ -247,6 +247,26 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 }
 .set-close.pair-send { background: var(--accent); color: var(--bg); }
 .pair-msg { min-height: 1.2em; margin: 10px 0 0; font-size: 14px; color: var(--warn); }
+/* Now playing on the PC screen: dimmed while paused */
+.media-bar { height: 4px; margin: 4px 0 0; }
+.media-bar .bar-fill { background: var(--accent); }
+#media-block.paused { opacity: .55; }
+
+/* Night mode: a dark veil, or a black screen with only a wandering clock */
+.night-dim, .night-clock { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: none; }
+.night-dim { background: #000; opacity: .7; pointer-events: none; }
+.night-clock { background: #000; }
+.night-dim.on, .night-clock.on { display: block; }
+#night-time {
+  position: absolute; left: 30%; top: 30%;
+  font-size: 18vh; font-weight: 200; color: #6f7680; font-variant-numeric: tabular-nums;
+}
+
+.set-connect { padding: 4px 0 8px; border-bottom: 1px solid var(--track); }
+.set-connect:empty { display: none; }
+.connect-row { padding: 2px 0; font-size: 15px; }
+.connect-label { display: inline-block; width: 140px; color: var(--muted); }
+.connect-row b { font-weight: 500; font-variant-numeric: tabular-nums; }
 .set-close {
   display: block; width: 100%; margin-top: 12px; padding: 11px;
   border: 0; border-radius: 10px;
