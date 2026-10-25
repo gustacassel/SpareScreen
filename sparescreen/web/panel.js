@@ -145,6 +145,49 @@
     fill($("checks"), items, "");
   }
 
+  // ---- Update -----------------------------------------------------------------
+
+  var updating = false;  // downloading or restarting: the agent going away is expected
+
+  function renderUpdate(update) {
+    updating = !!update && (update.status === "downloading" || update.status === "restarting");
+    $("update").className = "update" + (update && update.latest ? " shown" : "");
+    if (!update) return;
+    $("update-auto").checked = update.enabled;
+    if (!update.latest) return;
+    var title = "SpareScreen " + update.latest + " is available";
+    var detail = "You have " + update.current + ".";
+    if (update.status === "downloading") {
+      title = "Downloading " + update.latest + "..." + (update.progress !== null ? " " + update.progress + "%" : "");
+      detail = "SpareScreen restarts by itself when it's ready.";
+    } else if (update.status === "restarting") {
+      title = "Restarting with " + update.latest + "...";
+      detail = "This window reloads by itself.";
+    } else if (update.status === "failed") {
+      detail = update.error;
+    } else if (!update.can_install) {
+      detail += " " + update.how;
+    }
+    $("update-title").textContent = title;
+    $("update-detail").textContent = detail;
+    $("update-install").style.display = update.can_install || updating ? "" : "none";
+    $("update-install").disabled = updating;
+    $("update-install").textContent = update.status === "failed" ? "Try again" : "Update";
+  }
+
+  // An update restarts SpareScreen: wait for the new version, then load its window.
+  function waitForNewVersion() {
+    var tries = 0;
+    $("running").textContent = "Restarting with the new version...";
+    (function poll() {
+      request("GET", "panel/state", null, function (status) {
+        if (status === 200) location.reload();
+        else if (++tries < 60) setTimeout(poll, 2000);
+        else $("running").textContent = "SpareScreen didn't come back after the update. Start it again.";
+      });
+    })();
+  }
+
   // ---- Tabs -------------------------------------------------------------------
 
   var TAB_KEY = "sparescreen_panel_tab";
@@ -219,6 +262,7 @@
     renderDevices(state.devices);
     if (state.games) renderGames(state.games);
     renderChecks(state.checks);
+    renderUpdate(state.update);
     $("autostart").checked = state.autostart;
     $("autostart-label").textContent = state.autostart_label;
     if (state.message) showMessage(state.message);
@@ -230,7 +274,7 @@
   function refresh() {
     request("GET", "panel/state", null, function (status, state) {
       if (status === 200 && state) render(state);
-      else $("running").textContent = "SpareScreen isn't running. Start it again to use this window.";
+      else if (!updating) $("running").textContent = "SpareScreen isn't running. Start it again to use this window.";
     });
   }
 
@@ -241,6 +285,10 @@
     var alive = new EventSource("panel/events");
     alive.onerror = function () {
       alive.close();
+      if (updating) {
+        waitForNewVersion();
+        return;
+      }
       setTimeout(function () {
         request("GET", "panel/state", null, function (status) {
           if (status === 200) {
@@ -257,6 +305,9 @@
   $("open-dashboard").addEventListener("click", function () { act("dashboard"); });
   watchAgent();
   $("autostart").addEventListener("change", function () { act("autostart", { on: $("autostart").checked }); });
+  $("update-auto").addEventListener("change", function () { act("update_auto", { on: $("update-auto").checked }); });
+  $("update-install").addEventListener("click", function () { act("update_install"); });
+  $("update-notes").addEventListener("click", function () { act("update_notes"); });
 
   var savedTab = null;
   try { savedTab = localStorage.getItem(TAB_KEY); } catch (e) { savedTab = null; }

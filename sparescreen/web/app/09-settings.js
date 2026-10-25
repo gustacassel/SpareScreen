@@ -1,6 +1,7 @@
   // ---- Settings (panel) ----------------------------------------------------
 
   var settingsOpen = false;
+  var updateInfo = null;  // {"version", "latest"} from the PC (data.update)
 
   function chip(label, on, onTap, swatch) {
     var b = el("button", "chip" + (on ? " on" : ""));
@@ -73,6 +74,12 @@
       return chip(opt[1], cfg.night_hours === opt[0], function () { saveConfig({ night_hours: opt[0] }); });
     }));
     // Over USB the PC can turn the phone's real brightness down, or the screen off.
+    fillChips("set-update-check", [[true, "On"], [false, "Off"]].map(function (opt) {
+      return chip(opt[1], cfg.update_check === opt[0], function () { saveConfig({ update_check: opt[0] }); });
+    }));
+    $("set-update-note").textContent = !updateInfo ? "" : updateInfo.latest
+      ? updateInfo.latest + " is out: update from the PC window"
+      : "you have " + updateInfo.version;
     fillChips("set-usb-screen", [["keep", "Keep"], ["dim", "Dim"], ["off", "Off"]].map(function (opt) {
       return chip(opt[1], cfg.usb_screen === opt[0], function () { saveConfig({ usb_screen: opt[0] }); });
     }));

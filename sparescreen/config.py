@@ -35,6 +35,7 @@ DEFAULTS: Json = {
     "usb_screen": "keep",  # phone on USB while the PC is locked or at night: keep, dim or off
     "night_mode": "off",
     "night_hours": "23-7",
+    "update_check": True,  # ask GitHub now and then for a newer release (see update.py)
 }
 
 CONFIG_FILE = Path.home() / ".sparescreen" / "config.json"
@@ -70,7 +71,8 @@ def clean(data: object) -> Json:
             out["screens"] = screens
     if data.get("rotate") in ROTATE:
         out["rotate"] = data["rotate"]
-    for key in ("notify", "sound", "claude_limits", "burn_in", "game_mode", "heat_alerts"):
+    for key in ("notify", "sound", "claude_limits", "burn_in", "game_mode", "heat_alerts",
+                "update_check"):
         if isinstance(data.get(key), bool):
             out[key] = data[key]
     if data.get("night_mode") in NIGHT_MODES:

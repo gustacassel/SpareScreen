@@ -4,6 +4,18 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Updates from the SpareScreen window: it checks GitHub for a new release (a minute after
+  starting, then every 6 hours; "Check for updates" turns it off) and shows it at the top.
+  The downloaded executable updates itself with one click: the new file is checked against
+  the release's checksums and test-run before it replaces the old one, then SpareScreen
+  restarts and the window and the phone's page reload by themselves. From source it says
+  to `git pull`.
+- Every release now carries a `SHA256SUMS` file for its executables.
+
 ## [0.11.0] - 2026-10-25
 
 ### Added

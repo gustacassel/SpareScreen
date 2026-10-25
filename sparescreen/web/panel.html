@@ -18,6 +18,16 @@
     <button id="open-dashboard" class="btn">Open dashboard</button>
   </header>
 
+  <!-- A newer version: what it is and the button that installs it (or how to get it). -->
+  <div id="update" class="update">
+    <div class="update-text">
+      <div id="update-title" class="title"></div>
+      <div id="update-detail" class="muted small"></div>
+    </div>
+    <button id="update-notes" class="btn small">What's new</button>
+    <button id="update-install" class="btn small primary">Update</button>
+  </div>
+
   <!-- One section at a time; a dot on a tab when something there needs attention. -->
   <nav class="tabs">
     <button class="tab" data-tab="phone">Phone<span id="dot-phone" class="tab-dot"></span></button>
@@ -88,7 +98,10 @@
   </main>
 
   <footer class="foot">
-    <label class="switch"><input type="checkbox" id="autostart"> <span id="autostart-label">Start with Windows</span></label>
+    <span>
+      <label class="switch"><input type="checkbox" id="autostart"> <span id="autostart-label">Start with Windows</span></label>
+      <label class="switch"><input type="checkbox" id="update-auto"> Check for updates</label>
+    </span>
     <span class="muted small">Closing this window keeps SpareScreen running (tray icon).</span>
   </footer>
 

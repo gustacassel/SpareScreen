@@ -79,6 +79,8 @@ and with no mandatory app. That's this project's niche.
   10 minutes while Claude Code is in use.
 - Phone battery level and temperature in the top bar, with a "battery is hot" alert
   (temperature over USB only).
+- Updates: "new version available" in the PC window and one-click update of the executable
+  (checksums, test run, swap, restart). Tested end to end on Windows only.
 
 ## Gaps, by priority
 
@@ -143,6 +145,29 @@ and with no mandatory app. That's this project's niche.
     screen off or only shows a clock that moves around.
   - Dim or turn off when the PC is idle or locked.
   - A setting to turn this on/off, since it depends on the screen type.
+
+- **PC suspends or hibernates.** The agent freezes with the PC, so the phone loses the
+  connection and shows the offline screen ("Trying to reconnect...") with a bright,
+  fixed layout for hours. To check and decide:
+  - What the phone should show while the PC sleeps: a dim moving clock, a "PC asleep"
+    message, or the screen off (over USB, `adb` can't run while the PC sleeps, so turn
+    the screen down *before* sleeping, if the OS gives a warning).
+  - Detect sleep/resume on the agent: Windows power notifications, systemd-logind
+    `PrepareForSleep` on Linux, `NSWorkspace` sleep notifications on macOS; or simply a
+    wall-clock jump between two loop ticks, which works everywhere.
+  - After resume: reconnect quickly (SSE, `adb reverse`, sensors), throw away rates
+    computed across the gap (network/disk speed, CPU) and don't fire stale alerts.
+  - Over Wi-Fi the phone may be asleep too or have dropped Wi-Fi; make sure it recovers
+    by itself without a tap.
+- ✅ **Update itself** (done: `update.py`; the window shows a newer release and the
+  executable updates with one click: `SHA256SUMS`, a `--version` test run, swap with
+  `<name>.old`, restart; the phone's page reloads on the new version). Still to do:
+  - Test on real Linux and macOS machines (only Windows was tested end to end), including
+    whether the executables can reach GitHub over HTTPS there (certificates).
+  - An "update automatically" option, besides "notify" and off.
+  - Put the old file back by itself if the new version starts but then fails (today the
+    test run catches a file that can't start at all; `<name>.old` is deleted once the new
+    one is up).
 
 ## Decisions
 

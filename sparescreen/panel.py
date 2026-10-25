@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .config import ConfigStore
     from .pairing import Pairing
     from .server import Hub
+    from .update import Updater
     from .usb import UsbBridge
 
 # Shown as the device name; modern browsers hide the phone model, so this stays generic.
@@ -51,8 +52,10 @@ def _mobile(agent: Optional[str]) -> bool:
 class Panel:
     def __init__(self, pairing: Optional[Pairing] = None, bridge: Optional[UsbBridge] = None, usb: bool = True,
                  info: Optional[Json] = None, local_url: str = "", autostart_args: Iterable[str] = (),
-                 config: Optional[ConfigStore] = None, activity: Optional[Activity] = None) -> None:
+                 config: Optional[ConfigStore] = None, activity: Optional[Activity] = None,
+                 updater: Optional[Updater] = None) -> None:
         self.pairing = pairing
+        self.updater = updater
         self.config = config
         self.activity = activity
         self.bridge = bridge
@@ -90,6 +93,7 @@ class Panel:
             "devices": self.devices(clients),
             "waiting": self._waiting(),
             "games": self.games(snapshot),
+            "update": self.updater.state() if self.updater else None,
             "autostart": bool(autostart.status()),
             "autostart_label": "Start with Windows" if sys.platform == "win32" else "Start when I log in",
             "message": message,
@@ -146,7 +150,8 @@ class Panel:
         """[{"id", "status": ok|warn|error|info, "title", "detail", "action": {"id", "label"}|None}]"""
         system = snapshot.get("system") or {}
         items = [self._sensors_check(system), self._gpu_check(system), self._fps_check(snapshot),
-                 self._usb_check(), self._wifi_check(), self._ai_check(snapshot), self._media_check(snapshot)]
+                 self._usb_check(), self._wifi_check(), self._ai_check(snapshot), self._media_check(snapshot),
+                 self._update_check()]
         return [item for item in items if item]
 
     @staticmethod
@@ -247,6 +252,20 @@ class Panel:
             return Panel._check("media", "ok", "Now playing", media.get("title") or "Nothing playing right now")
         return Panel._check("media", "info", "Now playing", "Not available on this system (see the README).")
 
+    def _update_check(self) -> Optional[Check]:
+        if not self.updater:
+            return None
+        update = self.updater.state()
+        if update["latest"]:
+            return self._check("update", "info", "Updates", f"SpareScreen {update['latest']} is available.")
+        if update["error"]:
+            return self._check("update", "warn", "Updates", update["error"], "update_check_now", "Try again")
+        if update["checked_at"]:
+            return self._check("update", "ok", "Updates", f"Up to date ({update['current']}).",
+                               "update_check_now", "Check now")
+        detail = "Checks GitHub for new versions now and then." if update["enabled"] else "Automatic check off."
+        return self._check("update", "info", "Updates", detail, "update_check_now", "Check now")
+
     # ---- actions ------------------------------------------------------------
 
     def _edit_games(self, action: str, data: Json) -> None:
@@ -305,6 +324,14 @@ class Panel:
                 autostart.disable()
         elif action == "dashboard":
             webbrowser.open(self.local_url)
+        elif action == "update_install" and self.updater:
+            self.updater.install()
+        elif action == "update_check_now" and self.updater:
+            self.updater.check_now()
+        elif action == "update_auto" and self.config:
+            self.config.update({"update_check": bool(data.get("on"))})
+        elif action == "update_notes" and self.updater:
+            webbrowser.open(self.updater.state()["url"])
         else:
             return {"ok": False}
         return {"ok": True, "message": self.message}

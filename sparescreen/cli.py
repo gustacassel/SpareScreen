@@ -12,7 +12,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, cast
 
-from . import __version__, autostart, dev, screen, tray
+from . import __version__, autostart, dev, screen, tray, update
 from .appwindow import open_window
 from .config import ConfigStore
 from .demo import demo_sources
@@ -203,6 +203,8 @@ def main() -> Optional[int]:
         sources: list[Source] = demo_sources() + [config]
     else:
         sources = default_sources(config) + [PhoneSource(bridge), config]
+    updater = update.Updater(config)
+    sources.append(updater)
     if args.dev:
         sources.append(dev.DevSource())
     if args.no_pairing:
@@ -217,7 +219,7 @@ def main() -> Optional[int]:
     info = {"phone_url": phone_url, "version": __version__}
     activity = cast("Optional[Activity]", next((s for s in sources if s.name == "activity"), None))
     panel = Panel(pairing, bridge, usb=not args.no_usb, info=info, local_url=local_url,
-                  autostart_args=autostart_args(), config=config, activity=activity)
+                  autostart_args=autostart_args(), config=config, activity=activity, updater=updater)
     try:
         server = serve(args.host, args.port, sources, args.interval, config, pairing, info=info, panel=panel)
     except OSError as exc:
@@ -226,6 +228,9 @@ def main() -> Optional[int]:
         if frozen and (greet or not args.background):
             open_window(window_url)  # double-clicked again: show the one that is running
         return 1
+    updater.quit = server.shutdown  # an update stops SpareScreen, then relaunch() below starts the new one
+    updater.clean_up()
+    updater.start()
     print(f"SpareScreen running on port {args.port}." + (" Demo mode: showing made-up data." if args.demo else ""))
     if phone_url:
         print(f"  Wi-Fi: on your phone, open {phone_url}")
@@ -246,6 +251,8 @@ def main() -> Optional[int]:
             tray.run(server, local_url, window_url, phone_url, pairing, autostart_args(), greet=greet)
         finally:
             shut_down(server, bridge)
+        if updater.relaunch_wanted:
+            update.relaunch({DETACHED: "quiet"})
         return None
     print("Press Ctrl+C to quit.", flush=True)
     try:
@@ -254,6 +261,9 @@ def main() -> Optional[int]:
         pass
     finally:
         shut_down(server, bridge)
+    if updater.relaunch_wanted:
+        print("Updated: starting the new version...", flush=True)
+        update.relaunch({DETACHED: "quiet"})
     return None
 
 

@@ -1,11 +1,12 @@
   // ---- Data from the PC ----------------------------------------------------
 
-  // Dev mode (sparescreen --dev): if the code changed, reload the page automatically.
-  var devVersion = null;
-  function checkDev(version) {
+  // The agent's code changed: reload the page so it matches. In dev mode (sparescreen --dev)
+  // on every change, otherwise when SpareScreen was updated to a new version.
+  var codeVersion = null;
+  function checkVersion(version) {
     if (!version) return;
-    if (devVersion === null) devVersion = version;
-    else if (version !== devVersion) location.reload();
+    if (codeVersion === null) codeVersion = version;
+    else if (version !== codeVersion) location.reload();
   }
 
   function render(data) {
@@ -15,7 +16,8 @@
       namesTried = true;
       tryNames();
     }
-    checkDev(data.dev);
+    updateInfo = data.update || null;
+    checkVersion(data.dev || (updateInfo && updateInfo.version));
     onServerConfig(data.config);
     renderHardware(data.system);
     checkHeat(data.system);

@@ -70,7 +70,11 @@ def run(server: ThreadingHTTPServer, local_url: str, window_url: str, phone_url:
     import pystray
     from PIL import Image
 
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    quitting = threading.Event()
+
+    def quit(icon: Any, item: Any) -> None:
+        quitting.set()
+        icon.stop()
 
     def menu_item(label: Union[str, Callable[[], str]], action: Union[Callable[[], object], Literal["quit"], None],
                   options: Dict[str, Any]) -> Any:
@@ -78,7 +82,7 @@ def run(server: ThreadingHTTPServer, local_url: str, window_url: str, phone_url:
             return pystray.Menu.SEPARATOR
         text = (lambda item: label()) if callable(label) else label
         if action == "quit":
-            return pystray.MenuItem(text, lambda icon, item: icon.stop())
+            return pystray.MenuItem(text, quit)
         checked = options.get("checked")
         return pystray.MenuItem(
             text,
@@ -92,6 +96,13 @@ def run(server: ThreadingHTTPServer, local_url: str, window_url: str, phone_url:
                           for entry in entries(local_url, window_url, phone_url, pairing, autostart_args)])
     title = "SpareScreen" + (f" - {phone_url}" if phone_url else "")
     icon = pystray.Icon("sparescreen", Image.open(ICON), title, menu)
+
+    def serve() -> None:
+        server.serve_forever()
+        if not quitting.is_set():
+            icon.stop()  # stopped from elsewhere (an update restarting SpareScreen): the icon goes too
+
+    threading.Thread(target=serve, daemon=True).start()
 
     def setup(icon: Any) -> None:
         icon.visible = True

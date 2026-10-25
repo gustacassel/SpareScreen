@@ -87,13 +87,33 @@ with three tabs, kept live. A dot on a tab means something there needs you:
   now to mark as games, and the ones marked "not a game" (see *Games and apps*).
 - **Status:** what works and what's missing, with a button to fix it where possible:
   install or open LibreHardwareMonitor (CPU sensors on Windows), turn on FPS in games,
-  install adb (USB cable), plus GPU, Wi-Fi, AI tools and now playing.
+  install adb (USB cable), plus GPU, Wi-Fi, AI tools, now playing and updates.
 
-At the bottom, **Start with Windows** (or "Start when I log in" elsewhere); at the top,
-**Open dashboard**.
+At the bottom, **Start with Windows** (or "Start when I log in" elsewhere) and **Check for
+updates**; at the top, **Open dashboard**.
 
 It answers only to this PC (`http://localhost:8765/panel.html`); other devices and other
 websites can't read it or press its buttons.
+
+### Updating
+
+SpareScreen checks GitHub for a new release a minute after it starts and then every 6
+hours. When there is one, the SpareScreen window says so at the top (and the phone's
+settings screen mentions it):
+
+- **Downloaded file:** click **Update**. SpareScreen downloads the file for your system,
+  checks it against the release's `SHA256SUMS`, makes sure it starts, puts it in place of
+  the current one (same name and folder, so *Start with Windows* keeps working) and
+  restarts. The window and the page on the phone reload by themselves; settings and the
+  paired device stay. The folder must be one you can write to; if not, download the new
+  file by hand. On Windows the new version runs in the background with the tray icon,
+  even if the old one was started from a terminal; on Linux and macOS it takes the old
+  one's place in the same terminal.
+- **From source:** `git pull` in the SpareScreen folder, then restart it.
+
+The check is one request to GitHub's public API (`api.github.com`), with nothing about you
+or your PC in it. Turn it off with **Check for updates** at the bottom of the window or in
+the phone's settings; **Check now** on the Status tab checks once anyway.
 
 ### From source
 
@@ -555,6 +575,8 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   `~/.sparescreen/devices.json`) and the lockout after wrong codes.
 - `sparescreen/cli.py`: the command line (`python -m sparescreen` and the executables run it).
 - `sparescreen/autostart.py`: `--autostart` per OS.
+- `sparescreen/update.py`: the check for a newer release and the in-place update of the
+  executable (download, `SHA256SUMS`, a `--version` test run, swap and restart).
 - `sparescreen/tray.py`: the tray icon in background mode (pystray).
 - `sparescreen/panel.py`, `sparescreen/appwindow.py` and `web/panel.*`: the SpareScreen
   window on the PC (checks, devices, pairing) and how it opens as an app window.

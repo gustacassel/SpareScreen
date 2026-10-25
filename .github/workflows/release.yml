@@ -62,3 +62,22 @@ jobs:
         run: |
           cp "${{ matrix.built }}" "${{ matrix.asset }}"
           gh release upload "$TAG" "${{ matrix.asset }}" --clobber
+
+  checksums:
+    # One SHA256SUMS file for every executable of the release: the in-app update refuses a
+    # download that doesn't match it (sparescreen/update.py).
+    name: SHA256SUMS
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Hash the attached executables
+        run: |
+          gh release download "$TAG" --repo "${{ github.repository }}" --pattern 'sparescreen-*' --dir dist
+          cd dist
+          sha256sum sparescreen-* > SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS --repo "${{ github.repository }}" --clobber
