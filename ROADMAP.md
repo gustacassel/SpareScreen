@@ -117,22 +117,7 @@ and with no mandatory app. That's this project's niche.
 
 ## To think about
 
-- **C# / .NET 10 instead of Python?** (idea, 2026-10-25). LibreHardwareMonitor is C# and
-  ships LibreHardwareMonitorLib on NuGet (.NET 8/9/10), so a .NET agent could read the
-  sensors in-process: no separate LibreHardwareMonitor window, no web server to turn on.
-  - What it would *not* remove: reading CPU sensors needs a kernel driver, so the agent
-    itself would have to run as admin (an elevated scheduled task or a Windows service
-    instead of today's normal user process). The admin step moves; it doesn't go away.
-  - Gains on Windows: native tray and WinRT (no pywinrt/pystray/PowerShell helpers), FPS
-    through ETW in-process (TraceEvent) instead of running PresentMon, one self-contained
-    exe (Native AOT).
-  - Costs: a full rewrite of the agent (the web page would stay as is), and the
-    cross-platform rule gets harder: LibreHardwareMonitorLib is Windows-first, and the tray
-    and windows on Linux/macOS would need Avalonia or similar.
-  - Middle ground worth trying first: keep the Python agent and add a small C# helper
-    (`sparescreen-sensors.exe`, LibreHardwareMonitorLib from NuGet) that runs elevated as a
-    scheduled task and hands the sensors to the agent. It removes the LibreHardwareMonitor
-    app dependency without rewriting everything; Linux and macOS stay as they are.
+- **Language:** decided to stay in Python (a C#/.NET port was considered and dropped, 2026-10-25).
 - **HTTPS on Wi-Fi.** On the PC and over USB the page is on `localhost`, which browsers
   already treat as secure (and the data never leaves the machine or the cable). Over
   Wi-Fi it's plain HTTP: someone on the same network could read the data and the
