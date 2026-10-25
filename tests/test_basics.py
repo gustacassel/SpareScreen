@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest import mock
 
 from sparescreen import statusline
-from sparescreen.activity import HELPERS, friendly_name, game_name
+from sparescreen.activity import friendly_name
+from sparescreen.games import HELPERS, game_name
 from sparescreen.config import DEFAULTS, ConfigStore, clean
 from sparescreen.hwinfo import short_cpu_name, short_gpu_name
 

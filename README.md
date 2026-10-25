@@ -521,7 +521,8 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/usb.py`: every 3 seconds checks `adb devices`, sets up `adb reverse` on
   connected phones and opens the page on them; every 30 seconds reads their battery
   (`dumpsys battery`) for the top bar.
-- `sparescreen/activity.py`: running game, app in focus and top apps.
+- `sparescreen/activity.py`: app in focus and top apps; `sparescreen/games.py` decides which
+  one is the game (your lists, store folders, automatic) and finds its art and icon.
 - `sparescreen/media.py`: now playing (Windows media controls, MPRIS on Linux, optional tools on macOS).
 - `sparescreen/gameart.py` and `sparescreen/icons.py`: Steam's cached game art and program icons.
 - `sparescreen/images.py`: covers, game art and icons kept in memory and served at

@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from sparescreen import activity, fps, panel
+from sparescreen import activity, fps, games, panel
 from sparescreen.config import ConfigStore, clean
 
 STEAM = r"D:\SteamLibrary\steamapps\common\Hollow Peaks\game.exe"
@@ -38,12 +38,12 @@ class DetectionOrderTest(unittest.TestCase):
     def detect(self, procs, my_games=(), not_games=(), auto=None, focus=None, window=None):
         config = mock.Mock(games=mock.Mock(return_value={"my_games": list(my_games), "not_games": list(not_games)}))
         source = activity.ActivitySource(config=config, auto=auto)
-        source.art = mock.Mock(for_game=mock.Mock(return_value={"art": None, "icon": None}))
+        source.games.art = mock.Mock(for_game=mock.Mock(return_value={"art": None, "icon": None}))
         with mock.patch.object(activity.psutil, "process_iter", return_value=procs), \
                 mock.patch.object(activity, "foreground_pid", return_value=focus), \
                 mock.patch.object(activity, "foreground_window", return_value=window), \
                 mock.patch.object(activity, "friendly_name", side_effect=lambda name, exe: name), \
-                mock.patch.object(activity.sys, "platform", "win32"):
+                mock.patch.object(games.sys, "platform", "win32"):
             return source.read()["game"], source
 
     def test_store_folder(self):
@@ -71,13 +71,19 @@ class DetectionOrderTest(unittest.TestCase):
         auto = mock.Mock(is_game=mock.Mock(return_value=True))
         config = mock.Mock(games=mock.Mock(return_value={"my_games": [], "not_games": []}))
         source = activity.ActivitySource(config=config, auto=auto)
-        source.art = mock.Mock(for_game=mock.Mock(return_value={"art": None, "icon": "art/java-cup"}))
-        with mock.patch.object(activity.psutil, "process_iter", return_value=[Proc(7, MINE, 100)]),                 mock.patch.object(activity, "friendly_name", side_effect=lambda name, exe: name),                 mock.patch.object(activity.icons, "window_icon_png", return_value=b"png") as window_icon,                 mock.patch.object(activity.images, "put", return_value="art/game-icon?v=1"),                 mock.patch.object(activity.sys, "platform", "win32"):
-            with mock.patch.object(activity, "foreground_pid", return_value=7),                     mock.patch.object(activity, "foreground_window",
-                                      return_value={"title": "Minecraft 1.21", "fullscreen": True, "hwnd": 99}):
+        source.games.art = mock.Mock(for_game=mock.Mock(return_value={"art": None, "icon": "art/java-cup"}))
+        with mock.patch.object(activity.psutil, "process_iter", return_value=[Proc(7, MINE, 100)]), \
+                mock.patch.object(activity, "friendly_name", side_effect=lambda name, exe: name), \
+                mock.patch.object(games.icons, "window_icon_png", return_value=b"png") as window_icon, \
+                mock.patch.object(games.images, "put", return_value="art/game-icon?v=1"), \
+                mock.patch.object(games.sys, "platform", "win32"):
+            window = {"title": "Minecraft 1.21", "fullscreen": True, "hwnd": 99}
+            with mock.patch.object(activity, "foreground_pid", return_value=7), \
+                    mock.patch.object(activity, "foreground_window", return_value=window):
                 self.assertEqual(source.read()["game"]["icon"], "art/game-icon?v=1")  # the window's, not Java's
             source._at = 0
-            with mock.patch.object(activity, "foreground_pid", return_value=None),                     mock.patch.object(activity, "foreground_window", return_value=None):
+            with mock.patch.object(activity, "foreground_pid", return_value=None), \
+                    mock.patch.object(activity, "foreground_window", return_value=None):
                 game = source.read()["game"]  # alt-tabbed out: still the game
         self.assertEqual((game["name"], game["source"]), ("Minecraft 1.21", "auto"))
         window_icon.assert_called_once_with(99)

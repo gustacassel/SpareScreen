@@ -14,7 +14,7 @@ import time
 import webbrowser
 
 from . import autostart, fps, lhm, names
-from .activity import same_exe
+from .games import same_exe
 
 # Shown as the device name; modern browsers hide the phone model, so this stays generic.
 _SYSTEMS = (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("CrOS", "ChromeOS"),
