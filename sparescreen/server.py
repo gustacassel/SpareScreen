@@ -307,7 +307,9 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
                         break
                     new_version, payload = hub.wait_next(version, timeout=15)
                     if new_version == version or payload is None:
-                        self.wfile.write(b": ping\n\n")
+                        # A named event, not a comment: the page sees it and knows the
+                        # connection is alive (after the PC sleeps it may silently not be).
+                        self.wfile.write(b"event: ping\ndata: {}\n\n")
                     else:
                         version = new_version
                         self.wfile.write(f"data: {payload}\n\n".encode())

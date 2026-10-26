@@ -18,6 +18,7 @@
     <symbol id="i-ram" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="10" rx="1"/><path d="M6 9v4M10 9v4M14 9v4M18 9v4M5 16v3M9 16v3M15 16v3M19 16v3"/></symbol>
     <symbol id="i-temp" viewBox="0 0 24 24"><path d="M14 14.76V4a2 2 0 1 0-4 0v10.76a4 4 0 1 0 4 0z"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
     <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
@@ -223,11 +224,12 @@
   <div id="night-clock" class="night-clock"><span id="night-time">--:--</span></div>
 
   <!-- No data for a while (PC off, SpareScreen closed, Wi-Fi down): say so instead of
-       showing old numbers as if they were live. Goes away by itself when data returns. -->
+       showing old numbers as if they were live. Goes away by itself when data returns.
+       When the PC said it was going to sleep, a calmer, dimmer "PC asleep" version. -->
   <div id="offline" class="offline">
     <div id="offline-box" class="offline-box">
       <div id="offline-time" class="offline-time">--:--</div>
-      <div class="offline-status"><svg class="icon offline-icon"><use xlink:href="#i-alert"></use></svg>Disconnected from the PC</div>
+      <div class="offline-status"><svg class="icon offline-icon icon-alert"><use xlink:href="#i-alert"></use></svg><svg class="icon offline-icon icon-moon"><use xlink:href="#i-moon"></use></svg><span id="offline-status">Disconnected from the PC</span></div>
       <div id="offline-detail" class="offline-detail">Trying to reconnect...</div>
       <div class="offline-hint">Is SpareScreen running on the PC?</div>
     </div>

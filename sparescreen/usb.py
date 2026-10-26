@@ -102,6 +102,7 @@ class UsbBridge:
         self.poll_interval = poll_interval
         self.screen = screen  # callable: "dim", "off" or None (see screen.py)
         self._rested: dict[str, Json] = {}  # serial -> how its screen was rested, and what to put back
+        self._screen_lock = threading.Lock()  # the PC going to sleep rests screens from another thread
         self._ready: set[str] = set()       # phones already set up on this connection
         self._warned: set[str] = set()      # phones we have already warned about some problem
         self.batteries: dict[str, Json] = {}  # serial -> latest battery reading (read by PhoneSource)
@@ -165,6 +166,16 @@ class UsbBridge:
         wanted = self.screen() if self.screen else None
         for serial in connected:
             self._read_battery(serial, devices[serial][1])
+            self._try_rest_screen(serial, wanted)
+
+    def rest_screens(self) -> None:
+        """Applies the screen rule now instead of at the next round (the PC is about to sleep)."""
+        wanted = self.screen() if self.screen else None
+        for serial in list(self.phones):
+            self._try_rest_screen(serial, wanted)
+
+    def _try_rest_screen(self, serial: str, wanted: str | None) -> None:
+        with self._screen_lock:
             try:
                 self._rest_screen(serial, wanted)
             except (RuntimeError, OSError, subprocess.SubprocessError):

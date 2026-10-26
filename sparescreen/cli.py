@@ -8,6 +8,7 @@ import os
 import socket
 import subprocess
 import sys
+import time
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, cast
@@ -18,6 +19,7 @@ from .config import ConfigStore
 from .demo import demo_sources
 from .pairing import Pairing
 from .panel import Panel
+from .power import PowerWatch
 from .server import serve
 from .sources import default_sources
 from .shapes import Source
@@ -194,17 +196,19 @@ def main() -> Optional[int]:
     demo_dir = Path.home() / ".sparescreen" / "demo"
     config = ConfigStore(demo_dir / "config.json") if args.demo else ConfigStore()
     adb = None if args.no_usb else find_adb(args.adb)
+    power = PowerWatch()
     bridge = None
     if adb:
         open_page = not args.no_open and not dev.is_restart()
+        # The PC going to sleep counts as locked: a USB phone's screen rests too.
         bridge = UsbBridge(adb, args.port, open_page=open_page, stay_awake=args.stay_awake,
-                           screen=lambda: screen.wanted(config))
+                           screen=lambda: screen.wanted(config, locked=True if power.asleep() else None))
     if args.demo:
         sources: list[Source] = demo_sources() + [config]
     else:
         sources = default_sources(config) + [PhoneSource(bridge), config]
     updater = update.Updater(config)
-    sources.append(updater)
+    sources += [updater, power]
     if args.dev:
         sources.append(dev.DevSource())
     if args.no_pairing:
@@ -231,6 +235,17 @@ def main() -> Optional[int]:
     updater.quit = server.shutdown  # an update stops SpareScreen, then relaunch() below starts the new one
     updater.clean_up()
     updater.start()
+
+    def before_sleep() -> None:
+        """The PC is about to sleep: one last reading tells the phone, and a USB phone's screen rests."""
+        if panel.hub:
+            panel.hub.publish(dict(panel.hub.snapshot, power=power.read()))
+        if bridge:
+            bridge.rest_screens()
+        time.sleep(0.5)  # a moment for that reading to reach the phone
+
+    power.on_sleep = before_sleep
+    power.start()
     print(f"SpareScreen running on port {args.port}." + (" Demo mode: showing made-up data." if args.demo else ""))
     if phone_url:
         print(f"  Wi-Fi: on your phone, open {phone_url}")
@@ -250,7 +265,7 @@ def main() -> Optional[int]:
         try:
             tray.run(server, local_url, window_url, phone_url, pairing, autostart_args(), greet=greet)
         finally:
-            shut_down(server, bridge)
+            shut_down(server, bridge, power)
         if updater.relaunch_wanted:
             update.relaunch({DETACHED: "quiet"})
         return None
@@ -260,14 +275,15 @@ def main() -> Optional[int]:
     except KeyboardInterrupt:
         pass
     finally:
-        shut_down(server, bridge)
+        shut_down(server, bridge, power)
     if updater.relaunch_wanted:
         print("Updated: starting the new version...", flush=True)
         update.relaunch({DETACHED: "quiet"})
     return None
 
 
-def shut_down(server: ThreadingHTTPServer, bridge: Optional[UsbBridge]) -> None:
+def shut_down(server: ThreadingHTTPServer, bridge: Optional[UsbBridge], power: PowerWatch) -> None:
     server.server_close()
+    power.stop()
     if bridge:
         bridge.restore()  # a dimmed or sleeping phone screen goes back to how it was

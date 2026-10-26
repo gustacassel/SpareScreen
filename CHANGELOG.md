@@ -4,6 +4,21 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- When the PC goes to sleep, the phone shows a dim "The PC is asleep" clock instead of
+  "Disconnected", and over USB its screen rests right away (with *Phone screen (USB)* on
+  Dim or Off). Windows, and Linux with `gdbus` (systemd-logind); macOS still shows
+  "Disconnected".
+
+### Fixed
+
+- After the PC woke up, the page could keep waiting on a connection that had silently
+  died. It now opens a new one when nothing has come through for 45 seconds (the agent
+  sends a ping every 15 seconds when there's no new data).
+
 ## [0.12.0] - 2026-10-25
 
 ### Added

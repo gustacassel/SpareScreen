@@ -11,7 +11,9 @@
 
   function render(data) {
     lastData = Date.now();
-    if (offlineOn) updateOffline(new Date());
+    var wasAsleep = pcAsleep;
+    pcAsleep = !!(data.power && data.power.asleep);
+    if (offlineOn || pcAsleep !== wasAsleep) updateOffline(new Date());
     if (!namesTried) {
       namesTried = true;
       tryNames();

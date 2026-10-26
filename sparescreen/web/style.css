@@ -335,6 +335,11 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .offline .offline-icon { width: 5vw; height: 5vw; margin-right: 2vw; vertical-align: -0.12em; }
 .offline-detail { margin-top: 2vw; font-size: 3.8vw; }
 .offline-hint { margin-top: 1vw; font-size: 3.4vw; color: #5d656e; }
+/* PC asleep: nothing is wrong, so no warning color, and dimmer for a whole night */
+.offline .icon-moon, .offline.asleep .icon-alert, .offline.asleep .offline-hint { display: none; }
+.offline.asleep .icon-moon { display: inline; }
+.offline.asleep .offline-status { color: #8a929c; }
+.offline.asleep .offline-box { opacity: .6; }
 @media (orientation: landscape) {
   .offline-time { font-size: 26vh; }
   .offline-status { margin-top: 4vh; font-size: 5.5vh; }

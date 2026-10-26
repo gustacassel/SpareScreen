@@ -272,6 +272,19 @@ OLED/AMOLED screens (many older phones have one).
   it wakes; for a dashboard-only phone, set the screen lock to *None* or *Swipe*.
   Locked PC detection: Windows, and Linux with `loginctl`.
 
+### When the PC sleeps
+
+Just before the PC goes to sleep, SpareScreen tells the phone: instead of
+"Disconnected", it shows a dim clock with **The PC is asleep**, and over USB the phone's
+screen rests right away as if the PC were locked (with *Phone screen (USB)* on *Dim* or
+*Off*). When the PC wakes up, the dashboard comes back by itself within a few seconds,
+over Wi-Fi too: the page notices a connection that went silent and opens a new one.
+
+| | Windows | Linux | macOS |
+|---|---|---|---|
+| "PC asleep" screen and resting the USB phone | ✅ | ✅ with `gdbus` (systemd-logind), best effort | ❌ shows "Disconnected" |
+| Dashboard back by itself after waking | ✅ | ✅ | ✅ |
+
 ## Phone battery
 
 Leaving an old phone plugged in all day (and maybe inside a warm PC case) is hard on its
@@ -580,6 +593,8 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/tray.py`: the tray icon in background mode (pystray).
 - `sparescreen/panel.py`, `sparescreen/appwindow.py` and `web/panel.*`: the SpareScreen
   window on the PC (checks, devices, pairing) and how it opens as an app window.
+- `sparescreen/power.py`: the PC about to sleep (Windows power notifications, logind's
+  `PrepareForSleep` on Linux), so the phone shows "PC asleep".
 - `sparescreen/lhm.py`: finds, sets up, starts and installs LibreHardwareMonitor on Windows.
 - `sparescreen/fps.py`: game FPS from PresentMon (Windows): setup, and frame times turned
   into FPS, 1% low and frame time while a game runs.

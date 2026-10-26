@@ -146,19 +146,16 @@ and with no mandatory app. That's this project's niche.
   - Dim or turn off when the PC is idle or locked.
   - A setting to turn this on/off, since it depends on the screen type.
 
-- **PC suspends or hibernates.** The agent freezes with the PC, so the phone loses the
-  connection and shows the offline screen ("Trying to reconnect...") with a bright,
-  fixed layout for hours. To check and decide:
-  - What the phone should show while the PC sleeps: a dim moving clock, a "PC asleep"
-    message, or the screen off (over USB, `adb` can't run while the PC sleeps, so turn
-    the screen down *before* sleeping, if the OS gives a warning).
-  - Detect sleep/resume on the agent: Windows power notifications, systemd-logind
-    `PrepareForSleep` on Linux, `NSWorkspace` sleep notifications on macOS; or simply a
-    wall-clock jump between two loop ticks, which works everywhere.
-  - After resume: reconnect quickly (SSE, `adb reverse`, sensors), throw away rates
-    computed across the gap (network/disk speed, CPU) and don't fire stale alerts.
-  - Over Wi-Fi the phone may be asleep too or have dropped Wi-Fi; make sure it recovers
-    by itself without a tap.
+- ✅ **PC suspends or hibernates** (done: `power.py` hears the sleep notice (Windows,
+  Linux with `gdbus`) and the phone shows a dim "PC asleep" clock, a USB phone's screen
+  rests before the PC sleeps; the page restarts a stream that went silent, so it comes
+  back by itself after waking). Tested with a simulated sleep (the real Windows callback,
+  then the agent frozen); still to do:
+  - A real sleep and hibernation on Windows (Modern Standby laptops may announce it late),
+    and on Linux.
+  - macOS: `NSWorkspaceWillSleepNotification` needs a native bridge (pyobjc).
+  - Rates right after waking (network speed, CPU) are averaged over the gap: one odd
+    reading, not worth handling so far.
 - ✅ **Update itself** (done: `update.py`; the window shows a newer release and the
   executable updates with one click: `SHA256SUMS`, a `--version` test run, swap with
   `<name>.old`, restart; the phone's page reloads on the new version). Still to do:
