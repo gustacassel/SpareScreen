@@ -53,6 +53,8 @@
     <section class="screen" data-name="hardware" data-title="Hardware">
       <div class="hw-grid">
         <div class="card hw" id="cpu">
+          <!-- CPU usage over the last minutes, faint behind the card (23-history.js) -->
+          <svg class="spark hw-spark" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="spark-area"></path><path class="spark-line"></path></svg>
           <h2><svg class="icon"><use xlink:href="#i-cpu"></use></svg>CPU <span class="hw-name"></span></h2>
           <div class="hw-body">
             <div class="ring-wrap">
@@ -63,7 +65,7 @@
               <div class="ring-label"><span class="pct">--</span><small>%</small></div>
             </div>
             <div class="hw-info">
-              <div class="temp"><svg class="icon"><use xlink:href="#i-temp"></use></svg><span class="temp-value">--</span><small>°C</small></div>
+              <div class="temp"><svg class="icon"><use xlink:href="#i-temp"></use></svg><span class="temp-value">--</span><small>°C</small><svg class="spark temp-spark" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="spark-line"></path></svg></div>
               <div class="detail extra"></div>
               <div class="cores"></div>
               <ul class="rows hw-rows" id="cpu-rows"></ul>
@@ -72,6 +74,8 @@
         </div>
 
         <div class="card hw" id="gpu">
+          <!-- GPU usage over the last minutes, faint behind the card (23-history.js) -->
+          <svg class="spark hw-spark" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="spark-area"></path><path class="spark-line"></path></svg>
           <h2><svg class="icon"><use xlink:href="#i-gpu"></use></svg>GPU <span class="hw-name"></span></h2>
           <div class="hw-body">
             <div class="ring-wrap">
@@ -82,7 +86,7 @@
               <div class="ring-label"><span class="pct">--</span><small>%</small></div>
             </div>
             <div class="hw-info">
-              <div class="temp"><svg class="icon"><use xlink:href="#i-temp"></use></svg><span class="temp-value">--</span><small>°C</small></div>
+              <div class="temp"><svg class="icon"><use xlink:href="#i-temp"></use></svg><span class="temp-value">--</span><small>°C</small><svg class="spark temp-spark" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="spark-line"></path></svg></div>
               <div class="detail extra"></div>
               <div class="bar"><div class="bar-fill"></div></div>
               <div class="detail mem"></div>
@@ -92,6 +96,8 @@
         </div>
 
         <div class="card hw" id="ram">
+          <!-- RAM usage over the last minutes, faint behind the card (23-history.js) -->
+          <svg class="spark hw-spark" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="spark-area"></path><path class="spark-line"></path></svg>
           <h2><svg class="icon"><use xlink:href="#i-ram"></use></svg>RAM <span class="hw-name"></span></h2>
           <div class="hw-body">
             <div class="ring-wrap">
@@ -150,6 +156,10 @@
           <div class="card io">
             <h2><svg class="icon"><use xlink:href="#i-net"></use></svg>NETWORK</h2>
             <div class="net"><span>↓ <b id="net-down">--</b></span><span>↑ <b id="net-up">--</b></span></div>
+            <div class="net-chart">
+              <svg class="spark net-spark" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="spark-area down"></path><path class="spark-line down"></path><path class="spark-line up"></path></svg>
+              <div class="net-peak"><i class="sw sw-down"></i>↓ <i class="sw sw-up"></i>↑ · peak <span id="net-peak">--</span></div>
+            </div>
             <h2 class="sub-h2"><svg class="icon"><use xlink:href="#i-disk"></use></svg>DISKS</h2>
             <ul id="disk-list" class="rows"></ul>
           </div>

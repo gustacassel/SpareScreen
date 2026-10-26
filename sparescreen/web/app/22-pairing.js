@@ -44,7 +44,11 @@
     if (events) events.close();
     events = new EventSource("events");
     lastHeard = Date.now();
-    events.onopen = function () { lastHeard = Date.now(); $("status").className = "dot on"; };
+    events.onopen = function () {
+      lastHeard = Date.now();
+      $("status").className = "dot on";
+      loadTrend();
+    };
     events.onmessage = function (e) { lastHeard = Date.now(); render(JSON.parse(e.data)); };
     events.addEventListener("ping", function () { lastHeard = Date.now(); });
     events.onerror = function () {

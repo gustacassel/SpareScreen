@@ -32,12 +32,13 @@ the phone (or any device with a browser) just opens that page.
 The page has screens that rotate on their own (or with a tap):
 
 - **Hardware:** CPU and GPU usage, temperature, power and clock, per-core load,
-  VRAM, RAM and swap.
+  VRAM, RAM and swap. The last 5 minutes of usage show faintly behind each card, and of
+  each temperature next to its number.
 - **AI:** for each AI coding tool installed on the PC (Claude Code, Codex and Gemini CLI):
   usage limits (5-hour and weekly windows, where the tool keeps them), tokens used today
   and this week per model, and your sessions (and which ones are working).
-- **PC:** the app in focus, the heaviest apps, fans, network, free disk space and drive
-  temperatures. The running game and what's playing also show here when game mode or the
+- **PC:** the app in focus, the heaviest apps, fans, network (with a chart of the last
+  5 minutes, download and upload), free disk space and drive temperatures. The running game and what's playing also show here when game mode or the
   Music screen is turned off.
 - **Music:** while something plays, the album cover, title, artist, album, the player
   (with its icon) and the progress.
@@ -583,6 +584,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   Claude Code is in use).
 - `sparescreen/server.py`: standard-library HTTP server. The page gets the data through
   Server-Sent Events on `/events`, once per second.
+- `sparescreen/history.py`: the last 5 minutes of usage, temperatures and network speed
+  (a point every 2 s, averaged), sent once on `/history` so a page that just opened starts
+  with full charts; the page adds the live points itself (`web/app/23-history.js`).
 - `sparescreen/usb.py`: every 3 seconds checks `adb devices`, sets up `adb reverse` on
   connected phones and opens the page on them; every 30 seconds reads their battery
   (`dumpsys battery`) for the top bar.

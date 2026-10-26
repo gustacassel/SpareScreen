@@ -30,9 +30,12 @@ class DemoSystem:
         self.started = time.time()
 
     def read(self) -> Json:
-        cores = [round(_wave(7 + i, 5, 70, i), 1) for i in range(12)]
+        # Slow swings plus a quicker wobble per core: lively numbers, and charts of the
+        # last minutes that look like a PC at work rather than a zigzag.
+        load = _wave(110, 15, 55)
+        cores = [round(min(100, max(1, load + _wave(7 + i, -12, 12, i))), 1) for i in range(12)]
         cpu = round(sum(cores) / len(cores), 1)
-        gpu = round(_wave(23, 30, 95), 1)
+        gpu = round(_wave(95, 30, 90) + _wave(11, -4, 4), 1)
         ram_used = _wave(60, 14, 19) * GB
         return {
             "cpu": {
@@ -79,7 +82,7 @@ class DemoSystem:
                 {"name": "NVMe SSD 2TB", "temp": 41.0, "temp_limit": 75.0, "read": 0.0, "write": 2.1e6},
                 {"name": "SATA SSD 1TB", "temp": 34.0, "temp_limit": None, "read": 0.0, "write": 0.0},
             ],
-            "net": {"down": _wave(9, 2e5, 8.4e6), "up": _wave(13, 3e4, 9e5)},
+            "net": {"down": _wave(70, 2e5, 8.4e6), "up": _wave(110, 3e4, 9e5)},
             "disks": [
                 {"name": "C:", "percent": 62.0, "free": 380 * GB, "total": 1000 * GB},
                 {"name": "D:", "percent": 41.0, "free": 1180 * GB, "total": 2000 * GB},

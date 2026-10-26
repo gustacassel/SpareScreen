@@ -108,13 +108,14 @@ and with no mandatory app. That's this project's niche.
 5. **Translations.** The interface is English only; maybe add other languages later.
 6. **Test real devices:** iPhone/iPad over Wi-Fi, very old Android, tablets; USB with a
    data cable; AMD and Intel GPUs on real machines.
-7. **More widgets:** photos and scrolling text (the original idea), history charts, FPS.
+7. **More widgets:** photos and scrolling text (the original idea), FPS.
+   - ✅ **History charts:** the last 5 minutes of usage, temperatures and network speed.
    - ✅ **Now playing:** whatever the PC is playing, from the system's media session,
      and a Music screen with the cover and the player's icon.
    - ✅ **Game mode:** only the game screen while a game runs, with Steam's art and the
      game's icon, FPS on Windows, "my games" / "not a game" lists and automatic detection
-     of full-screen games (with PresentMon). Still to do: art for other stores, icons on
-     Linux/macOS, FPS on Linux.
+     of full-screen games (with PresentMon), art and names from Xbox, GOG and Epic too.
+     Still to do: icons on Linux/macOS, FPS on Linux.
 8. Optional: a tiny Android app (WebView kiosk, minSdk 23) that opens by itself, full
    screen, screen always on.
 
@@ -130,6 +131,17 @@ and with no mandatory app. That's this project's niche.
   Options: an opt-in `--https` with a self-signed certificate and its fingerprint shown in
   the PC window to compare on the phone; meanwhile, USB only (`--host 127.0.0.1`) on
   networks you don't trust, as the README says.
+- **Control the music from the phone** (asked for on 2026-10-26): previous, play/pause and
+  next buttons on the Music screen. Looks doable with what `media.py` already uses:
+  - Windows: the same media session (SMTC) has `try_toggle_play_pause_async`,
+    `try_skip_next_async` and `try_skip_previous_async`.
+  - Linux: MPRIS has `PlayPause`, `Next` and `Previous` (`playerctl play-pause|next|previous`,
+    or `dbus-send` without it).
+  - macOS: `media-control` and `nowplaying-cli` have toggle/next/previous commands.
+  - The page: a tap today moves to the next screen, so the buttons must stop the tap,
+    and be big enough for a finger. Send them with a POST that, like settings, only
+    paired devices may use (it acts on the PC). Show them only where the player allows
+    it (SMTC and MPRIS say whether next/previous are available).
 - **Game FPS.** ✅ Windows, with PresentMon (set up from the PC window). Still to do:
   - Linux: MangoHud's log files (when the game runs with MangoHud).
   - macOS: no practical free way for other apps' games.

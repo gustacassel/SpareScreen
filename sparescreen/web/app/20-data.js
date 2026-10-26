@@ -25,6 +25,7 @@
     checkHeat(data.system);
     renderAi(data, data.time);
     renderPc(data.system, data.activity, data.time);
+    recordTrend(data);
     renderPhone(data.phone);
     renderMedia(data.media);
 

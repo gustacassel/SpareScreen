@@ -212,6 +212,31 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .net { display: flex; font-size: 14px; color: var(--muted); }
 .net span { flex: 1; white-space: nowrap; }
 .net b { color: var(--text); font-weight: 400; font-variant-numeric: tabular-nums; }
+
+/* Small charts of the last minutes (23-history.js). The SVG box is 100 x 100 and stretches
+   over its element; lines keep their width (non-scaling-stroke). */
+.spark { display: block; overflow: visible; }
+.spark path { fill: none; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.spark .spark-line { stroke: var(--accent); stroke-width: 2px; }
+.spark .spark-area { fill: var(--accent); stroke: none; }
+/* Behind a hardware card: usage, faint, in the lower part of the card */
+.hw { position: relative; }
+.hw > h2, .hw > .hw-body { position: relative; }
+.hw-spark { position: absolute; left: 0; right: 0; bottom: 0; height: 45%; width: 100%; }
+.hw-spark .spark-area { opacity: .14; }
+.hw-spark .spark-line { display: none; }  /* a line would cross the text above it */
+/* Next to a temperature: its own scale, in the temperature's color */
+.temp-spark { display: inline-block; width: 1.6em; height: .5em; margin-left: .25em; vertical-align: .1em; }
+.temp-spark .spark-line { stroke: currentColor; opacity: .7; stroke-width: 1.5px; }
+/* Network: download (area) and upload (line) on one scale; the swatches under it are the legend */
+.sw { display: inline-block; width: 8px; height: 8px; margin: 0 3px 0 6px; border-radius: 2px; vertical-align: .05em; }
+.sw-down { margin-left: 0; background: var(--accent); }
+.sw-up { background: var(--muted); }
+.net-chart { margin: 8px 0 6px; }
+.net-spark { width: 100%; height: 40px; }
+.net-spark .spark-area { opacity: .25; }
+.net-spark .spark-line.up { stroke: var(--muted); stroke-width: 1.5px; }
+.net-peak { margin-top: 2px; text-align: right; font-size: 11px; color: var(--muted); }
 .sub-h2 { margin-top: 10px !important; }
 
 /* Settings: panel on top of everything */

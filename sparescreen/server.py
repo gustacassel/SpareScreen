@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Iterable, List, Optional
 from urllib.parse import parse_qs, urlparse
 
 from . import images, names
+from .history import History
 from .pairing import LOCAL_ADDRESSES
 from .shapes import Json, Source
 
@@ -40,6 +41,7 @@ class Hub:
         self._version = 0
         self._payload: Optional[str] = None
         self.snapshot: Json = {}  # the latest one, for the PC window's checks
+        self.history = History()  # the last minutes, for the page's small charts
 
     def publish(self, snapshot: Json) -> None:
         payload = json.dumps(snapshot, separators=(",", ":"))
@@ -91,6 +93,7 @@ def start_sampler(hub: Hub, sources: list[Source], interval: float) -> None:
                 except Exception as exc:  # one failing source does not take down the others
                     snapshot[source.name] = {"error": str(exc)}
             hub.publish(snapshot)
+            hub.history.add(snapshot)
             time.sleep(interval)
 
     threading.Thread(target=loop, name="sampler", daemon=True).start()
@@ -140,6 +143,12 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
                     address = self.server.server_address
                     assert isinstance(address, tuple)  # (host, port): this server is always TCP
                     self._send_json(200, {"id": names.INSTANCE, "names": names.candidates(), "port": address[1]})
+                else:
+                    self._send_json(401, {})
+            elif path == "/history":
+                # The last minutes for the small charts, sent once when the page starts.
+                if self._trusted():
+                    self._send_json(200, hub.history.read())
                 else:
                     self._send_json(401, {})
             elif path == "/events":

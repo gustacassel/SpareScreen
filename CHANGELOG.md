@@ -4,6 +4,15 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Small charts of the last 5 minutes: CPU, GPU and RAM usage faintly behind their cards,
+  the CPU and GPU temperatures next to their numbers, and the network speed (download and
+  upload) on the PC screen. The PC keeps the history, so a page that was just opened
+  starts with the whole chart.
+
 ## [0.13.0] - 2026-10-25
 
 ### Added
