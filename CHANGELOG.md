@@ -4,6 +4,14 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- After an update (or any restart of SpareScreen) the page on the phone reloads itself, so
+  new screens and buttons show up without a manual refresh. A page that was opened before
+  0.12 still needs one reload by hand (or one more restart).
+
 ## [0.15.0] - 2026-10-26
 
 ### Added

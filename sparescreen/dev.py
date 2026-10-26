@@ -6,6 +6,11 @@
 It works with two processes: this supervisor, which watches the files, and the
 real agent as a child process. The page notices the change through the "version"
 sent along with the data (`dev` field).
+
+Outside dev mode the `dev` field is sent too, changing only when the agent starts: the
+page reloads after any restart (an update, a crash, quitting and starting again) and so
+always matches the agent's code. Every page since the first version reloads when this
+field changes, which also brings very old pages up to date.
 """
 
 from __future__ import annotations
@@ -27,16 +32,19 @@ def _python_mtimes() -> dict[Path, float]:
 
 
 class DevSource:
-    """Code version: changes when the agent restarts or a page file changes."""
+    """Code version: changes when the agent starts, and in dev mode when a page file changes."""
 
     name = "dev"
 
-    def __init__(self) -> None:
+    def __init__(self, watch_web: bool = True) -> None:
         self.started = time.time()
+        self.watch_web = watch_web  # dev mode only: the page files don't change otherwise
 
     def read(self) -> str:
+        if not self.watch_web:
+            return f"{self.started:.3f}"
         web = max((p.stat().st_mtime for p in (PACKAGE / "web").rglob("*") if p.is_file()), default=0)
-        return f"{self.started:.0f}-{web:.3f}"
+        return f"{self.started:.3f}-{web:.3f}"
 
 
 def is_child() -> bool:

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from sparescreen import statusline
+from sparescreen import dev, statusline
 from sparescreen.activity import friendly_name
 from sparescreen.games import HELPERS, game_name
 from sparescreen.config import DEFAULTS, ConfigStore, clean
@@ -115,3 +115,18 @@ class StatusLineTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CodeVersionTest(unittest.TestCase):
+    """The page reloads when the "dev" field changes: on every agent start, and in dev
+    mode also when a page file changes."""
+
+    def test_changes_with_each_start_only(self):
+        with mock.patch.object(dev.time, "time", return_value=1000.0):
+            first = dev.DevSource(watch_web=False)
+        with mock.patch.object(dev.time, "time", return_value=1000.5):
+            second = dev.DevSource(watch_web=False)
+        self.assertEqual(first.read(), first.read())
+        self.assertNotEqual(first.read(), second.read())  # a restart, even within the same second
+        self.assertNotIn("-", first.read())  # page files aren't watched outside dev mode
+        self.assertIn("-", dev.DevSource().read())

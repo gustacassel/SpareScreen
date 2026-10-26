@@ -211,8 +211,7 @@ def main() -> Optional[int]:
     updater = update.Updater(config)
     photos = Photos(config.photos_dir)
     sources += [updater, power, photos]
-    if args.dev:
-        sources.append(dev.DevSource())
+    sources.append(dev.DevSource(watch_web=args.dev))  # the page reloads when the agent restarts
     if args.no_pairing:
         pairing = None
     else:

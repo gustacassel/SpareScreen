@@ -1,7 +1,8 @@
   // ---- Data from the PC ----------------------------------------------------
 
-  // The agent's code changed: reload the page so it matches. In dev mode (sparescreen --dev)
-  // on every change, otherwise when SpareScreen was updated to a new version.
+  // The agent restarted (an update, quitting and starting again) or, in dev mode, a page
+  // file changed: reload so the page matches the agent's code. Its "dev" field changes
+  // then (agents before 0.16 only sent it in dev mode).
   var codeVersion = null;
   function checkVersion(version) {
     if (!version) return;
@@ -19,7 +20,7 @@
       tryNames();
     }
     updateInfo = data.update || null;
-    checkVersion(data.dev || (updateInfo && updateInfo.version));
+    checkVersion(data.dev);
     onServerConfig(data.config);
     renderHardware(data.system);
     checkHeat(data.system);

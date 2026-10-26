@@ -598,7 +598,11 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - **"Too many attempts":** after 5 wrong codes, pairing pauses for a minute.
 - **Red dot in the top corner / "Disconnected" screen:** the phone lost its connection
   to the agent (the dot right away, the full screen after 30 seconds, with the time of the
-  last data). The page reconnects by itself when the agent is back.
+  last data). The page reconnects by itself when the agent is back, and reloads itself
+  when SpareScreen was restarted or updated.
+- **The phone still shows an old page after an update** (no new screens or buttons): it was
+  opened before 0.12 and doesn't know how to reload itself. Reload it once by hand; from
+  then on it does it by itself.
 
 ## How it works
 
