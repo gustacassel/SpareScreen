@@ -69,11 +69,14 @@ def _same_folder(a: str | Path | None, b: str | Path) -> bool:
 
 
 def model_label(model: str | None) -> str:
-    """'claude-opus-5-5' -> 'Opus 5.5'; 'claude-opus-5' -> 'Opus 5'; anything else is shown as it is."""
+    """'claude-opus-5-5' -> 'Opus 5.5'; 'claude-opus-5' -> 'Opus 5';
+    'gemini-2.5-flash-lite' -> 'Gemini 2.5 Flash Lite'; anything else is shown as it is."""
     match = re.match(r"claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:\b|$)", model or "")
     if match:
         version = match.group(2) + ("." + match.group(3) if match.group(3) else "")
         return f"{match.group(1).title()} {version}"
+    if re.fullmatch(r"gemini-\d+(?:\.\d+)?(?:-[a-z0-9]+)*", model or ""):
+        return " ".join(part.title() for part in (model or "").split("-"))
     return model or "?"
 
 

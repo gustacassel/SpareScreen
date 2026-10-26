@@ -8,7 +8,8 @@ from unittest import mock
 from sparescreen import claude
 from sparescreen.activity import ActivitySource
 from sparescreen.codex import CodexSource
-from sparescreen.demo import DemoActivity, DemoClaude, DemoCodex, DemoSystem
+from sparescreen.demo import DemoActivity, DemoClaude, DemoCodex, DemoGemini, DemoSystem
+from sparescreen.gemini import GeminiSource
 from sparescreen.sources import SystemSource
 
 
@@ -25,8 +26,11 @@ class DemoShapeTest(unittest.TestCase):
     def test_ai_tools(self):
         with tempfile.TemporaryDirectory() as home, mock.patch.object(claude, "load_limits", return_value=None):
             os.mkdir(os.path.join(home, "sessions"))
-            real = {"claude": claude.ClaudeSource(home=home).read(), "codex": CodexSource(home=home).read()}
-        for name, demo in (("claude", DemoClaude().read()), ("codex", DemoCodex().read())):
+            os.mkdir(os.path.join(home, "tmp"))
+            real = {"claude": claude.ClaudeSource(home=home).read(), "codex": CodexSource(home=home).read(),
+                    "gemini": GeminiSource(home=home).read()}
+        for name, demo in (("claude", DemoClaude().read()), ("codex", DemoCodex().read()),
+                           ("gemini", DemoGemini().read())):
             self.assertEqual(set(demo), set(real[name]), name)
             self.assertEqual(set(demo["today"]), set(real[name]["today"]), name)
 

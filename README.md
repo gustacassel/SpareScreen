@@ -33,9 +33,9 @@ The page has screens that rotate on their own (or with a tap):
 
 - **Hardware:** CPU and GPU usage, temperature, power and clock, per-core load,
   VRAM, RAM and swap.
-- **AI:** for each AI coding tool installed on the PC (Claude Code and Codex for now):
-  usage limits (5-hour and weekly windows), tokens used today and this week per model,
-  and your sessions (and which ones are working).
+- **AI:** for each AI coding tool installed on the PC (Claude Code, Codex and Gemini CLI):
+  usage limits (5-hour and weekly windows, where the tool keeps them), tokens used today
+  and this week per model, and your sessions (and which ones are working).
 - **PC:** the app in focus, the heaviest apps, fans, network, free disk space and drive
   temperatures. The running game and what's playing also show here when game mode or the
   Music screen is turned off.
@@ -45,7 +45,7 @@ The page has screens that rotate on their own (or with a tap):
   how long you've been playing, and GPU/CPU usage, temperature, clock and power, VRAM and
   RAM. When the game closes, the normal screens come back.
 
-When a Claude Code or Codex session finishes, the page jumps to the AI screen, shows
+When a Claude Code, Codex or Gemini CLI session finishes, the page jumps to the AI screen, shows
 the session name and plays a short chime (sound only works after the first tap on the
 screen, a browser rule).
 
@@ -424,21 +424,27 @@ Windows only.
   at 75 °C, red at 90 °C). If a part stays in the red for 30 seconds, the page shows an
   alert with a chime, once until it cools down (*Heat alerts* in the settings).
 
-## AI tools: Claude Code and Codex
+## AI tools: Claude Code, Codex and Gemini CLI
 
 The AI screen shows a card for each tool it finds on the PC, and nothing for the ones
 that aren't installed. Everything is read from the tools' own local files; nothing is
 sent anywhere.
 
-| | Claude Code | Codex CLI |
-|---|---|---|
-| Found at | `~/.claude` (or `CLAUDE_CONFIG_DIR`) | `~/.codex` (or `CODEX_HOME`) |
-| Sessions and status | open sessions, working or idle | sessions from the last 12 h, working or idle |
-| Tokens today / this week per model | ✅ | ✅ |
-| 5-hour and weekly limits | through a status line (see below) | ✅ read from its session files |
+| | Claude Code | Codex CLI | Gemini CLI |
+|---|---|---|---|
+| Found at | `~/.claude` (or `CLAUDE_CONFIG_DIR`) | `~/.codex` (or `CODEX_HOME`) | `~/.gemini` (or `GEMINI_CLI_HOME`) |
+| Sessions and status | open sessions, working or idle | sessions from the last 12 h, working or idle | sessions from the last 12 h, working or idle |
+| Tokens today / this week per model | ✅ | ✅ | ✅ |
+| 5-hour and weekly limits | through a status line (see below) | ✅ read from its session files | ❌ not saved on disk |
 
 Codex writes its plan's usage limits into its session files after each message, so they
 need no setup. They show up after your first Codex message of the day.
+
+Gemini CLI saves each chat (with the tokens of every answer) but not its quota, so its
+card shows tokens and sessions only. It doesn't write down whether it's working either:
+SpareScreen works it out from the last message, and counts a session as finished about
+20 seconds after an answer with nothing new (Gemini CLI may still be running tools then),
+so its "session finished" alert comes a little late.
 
 ### Claude Code limits
 
@@ -569,6 +575,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
 - `sparescreen/codex.py`: reads `~/.codex/sessions/**/rollout-*.jsonl` (or `CODEX_HOME`):
   sessions, cumulative token counts turned into per-day usage, and the usage limits Codex
   stores with them. Same output shape as `claude.py`, so the page draws both the same way.
+- `sparescreen/gemini.py`: reads Gemini CLI's chats in `~/.gemini/tmp/*/chats/` (or
+  `GEMINI_CLI_HOME`): tokens per answer (counted once per message, as answers are written
+  again when they change) and sessions. Same output shape again.
 - `sparescreen/statusline.py`: the status line that saves the limits for the agent.
 - `sparescreen/claude_probe.py`: the optional limits check (headless `claude -p`, only while
   Claude Code is in use).

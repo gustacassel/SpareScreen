@@ -26,7 +26,7 @@ import time
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Dict, List, Tuple
 
 from .claude import window_label, model_label
 from .shapes import Json
@@ -38,6 +38,33 @@ SHOW_SESSIONS_FOR = 12 * 3600   # sessions touched in the last 12 h
 STALE_TURN = 30 * 60            # a turn "started" this long ago without news is probably dead
 BUSY_EVENTS = {"turn_started", "task_started"}
 IDLE_EVENTS = {"turn_complete", "task_complete", "turn_aborted"}
+
+
+Buckets = Dict[Tuple[int, str], List[int]]  # (15-min block, model) -> input, output, cached, responses
+
+
+def sum_buckets(buckets: Buckets, keep: Callable[[int], bool]) -> Json:
+    """Tokens and responses in the blocks `keep` accepts (shared with gemini.py)."""
+    total: Json = {"input": 0, "output": 0, "cache_read": 0, "responses": 0}
+    models: Counter[str] = Counter()
+    for (block, model), (inp, out, cached, responses) in buckets.items():
+        if keep(block):
+            total["input"] += inp
+            total["output"] += out
+            total["cache_read"] += cached
+            total["responses"] += responses
+            models[model] += responses
+    total["models"] = dict(models.most_common())
+    return total
+
+
+def models_since(buckets: Buckets, start: float) -> list[Json]:
+    """The three models with the most tokens since `start`."""
+    tokens: Counter[str] = Counter()
+    for (block, model), (inp, out, cached, _) in buckets.items():
+        if block >= start - BUCKET + 1:
+            tokens[model] += inp + out + cached
+    return [{"model": m, "label": model_label(m), "tokens": t} for m, t in tokens.most_common(3)]
 
 
 def codex_home() -> Path:
@@ -200,24 +227,10 @@ class CodexSource:
         return windows
 
     def _sum(self, keep: Callable[[int], bool]) -> Json:
-        total: Json = {"input": 0, "output": 0, "cache_read": 0, "responses": 0}
-        models: Counter[str] = Counter()
-        for (block, model), (inp, out, cached, responses) in self._buckets.items():
-            if keep(block):
-                total["input"] += inp
-                total["output"] += out
-                total["cache_read"] += cached
-                total["responses"] += responses
-                models[model] += responses
-        total["models"] = dict(models.most_common())
-        return total
+        return sum_buckets(self._buckets, keep)
 
     def _models_since(self, start: float) -> list[Json]:
-        tokens: Counter[str] = Counter()
-        for (block, model), (inp, out, cached, _) in self._buckets.items():
-            if block >= start - BUCKET + 1:
-                tokens[model] += inp + out + cached
-        return [{"model": m, "label": model_label(m), "tokens": t} for m, t in tokens.most_common(3)]
+        return models_since(self._buckets, start)
 
     def _sessions(self, now: float) -> list[Json]:
         sessions: list[Json] = []

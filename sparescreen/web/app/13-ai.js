@@ -1,7 +1,7 @@
-  // ---- AI tools (Claude Code, Codex...) -------------------------------------
+  // ---- AI tools (Claude Code, Codex, Gemini CLI) -----------------------------
   // Each tool's source sends the same shape; only the installed ones get a card.
 
-  var AI_TOOLS = ["claude", "codex"];
+  var AI_TOOLS = ["claude", "codex", "gemini"];
 
   function limitBlock(win, now) {
     var box = el("div", "limit");
@@ -115,13 +115,14 @@
       if (tool && tool.installed) tools.push(tool);
     }
     var grid = $("ai-grid");
-    grid.className = "ai-grid " + (tools.length > 1 ? "dual" : "single");
+    // "dual" is the compact layout for two or more; "triple" squeezes it a little further.
+    grid.className = "ai-grid " + (tools.length > 1 ? "dual" : "single") + (tools.length > 2 ? " triple" : "");
     grid.innerHTML = "";
     if (!tools.length) {
       var empty = el("div", "card ai-card");
       empty.appendChild(el("h2", "", "AI TOOLS"));
       empty.appendChild(el("div", "detail", "No AI coding tool found on this PC. SpareScreen shows " +
-                                            "Claude Code and Codex usage when they are installed."));
+                                            "Claude Code, Codex and Gemini CLI usage when they are installed."));
       grid.appendChild(empty);
       return;
     }

@@ -239,11 +239,12 @@ class Panel:
     @staticmethod
     def _ai_check(snapshot: Json) -> Check:
         found = [(snapshot.get(key) or {}).get("name") or label
-                 for key, label in (("claude", "Claude Code"), ("codex", "Codex"))
+                 for key, label in (("claude", "Claude Code"), ("codex", "Codex"), ("gemini", "Gemini CLI"))
                  if (snapshot.get(key) or {}).get("installed")]
         if found:
             return Panel._check("ai", "ok", "AI tools", ", ".join(found))
-        return Panel._check("ai", "info", "AI tools", "No Claude Code or Codex found: the AI screen stays hidden.")
+        return Panel._check("ai", "info", "AI tools",
+                            "No Claude Code, Codex or Gemini CLI found: the AI screen stays hidden.")
 
     @staticmethod
     def _media_check(snapshot: Json) -> Check:

@@ -153,6 +153,27 @@ class DemoCodex:
         }
 
 
+class DemoGemini:
+    name = "gemini"
+
+    def read(self) -> Json:
+        now = time.time()
+        return {
+            "installed": True,
+            "name": "Gemini CLI",
+            "limits": [],
+            "limits_updated": None,
+            "limits_hint": "Gemini CLI doesn't save its limits on this PC.",
+            "today": {"input": 3.1e5, "output": 6.4e4, "cache_read": 1.2e6, "responses": 31,
+                      "models": {"gemini-demo-pro": 31}},
+            "week_models": [{"model": "gemini-demo-pro", "label": "Gemini Demo Pro", "tokens": 9.8e6}],
+            "sessions": [
+                {"id": "gemini:demo-1", "name": "Write tests for the date parser", "project": "parser-lib",
+                 "status": "idle", "since": now - 40 * 60},
+            ],
+        }
+
+
 class DemoActivity:
     name = "activity"
     # The game "runs" one minute out of every four, so the demo also shows game mode
@@ -222,4 +243,4 @@ class DemoFps:
 
 def demo_sources() -> list[Source]:
     activity = DemoActivity()
-    return [DemoSystem(), DemoClaude(), DemoCodex(), activity, DemoFps(activity), DemoPhone(), DemoMedia()]
+    return [DemoSystem(), DemoClaude(), DemoCodex(), DemoGemini(), activity, DemoFps(activity), DemoPhone(), DemoMedia()]

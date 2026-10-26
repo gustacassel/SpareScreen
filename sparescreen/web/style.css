@@ -154,6 +154,17 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .ai-card .sessions { margin-top: 8px; }
 .ai-card .limit { margin-bottom: 8px; }
 .limit-when { display: none; margin-left: 6px; font-size: 12px; }
+/* Three tools: each card only as tall as it needs (a card without limits is short),
+   and the limits in one tight line each, the reset time next to the name. */
+.ai-grid.triple .ai-card { flex: 1 1 auto; padding-top: 8px; padding-bottom: 8px; }
+.ai-grid.triple .card h2 { margin-bottom: 4px; }
+.ai-grid.triple .limit { margin-bottom: 4px; }
+.ai-grid.triple .limit-pct { font-size: 20px; }
+.ai-grid.triple .bar { height: 6px; margin: 3px 0 0; }
+.ai-grid.triple .limit-reset, .ai-grid.triple .ai-updated { display: none; }
+.ai-grid.triple .limit-when { display: inline; }
+.ai-grid.triple .sessions { margin-top: 4px; }
+.ai-grid.triple .sessions li { padding: 3px 0; }
 
 .sessions { flex: 1; min-height: 0; margin: 0; padding: 0; list-style: none; overflow: hidden; }
 .sessions li { display: flex; align-items: center; padding: 5px 0; font-size: 15px; }
@@ -400,6 +411,7 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
   .ai-grid.dual .bar { height: 8px; margin-bottom: 0; }
   .ai-grid.dual .limit-reset, .ai-grid.dual .ai-updated { display: none; }
   .ai-grid.dual .limit-when { display: inline; }
+  .ai-grid.triple .ai-card { flex: 1 1 0; }  /* side by side: equal columns */
 
   .music { flex-direction: row; }
   .music-art { width: 72vh; height: 72vh; max-width: none; max-height: none; margin: 0 20px 0 4px; }

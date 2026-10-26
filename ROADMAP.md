@@ -98,9 +98,10 @@ and with no mandatory app. That's this project's niche.
    - Distribution stays on GitHub releases only (decided: no winget, Scoop, Microsoft
      Store, PyPI or Homebrew), so signing is the way to reduce the warnings.
    - macOS: notarization needs a paid Apple Developer account (US$99/year).
-3. **Generic AI data.** ✅ "Tokens this week per model", the AI screen with Claude Code
-   and Codex, and a status line that wraps the user's own. Still to do: more tools that
-   keep local data (e.g. Gemini CLI).
+3. **Generic AI data.** ✅ "Tokens this week per model", the AI screen with Claude Code,
+   Codex and Gemini CLI, and a status line that wraps the user's own. Gemini CLI was built
+   from its source code (`chatRecordingService.ts`), not tested with real files yet.
+   Still to do: other tools that keep local data, if people ask for them.
 4. **Complete macOS and Linux.** ✅ "App in focus" on Linux (X11, Sway, Hyprland) and
    macOS; ✅ CPU temperature on macOS with a free tool. Still to do: fans and GPU on
    macOS, Intel GPUs on Linux, focus on GNOME/KDE Wayland (not allowed by those desktops).

@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 ### Added
 
+- Gemini CLI on the AI screen: tokens today and this week per model, and the sessions of
+  the last 12 hours (working or idle, with the "session finished" alert), read from its
+  chat files in `~/.gemini`. Gemini CLI doesn't save its limits, so there are none to show.
+  With three tools the AI screen uses a tighter layout so all of them fit.
+
 - When the PC goes to sleep, the phone shows a dim "The PC is asleep" clock instead of
   "Disconnected", and over USB its screen rests right away (with *Phone screen (USB)* on
   Dim or Off). Windows, and Linux with `gdbus` (systemd-logind); macOS still shows

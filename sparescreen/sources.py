@@ -106,8 +106,9 @@ def default_sources(config: Optional[ConfigStore] = None) -> list[Source]:
     from .claude_probe import LimitsProbe
     from .codex import CodexSource
     from .fps import AutoDetect, FpsSource
+    from .gemini import GeminiSource
     from .media import MediaSource
 
     claude = ClaudeSource(probe=LimitsProbe(), probe_enabled=lambda: bool(config and config.read()["claude_limits"]))
     activity = ActivitySource(config=config, auto=AutoDetect() if sys.platform == "win32" else None)
-    return [SystemSource(), claude, CodexSource(), activity, FpsSource(activity), MediaSource()]
+    return [SystemSource(), claude, CodexSource(), GeminiSource(), activity, FpsSource(activity), MediaSource()]
