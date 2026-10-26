@@ -14,11 +14,13 @@ from pathlib import Path
 from .shapes import Json
 
 THEMES = ("graphite", "oled", "terracotta", "neon", "terminal", "light")
-SCREENS = ("hardware", "ai", "pc", "music")  # the game screen only shows in game mode
+SCREENS = ("hardware", "ai", "pc", "music", "photos")  # the game screen only shows in game mode
 ROTATE = (0, 10, 20, 30, 60)  # seconds; 0 = does not switch by itself
 NIGHT_MODES = ("off", "dim", "clock")  # what the screen shows during night hours
 NIGHT_HOURS = ("22-7", "23-7", "0-8")  # "start-end", in the phone's local time
 USB_SCREEN = ("keep", "dim", "off")  # what to do with a USB phone's screen (see screen.py)
+PHOTO_SECONDS = (5, 10, 20, 30, 60)  # how long each photo stays on the Photos screen
+BANNER_MAX = 200  # characters of the scrolling message
 
 DEFAULTS: Json = {
     "theme": "graphite",
@@ -36,6 +38,8 @@ DEFAULTS: Json = {
     "night_mode": "off",
     "night_hours": "23-7",
     "update_check": True,  # ask GitHub now and then for a newer release (see update.py)
+    "photo_seconds": 10,
+    "banner": "",  # the scrolling message at the bottom; written in the PC window only
 }
 
 CONFIG_FILE = Path.home() / ".sparescreen" / "config.json"
@@ -79,6 +83,8 @@ def clean(data: object) -> Json:
         out["night_mode"] = data["night_mode"]
     if data.get("usb_screen") in USB_SCREEN:
         out["usb_screen"] = data["usb_screen"]
+    if data.get("photo_seconds") in PHOTO_SECONDS:
+        out["photo_seconds"] = data["photo_seconds"]
     if data.get("night_hours") in NIGHT_HOURS:
         out["night_hours"] = data["night_hours"]
     if "cpu_fan" in data and (data["cpu_fan"] is None or isinstance(data["cpu_fan"], str)):
@@ -107,6 +113,13 @@ class ConfigStore:
             saved = {}
         self._config = {**DEFAULTS, **clean(saved)}
         self._games = clean_games(saved)
+        # The photo folder stays on the PC (a path, with the user name in it): it's not part
+        # of the config the page gets, and only the PC window changes it, like the banner.
+        folder = saved.get("photos_dir") if isinstance(saved, dict) else None
+        self._photos_dir: str | None = folder if isinstance(folder, str) and folder else None
+        banner = saved.get("banner") if isinstance(saved, dict) else None
+        if isinstance(banner, str):
+            self._config["banner"] = banner[:BANNER_MAX]
         # Screens added in a newer version start on: anything the saved file has never
         # seen joins the list (files from before this existed knew the first three).
         known = saved.get("screens_known") if isinstance(saved, dict) else None
@@ -130,12 +143,28 @@ class ConfigStore:
                                        "not_games": self._games["not_games"] if not_games is None else not_games})
         self.update({})
 
+    def photos_dir(self) -> str | None:
+        with self._lock:
+            return self._photos_dir
+
+    def set_photos_dir(self, folder: str | None) -> None:
+        """From the PC window only (POST /config ignores it)."""
+        with self._lock:
+            self._photos_dir = folder or None
+        self.update({})
+
+    def set_banner(self, text: str) -> None:
+        """From the PC window only (POST /config ignores it)."""
+        with self._lock:
+            self._config["banner"] = " ".join(text.split())[:BANNER_MAX]
+        self.update({})
+
     def update(self, changes: object) -> Json:
         with self._lock:
             self._config.update(clean(changes))
             self.path.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.path.with_suffix(".tmp")
-            saved = dict(self._config, screens_known=list(SCREENS), **self._games)
+            saved = dict(self._config, screens_known=list(SCREENS), photos_dir=self._photos_dir, **self._games)
             tmp.write_text(json.dumps(saved, indent=2), encoding="utf-8")
             os.replace(tmp, self.path)
             return dict(self._config)

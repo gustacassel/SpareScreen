@@ -80,7 +80,7 @@ class ConfigTest(unittest.TestCase):
             path = Path(tmp) / "config.json"
             path.write_text(json.dumps({"screens": ["hardware", "pc"]}), encoding="utf-8")  # an old file
             store = ConfigStore(path)
-            self.assertEqual(store.read()["screens"], ["hardware", "pc", "music"])
+            self.assertEqual(store.read()["screens"], ["hardware", "pc", "music", "photos"])
             store.update({"screens": ["hardware", "pc"]})
             self.assertEqual(ConfigStore(path).read()["screens"], ["hardware", "pc"])
 

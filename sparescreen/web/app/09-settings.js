@@ -33,13 +33,16 @@
     fillChips("set-game-mode", [[true, "On"], [false, "Off"]].map(function (opt) {
       return chip(opt[1], cfg.game_mode === opt[0], function () { saveConfig({ game_mode: opt[0] }); });
     }));
-    fillChips("set-screens", ["hardware", "ai", "pc", "music"].map(function (name) {
+    fillChips("set-screens", ["hardware", "ai", "pc", "music", "photos"].map(function (name) {
       var on = cfg.screens.indexOf(name) >= 0;
       return chip(SCREEN_NAMES[name], on, function () {
         var list = cfg.screens.filter(function (s) { return s !== name; });
         if (!on) list.push(name);
         if (list.length) saveConfig({ screens: list });  // at least one screen
       });
+    }));
+    fillChips("set-photo-seconds", [5, 10, 20, 30, 60].map(function (s) {
+      return chip(s < 60 ? s + " s" : "1 min", cfg.photo_seconds === s, function () { saveConfig({ photo_seconds: s }); });
     }));
     fillChips("set-rotate", ROTATE_OPTIONS.map(function (opt) {
       return chip(opt[1], cfg.rotate === opt[0], function () { saveConfig({ rotate: opt[0] }); });

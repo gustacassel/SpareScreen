@@ -19,6 +19,7 @@ from .config import ConfigStore
 from .demo import demo_sources
 from .pairing import Pairing
 from .panel import Panel
+from .photos import Photos
 from .power import PowerWatch
 from .server import serve
 from .sources import default_sources
@@ -208,7 +209,8 @@ def main() -> Optional[int]:
     else:
         sources = default_sources(config) + [PhoneSource(bridge), config]
     updater = update.Updater(config)
-    sources += [updater, power]
+    photos = Photos(config.photos_dir)
+    sources += [updater, power, photos]
     if args.dev:
         sources.append(dev.DevSource())
     if args.no_pairing:
@@ -223,7 +225,8 @@ def main() -> Optional[int]:
     info = {"phone_url": phone_url, "version": __version__}
     activity = cast("Optional[Activity]", next((s for s in sources if s.name == "activity"), None))
     panel = Panel(pairing, bridge, usb=not args.no_usb, info=info, local_url=local_url,
-                  autostart_args=autostart_args(), config=config, activity=activity, updater=updater)
+                  autostart_args=autostart_args(), config=config, activity=activity, updater=updater,
+                  photos=photos)
     try:
         server = serve(args.host, args.port, sources, args.interval, config, pairing, info=info, panel=panel)
     except OSError as exc:

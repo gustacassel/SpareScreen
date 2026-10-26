@@ -17,12 +17,14 @@ import webbrowser
 from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from . import autostart, fps, lhm, names
+from . import photos as photo_folder
 from .games import same_exe
 from .shapes import Activity, Check, Json
 
 if TYPE_CHECKING:
     from .config import ConfigStore
     from .pairing import Pairing
+    from .photos import Photos
     from .server import Hub
     from .update import Updater
     from .usb import UsbBridge
@@ -53,9 +55,10 @@ class Panel:
     def __init__(self, pairing: Optional[Pairing] = None, bridge: Optional[UsbBridge] = None, usb: bool = True,
                  info: Optional[Json] = None, local_url: str = "", autostart_args: Iterable[str] = (),
                  config: Optional[ConfigStore] = None, activity: Optional[Activity] = None,
-                 updater: Optional[Updater] = None) -> None:
+                 updater: Optional[Updater] = None, photos: Optional[Photos] = None) -> None:
         self.pairing = pairing
         self.updater = updater
+        self.photos = photos
         self.config = config
         self.activity = activity
         self.bridge = bridge
@@ -94,10 +97,19 @@ class Panel:
             "waiting": self._waiting(),
             "games": self.games(snapshot),
             "update": self.updater.state() if self.updater else None,
+            "display": self.display(),
             "autostart": bool(autostart.status()),
             "autostart_label": "Start with Windows" if sys.platform == "win32" else "Start when I log in",
             "message": message,
         }
+
+    def display(self) -> Optional[Json]:
+        """The Display tab: the photo folder and the scrolling message."""
+        if not self.config:
+            return None
+        found = self.photos.status() if self.photos else {"count": 0, "error": None}
+        return {"folder": self.config.photos_dir(), "count": found["count"], "error": found["error"],
+                "can_pick": photo_folder.can_pick(), "banner": self.config.read().get("banner", "")}
 
     def _waiting(self) -> Optional[Json]:
         waiting = self.pairing.waiting() if self.pairing else None
@@ -291,6 +303,29 @@ class Panel:
         if self.activity:
             self.activity.refresh_soon()  # look again now, not in a few seconds
 
+    def _set_photos(self, action: str, data: Json) -> None:
+        assert self.config is not None  # act() only gets here with a config
+        if action == "photos_clear":
+            folder = None
+        elif action == "photos_pick":
+            folder = photo_folder.pick_folder()  # waits for the dialog on this PC
+            if not folder:
+                return
+        else:
+            typed = data.get("folder")
+            folder = os.path.expanduser(typed.strip()) if isinstance(typed, str) and typed.strip() else None
+            if not folder or not os.path.isdir(folder):
+                self.message = "That folder doesn't exist on this PC."
+                return
+        self.config.set_photos_dir(folder)
+        if self.photos:
+            self.photos.rescan()
+        if folder is None:
+            self.message = "No photos: the Photos screen is hidden."
+        else:
+            count = self.photos.status()["count"] if self.photos else 0
+            self.message = f"{count} photos found." if count else "No photos in that folder (JPG, PNG, WebP or GIF)."
+
     def act(self, action: str, data: Optional[Json] = None) -> Json:
         data = data or {}
         if action == "lhm_start":
@@ -325,6 +360,12 @@ class Panel:
                 autostart.disable()
         elif action == "dashboard":
             webbrowser.open(self.local_url)
+        elif action in ("photos_pick", "photos_set", "photos_clear") and self.config:
+            self._set_photos(action, data)
+        elif action == "banner_set" and self.config:
+            text = data.get("text")
+            self.config.set_banner(text if isinstance(text, str) else "")
+            self.message = "Message saved." if self.config.read()["banner"] else "Message removed."
         elif action == "update_install" and self.updater:
             self.updater.install()
         elif action == "update_check_now" and self.updater:

@@ -37,13 +37,10 @@
       show(0);  // entering: the game screen; leaving: back to the first screen
       startRotation();
     } else if (musicOn !== wasMusic) {
-      // The list changed: stay on the same screen (or its neighbor if music just left).
-      var active = q(document, ".screen.active");
-      var name = active && active.getAttribute("data-name");
-      show(current);
-      if (name) showNamed(name);
-      startRotation();
+      screensChanged();
     }
+    watchPhotos(data.photos);
+    renderBanner(cfg.banner);
     renderMusic(data.media);
     renderGame(data.system, data.activity, data.time);
     renderFps(data.fps);

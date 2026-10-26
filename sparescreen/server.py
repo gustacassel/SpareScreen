@@ -100,7 +100,8 @@ def start_sampler(hub: Hub, sources: list[Source], interval: float) -> None:
 
 
 def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pairing], info: Optional[Json],
-                 clients: Clients, panel: Optional[Panel], media: Any = None) -> type[BaseHTTPRequestHandler]:
+                 clients: Clients, panel: Optional[Panel], media: Any = None,
+                 photos: Any = None) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def _trusted(self) -> bool:
             return pairing is None or pairing.is_trusted(self.client_address[0], self.headers.get("Cookie"))
@@ -177,6 +178,14 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
                 self._send_json(200 if local else 403, {"code": pairing.code} if local and pairing else {})
             elif path.startswith("/art/"):
                 self._serve_art(path[len("/art/"):])
+            elif path == "/photos" and photos is not None:
+                # The Photos screen's list (ids only, never the PC's paths), paired devices only.
+                if self._trusted():
+                    self._send_json(200, photos.listing())
+                else:
+                    self._send_json(401, {})
+            elif path.startswith("/photo/") and photos is not None:
+                self._serve_photo(path[len("/photo/"):])
             elif path == "/info":
                 # "Connect a phone" details for the settings screen, only on this PC.
                 if self.client_address[0] not in LOCAL_ADDRESSES:
@@ -267,6 +276,20 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
             self.end_headers()
             self.wfile.write(data)
 
+        def _serve_photo(self, photo_id: str) -> None:
+            # Your photos: paired devices only, like the data.
+            item = photos.image(photo_id) if self._trusted() else None
+            if not item:
+                self.send_error(404 if self._trusted() else 401)
+                return
+            data, ctype = item
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "private, max-age=86400")  # the id changes with the file
+            self.end_headers()
+            self.wfile.write(data)
+
         def _send_body(self, body: bytes, ctype: str) -> None:
             self.send_response(200)
             self.send_header("Content-Type", ctype)
@@ -354,7 +377,8 @@ def serve(host: str, port: int, sources: list[Source], interval: float, config: 
         panel.hub = hub
     # The now-playing source, when it can take the Music screen's buttons.
     media = next((s for s in sources if s.name == "media" and callable(getattr(s, "control", None))), None)
-    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing, info, clients, panel, media))
+    photos = next((s for s in sources if s.name == "photos"), None)
+    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing, info, clients, panel, media, photos))
     start_sampler(hub, sources, interval)  # only once the port is ours (a busy port fails above)
     names.warm_up()
     server.daemon_threads = True

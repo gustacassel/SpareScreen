@@ -145,6 +145,34 @@
     fill($("checks"), items, "");
   }
 
+  // ---- Display: photo folder and message ----------------------------------------
+
+  // Fields aren't rewritten while someone is typing in them (the window refreshes every 2 s).
+  function setField(id, value) {
+    if (document.activeElement !== $(id)) $(id).value = value || "";
+  }
+
+  function renderDisplay(display) {
+    if (!display) return;
+    setField("photos-folder", display.folder);
+    $("photos-pick").style.display = display.can_pick ? "" : "none";
+    $("photos-clear").style.display = display.folder ? "" : "none";
+    var status;
+    if (display.error) status = display.error;
+    else if (!display.folder) status = "Choose a folder (subfolders count too). JPG, PNG, WebP and GIF.";
+    else if (!display.count) status = "No photos in this folder yet (JPG, PNG, WebP or GIF).";
+    else status = display.count + " photos · new ones show up by themselves";
+    $("photos-status").textContent = status;
+    setField("banner-text", display.banner);
+  }
+
+  $("photos-pick").addEventListener("click", function () { act("photos_pick"); });
+  $("photos-save").addEventListener("click", function () { act("photos_set", { folder: $("photos-folder").value }); });
+  $("photos-clear").addEventListener("click", function () { act("photos_clear"); });
+  $("banner-save").addEventListener("click", function () { act("banner_set", { text: $("banner-text").value }); });
+  $("banner-text").addEventListener("keydown", function (e) { if (e.keyCode === 13) $("banner-save").click(); });
+  $("photos-folder").addEventListener("keydown", function (e) { if (e.keyCode === 13) $("photos-save").click(); });
+
   // ---- Update -----------------------------------------------------------------
 
   var updating = false;  // downloading or restarting: the agent going away is expected
@@ -263,6 +291,7 @@
     if (state.games) renderGames(state.games);
     renderChecks(state.checks);
     renderUpdate(state.update);
+    renderDisplay(state.display);
     $("autostart").checked = state.autostart;
     $("autostart-label").textContent = state.autostart_label;
     if (state.message) showMessage(state.message);
@@ -311,7 +340,7 @@
 
   var savedTab = null;
   try { savedTab = localStorage.getItem(TAB_KEY); } catch (e) { savedTab = null; }
-  showTab(savedTab === "games" || savedTab === "status" ? savedTab : "phone");
+  showTab(savedTab === "games" || savedTab === "display" || savedTab === "status" ? savedTab : "phone");
   refresh();
   setInterval(refresh, 2000);
 })();

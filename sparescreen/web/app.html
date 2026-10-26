@@ -196,6 +196,15 @@
     </section>
 
     <!-- Game mode: the only screen while a game runs (see settings) -->
+    <!-- Screen 5: photos from a folder on the PC (skipped while there are none). Two images
+         take turns, so the next one fades in over the last. -->
+    <section class="screen" data-name="photos" data-title="Photos">
+      <div class="photo-frame">
+        <img id="photo-a" class="photo" alt="">
+        <img id="photo-b" class="photo" alt="">
+      </div>
+    </section>
+
     <section class="screen" data-name="game" data-title="Game">
       <div class="game-grid">
         <div class="card game-card">
@@ -237,6 +246,9 @@
       </div>
     </section>
   </main>
+
+  <!-- The message written in the PC window, scrolling along the bottom (hidden when empty) -->
+  <div id="banner" class="banner"><span id="banner-text"></span></div>
 
   <!-- Night mode: dims everything, or shows only a clock that moves around (see settings).
        Placed before the toast so alerts still show on top at night. -->
@@ -283,6 +295,7 @@
       <div class="set-row"><span class="set-label">Theme</span><div id="set-theme" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Screens</span><div id="set-screens" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Switch screens</span><div id="set-rotate" class="chips"></div></div>
+      <div class="set-row"><span class="set-label">Each photo</span><div id="set-photo-seconds" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Claude alerts</span><div id="set-notify" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Alert sound</span><div id="set-sound" class="chips"></div></div>
       <div class="set-row"><span class="set-label">Check Claude limits</span><div id="set-claude-limits" class="chips"></div></div>

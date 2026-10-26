@@ -1,6 +1,7 @@
   // ---- Configuration (comes from the PC) -----------------------------------
 
-  var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc", "music"], rotate: 20, notify: true, sound: true,
+  var cfg = { theme: "graphite", screens: ["hardware", "ai", "pc", "music", "photos"], rotate: 20, notify: true, sound: true,
+              photo_seconds: 10, banner: "",
               game_mode: true, heat_alerts: true, usb_screen: "keep",
               fan_names: {}, cpu_fan: null, claude_limits: false,
               burn_in: true, night_mode: "off", night_hours: "23-7" };

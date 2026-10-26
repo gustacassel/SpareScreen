@@ -4,6 +4,17 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A Photos screen: the photos in a folder you pick in the SpareScreen window (new
+  **Display** tab), subfolders included, one at a time in random order with a fade. New
+  photos show up by themselves; each stays 5 s to 1 min (phone settings). Only paired
+  devices get them, by id, and big photos are made screen-sized and turned upright on the
+  PC (with Pillow).
+- A message that scrolls along the bottom of every screen, written in the same tab.
+
 ## [0.14.0] - 2026-10-26
 
 ### Added

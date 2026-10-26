@@ -306,6 +306,21 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .music-times { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted);
                font-variant-numeric: tabular-nums; }
 .music.paused .music-art, .music.paused .music-title { opacity: .55; }
+/* Photos: the whole photo on black, the next one fading in over the last */
+.photo-frame { position: relative; height: 100%; border-radius: 14px; overflow: hidden; background: #000; }
+.photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;
+         opacity: 0; -webkit-transition: opacity 1s; transition: opacity 1s; }
+.photo.on { opacity: 1; }
+
+/* The message: a line along the bottom, moving right to left (speed set by 24-photos.js) */
+.banner { display: none; flex-shrink: 0; margin-top: 8px; overflow: hidden; white-space: nowrap;
+          font-size: 16px; color: var(--text); }
+.banner.on { display: block; }
+.banner span { display: inline-block; padding-left: 100%;
+               -webkit-animation: banner linear infinite; animation: banner linear infinite; }
+@-webkit-keyframes banner { from { -webkit-transform: translateX(0); } to { -webkit-transform: translateX(-100%); } }
+@keyframes banner { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
 /* Previous, play/pause and next: big round targets for a finger */
 .music-controls { display: flex; align-items: center; justify-content: center; margin-top: 14px; }
 .mc { width: 56px; height: 56px; margin: 0 10px; padding: 0; border: 0; border-radius: 50%;

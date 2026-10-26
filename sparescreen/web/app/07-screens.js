@@ -7,6 +7,7 @@
 
   var gameOn = false;   // a game is running and game mode is on: only the game screen
   var musicOn = false;  // something is playing: the music screen joins the rotation
+  var photosOn = false; // the PC has photos to show: the photos screen joins it
 
   // Screens in the rotation: the one pinned in the URL, the game screen in game mode,
   // or the ones turned on in the settings (music only while something plays).
@@ -17,7 +18,8 @@
       var on;
       if (fixed) on = name === fixed;
       else if (gameOn) on = name === "game";
-      else on = name !== "game" && cfg.screens.indexOf(name) >= 0 && (name !== "music" || musicOn);
+      else on = name !== "game" && cfg.screens.indexOf(name) >= 0 && (name !== "music" || musicOn) &&
+                (name !== "photos" || photosOn);
       if (on) list.push(allScreens[i]);
     }
     return list.length ? list : [allScreens[0]];
@@ -42,6 +44,16 @@
     for (var i = 0; i < screens.length; i++) {
       if (screens[i].getAttribute("data-name") === name) show(i);
     }
+  }
+
+  // The list of screens changed (music started, photos found...): stay on the same screen,
+  // or its neighbor if that one just left.
+  function screensChanged() {
+    var active = q(document, ".screen.active");
+    var name = active && active.getAttribute("data-name");
+    show(current);
+    if (name) showNamed(name);
+    startRotation();
   }
 
   function stopRotation() {

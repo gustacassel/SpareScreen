@@ -42,9 +42,13 @@ The page has screens that rotate on their own (or with a tap):
   Music screen is turned off.
 - **Music:** while something plays, the album cover, title, artist, album, the player
   (with its icon) and the progress, with previous, play/pause and next buttons.
+- **Photos:** the photos in a folder you pick on the PC, one at a time (see *Photos and a
+  message*).
 - **Game:** while a game runs, game mode shows only this screen: the game's art and icon,
   how long you've been playing, and GPU/CPU usage, temperature, clock and power, VRAM and
   RAM. When the game closes, the normal screens come back.
+
+A message you write in the SpareScreen window can scroll along the bottom of every screen.
 
 When a Claude Code, Codex or Gemini CLI session finishes, the page jumps to the AI screen, shows
 the session name and plays a short chime (sound only works after the first tap on the
@@ -86,6 +90,8 @@ with three tabs, kept live. A dot on a tab means something there needs you:
   every screen that has the dashboard open right now.
 - **Games:** the game now (and how it was recognized), your games, the programs running
   now to mark as games, and the ones marked "not a game" (see *Games and apps*).
+- **Display:** the folder for the Photos screen and the scrolling message (see *Photos and
+  a message*).
 - **Status:** what works and what's missing, with a button to fix it where possible:
   install or open LibreHardwareMonitor (CPU sensors on Windows), turn on FPS in games,
   install adb (USB cable), plus GPU, Wi-Fi, AI tools, now playing and updates.
@@ -236,7 +242,7 @@ Windows; on Linux and macOS it shows up if `pystray` and `pillow` are installed
 3. Long press (hold ~1 second) switches the theme.
 4. The gear icon in the top corner opens **settings**: theme, which screens rotate,
    how often to switch, Claude alerts, sound, fan names, which fan shows on the CPU card,
-   game mode, burn-in protection and night mode. Everything is saved on the PC
+   how long each photo stays, game mode, burn-in protection and night mode. Everything is saved on the PC
    (`~/.sparescreen/config.json`), so it survives reloading the page. Opened on the PC
    itself, the settings also show the phone address and the pairing code.
 5. To keep the screen on: use `--stay-awake` over USB, or keep the phone charging and
@@ -251,7 +257,30 @@ Themes: Graphite, OLED, Terracotta, Neon, Terminal and Light.
 </p>
 
 For testing you can force things in the address: `…:8765/?screen=pc` pins one screen
-(`hardware`, `ai`, `pc`, `music` or `game`) and `…:8765/?theme=neon` forces a theme.
+(`hardware`, `ai`, `pc`, `music`, `photos` or `game`) and `…:8765/?theme=neon` forces a theme.
+
+## Photos and a message
+
+In the SpareScreen window on the PC, the **Display** tab:
+
+- **Photos:** pick a folder (**Choose...** opens the system's folder picker; you can also
+  type or paste the path). Its photos, subfolders included, show on the **Photos** screen
+  one at a time in random order, the next one fading in; how long each stays (5 s to
+  1 min) is in the phone's settings. Photos added to or removed from the folder show up by
+  themselves within half a minute. JPG, PNG, WebP and GIF; HEIC (iPhone) photos aren't
+  shown, because old browsers can't open them. With no folder, or an empty one, the Photos
+  screen stays out of the rotation.
+- **Message:** a line of text (up to 200 characters) that scrolls along the bottom of every
+  screen. Leave it empty for none.
+
+The photos never leave your network: only paired devices get them, by an id (never the
+PC's paths). Big photos are made screen-sized on the PC before they're sent, and turned the
+way the camera meant: easier on an old phone's memory, and old browsers ignore the camera's
+rotation. That uses Pillow, installed with SpareScreen on Windows; on Linux and macOS
+`pip install pillow` does it, and without it the photos go as they are.
+
+The folder picker uses Windows' own dialog, AppleScript on macOS, and `zenity` or
+`kdialog` on Linux (without them, type the path).
 
 ## Burn-in protection and night mode
 
@@ -600,6 +629,9 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   one is the game (your lists, store folders, automatic) and finds its art and icon.
 - `sparescreen/media.py`: now playing (Windows media controls, MPRIS on Linux, optional tools on macOS).
 - `sparescreen/gameart.py` and `sparescreen/icons.py`: Steam's cached game art and program icons.
+- `sparescreen/photos.py`: the Photos screen's folder (scanned every 30 s), its photos
+  served at `/photos` and `/photo/<id>` (paired devices only, screen-sized with Pillow),
+  and the folder picker.
 - `sparescreen/images.py`: covers, game art and icons kept in memory and served at
   `/art/<name>` (paired devices only, like the data).
 - `sparescreen/config.py`: preferences saved in `~/.sparescreen/config.json` (POST `/config`).

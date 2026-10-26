@@ -18,7 +18,7 @@
     terminal: ["Terminal", "#04110a", "#39ff7a"],
     light: ["Light", "#ffffff", "#2f80ed"]
   };
-  var SCREEN_NAMES = { hardware: "Hardware", ai: "AI", pc: "PC", music: "Music" };
+  var SCREEN_NAMES = { hardware: "Hardware", ai: "AI", pc: "PC", music: "Music", photos: "Photos" };
   var ROTATE_OPTIONS = [[0, "Off"], [10, "10 s"], [20, "20 s"], [30, "30 s"], [60, "1 min"]];
 
   function $(id) { return document.getElementById(id); }

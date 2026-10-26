@@ -32,6 +32,7 @@
   <nav class="tabs">
     <button class="tab" data-tab="phone">Phone<span id="dot-phone" class="tab-dot"></span></button>
     <button class="tab" data-tab="games">Games<span id="dot-games" class="tab-dot"></span></button>
+    <button class="tab" data-tab="display">Display<span id="dot-display" class="tab-dot"></span></button>
     <button class="tab" data-tab="status">Status<span id="dot-status" class="tab-dot"></span></button>
   </nav>
 
@@ -86,6 +87,26 @@
       <section class="card" id="not-games-card">
         <h2>Never a game</h2>
         <ul id="not-games" class="rows"></ul>
+      </section>
+    </div>
+
+    <div class="page" data-page="display">
+      <section class="card">
+        <h2>Photos <span class="muted small plain">a Photos screen on the phone, one photo at a time</span></h2>
+        <div class="field">
+          <input id="photos-folder" type="text" placeholder="Folder with your photos" spellcheck="false">
+          <button id="photos-pick" class="btn small">Choose...</button>
+          <button id="photos-save" class="btn small">Use</button>
+        </div>
+        <p id="photos-status" class="muted small"></p>
+        <p><button id="photos-clear" class="btn small">No photos</button></p>
+      </section>
+      <section class="card">
+        <h2>Message <span class="muted small plain">scrolls along the bottom of every screen</span></h2>
+        <div class="field">
+          <input id="banner-text" type="text" maxlength="200" placeholder="Leave empty for no message">
+          <button id="banner-save" class="btn small">Save</button>
+        </div>
       </section>
     </div>
 

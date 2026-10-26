@@ -108,7 +108,9 @@ and with no mandatory app. That's this project's niche.
 5. **Translations.** The interface is English only; maybe add other languages later.
 6. **Test real devices:** iPhone/iPad over Wi-Fi, very old Android, tablets; USB with a
    data cable; AMD and Intel GPUs on real machines.
-7. **More widgets:** photos and scrolling text (the original idea), FPS.
+7. **More widgets:** FPS.
+   - ✅ **Photos and scrolling text** (the original idea): a Photos screen from a folder
+     picked in the PC window, and a message along the bottom of every screen.
    - ✅ **History charts:** the last 5 minutes of usage, temperatures and network speed.
    - ✅ **Now playing:** whatever the PC is playing, from the system's media session,
      and a Music screen with the cover and the player's icon.
@@ -135,6 +137,16 @@ and with no mandatory app. That's this project's niche.
   play/pause and next on the Music screen, through `media.py`'s backends and `POST /media`
   for paired devices). Tested on Windows with a real media session; Linux and macOS
   follow the same tools as reading but weren't tried on real machines.
+- **The phone's page after an update** (seen on 2026-10-26): updating 0.13 -> 0.14 from
+  the PC window, the phone showed "Disconnected", came back, but kept the old page (no
+  music buttons) until it was reloaded by hand. To check and fix:
+  - Since 0.12 the page reloads itself when `update.version` changes (`checkVersion` in
+    `web/app/20-data.js`), but a page opened under 0.11 or older doesn't have that code,
+    and stays old through any number of updates. Find out whether that was the case, or
+    whether the check missed (test: dashboard open on 0.13, update to 0.14).
+  - Sturdier: the agent sends an id that changes every time it starts, and the page
+    reloads when it reconnects to a different one (any restart, not just updates). The
+    page is a frame (`index.html`) that stays full screen, so a reload is cheap.
 - **Game FPS.** ✅ Windows, with PresentMon (set up from the PC window). Still to do:
   - Linux: MangoHud's log files (when the game runs with MangoHud).
   - macOS: no practical free way for other apps' games.
