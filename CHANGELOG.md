@@ -4,7 +4,7 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.16.0] - 2026-10-26
 
 ### Fixed
 
@@ -303,6 +303,7 @@ First public version.
   the page while developing.
 - Tests (standard library `unittest`) running on GitHub Actions on Windows, Linux and macOS.
 
+[0.16.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.16.0
 [0.15.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.15.0
 [0.14.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.14.0
 [0.13.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.13.0
