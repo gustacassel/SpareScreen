@@ -4,7 +4,7 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.13.0] - 2026-10-25
 
 ### Added
 
@@ -12,7 +12,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
   the last 12 hours (working or idle, with the "session finished" alert), read from its
   chat files in `~/.gemini`. Gemini CLI doesn't save its limits, so there are none to show.
   With three tools the AI screen uses a tighter layout so all of them fit.
-
 - When the PC goes to sleep, the phone shows a dim "The PC is asleep" clock instead of
   "Disconnected", and over USB its screen rests right away (with *Phone screen (USB)* on
   Dim or Off). Windows, and Linux with `gdbus` (systemd-logind); macOS still shows
@@ -272,6 +271,7 @@ First public version.
   the page while developing.
 - Tests (standard library `unittest`) running on GitHub Actions on Windows, Linux and macOS.
 
+[0.13.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.13.0
 [0.12.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.12.0
 [0.11.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.11.0
 [0.10.0]: https://github.com/gustacassel/SpareScreen/releases/tag/v0.10.0
