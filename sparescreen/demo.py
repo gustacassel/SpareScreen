@@ -222,12 +222,28 @@ class DemoPhone:
 class DemoMedia:
     name = "media"
     DURATION = 228.0  # the song loops, so the progress bar keeps moving
+    SONGS = ("Midnight Drive", "City Lights", "Last Train Home")
+
+    def __init__(self) -> None:
+        self.song = 0
+        self.paused = False
 
     def read(self) -> Json:
-        return {"available": True, "playing": True, "title": "Midnight Drive", "artist": "Neon Arcade",
-                "album": "Night Shift", "app": "Spotify", "status": "playing",
+        return {"available": True, "playing": True, "title": self.SONGS[self.song], "artist": "Neon Arcade",
+                "album": "Night Shift", "app": "Spotify", "status": "paused" if self.paused else "playing",
                 "position": round(time.time() % self.DURATION, 1), "duration": self.DURATION,
-                "art": "demo-cover.svg", "app_icon": None}
+                "art": "demo-cover.svg", "app_icon": None,
+                "controls": {"previous": True, "play_pause": True, "next": True}}
+
+    def control(self, action: str) -> bool:
+        """The Music screen's buttons work in the demo too."""
+        if action == "play_pause":
+            self.paused = not self.paused
+        elif action in ("next", "previous"):
+            self.song = (self.song + (1 if action == "next" else -1)) % len(self.SONGS)
+        else:
+            return False
+        return True
 
 
 class DemoFps:

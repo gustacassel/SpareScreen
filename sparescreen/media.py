@@ -11,6 +11,11 @@
 Album covers come from the session itself (Windows thumbnail, a local MPRIS
 artUrl, media-control's artwork) and are never downloaded from the internet.
 The player's icon is only found on Windows, from the running program.
+
+The Music screen's buttons (previous, play/pause, next) go back the same way, to the
+player being shown: the session's own commands on Windows, `playerctl` or an MPRIS
+method call on Linux, `media-control` or `nowplaying-cli` on macOS. "controls" says
+which ones the player accepts (Windows and MPRIS tell; elsewhere all three are offered).
 """
 
 from __future__ import annotations
@@ -38,6 +43,8 @@ _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 UNAVAILABLE: Json = {"available": False}
 NOTHING: Json = {"available": True, "playing": False}
+ACTIONS = ("previous", "play_pause", "next")
+ALL_CONTROLS: Json = {"previous": True, "play_pause": True, "next": True}
 
 Loader = Callable[[str], Optional[str]]  # image key -> its URL (images.put), loaded only when needed
 
@@ -112,6 +119,7 @@ def track(title: object, artist: object = "", album: object = "", app: str = "",
         "duration": round(duration, 1) if duration else None,
         "art": None,       # filled by MediaSource from the backend's "_art" loader
         "app_icon": None,  # same, from "_icon"
+        "controls": dict(ALL_CONTROLS),  # the buttons this player accepts
     }
 
 
@@ -171,6 +179,16 @@ def _timedelta_seconds(value: Any) -> float | None:
         return float(value) / 1e7
     except (TypeError, ValueError):
         return None
+
+
+def windows_controls(controls: Any) -> Json:
+    """Which buttons a session accepts (its PlaybackControls); all of them when it doesn't say."""
+    if controls is None:
+        return dict(ALL_CONTROLS)
+    play_pause = any(getattr(controls, name, False) for name in
+                     ("is_play_pause_toggle_enabled", "is_play_enabled", "is_pause_enabled"))
+    return {"previous": bool(getattr(controls, "is_previous_enabled", False)), "play_pause": play_pause,
+            "next": bool(getattr(controls, "is_next_enabled", False))}
 
 
 def windows_position(timeline: Any, status: str,
@@ -251,12 +269,30 @@ class WindowsMedia:
             found = track(props.title, props.artist, props.album_title, friendly_app(aumid), status,
                           position, duration)
             if found:
+                found["controls"] = windows_controls(getattr(session.get_playback_info(), "controls", None))
+                found["_target"] = session  # where the buttons go
                 thumbnail = getattr(props, "thumbnail", None)
                 if thumbnail is not None:
                     found["_art"] = lambda key, ref=thumbnail: self._thumbnail(ref, key)
                 found["_icon"] = (aumid, lambda key: windows_app_icon(aumid, key))
                 return found
         return None
+
+    def control(self, session: Any, action: str, status: str | None) -> bool:
+        if action == "next":
+            operation = session.try_skip_next_async()
+        elif action == "previous":
+            operation = session.try_skip_previous_async()
+        else:
+            # Some players (browsers) offer play and pause but not the toggle.
+            controls = getattr(session.get_playback_info(), "controls", None)
+            if status == "playing" and getattr(controls, "is_pause_enabled", False):
+                operation = session.try_pause_async()
+            elif status == "paused" and getattr(controls, "is_play_enabled", False):
+                operation = session.try_play_async()
+            else:
+                operation = session.try_toggle_play_pause_async()
+        return bool(self._wait(operation))
 
     def _thumbnail(self, reference: Any, key: str) -> str | None:
         """The cover the player gave Windows (an IRandomAccessStreamReference) -> image URL."""
@@ -380,6 +416,8 @@ def parse_playerctl(text: str | None) -> Json | None:
         if status:
             found = track(title, artist, album, friendly_app(player), status,
                           (_seconds(position) or 0) / 1e6, (_seconds(length) or 0) / 1e6)
+            if found:
+                found["_target"] = player
             tracks.append(_with_art(found, file_art(art)))
     return _pick(tracks)
 
@@ -444,6 +482,12 @@ def dbus_track(name: str, values: Json) -> Json | None:
     found = track(values.get("xesam:title"), values.get("xesam:artist") or values.get("xesam:albumArtist"),
                   values.get("xesam:album"), friendly_app(name.replace("org.mpris.MediaPlayer2.", "")), status,
                   position / 1e6 if position else None, length / 1e6 if length else None)
+    if found:
+        # MPRIS says what the player allows; a property it doesn't send counts as allowed.
+        found["controls"] = {"previous": values.get("CanGoPrevious") != "false",
+                             "play_pause": values.get("CanPause") != "false" or values.get("CanPlay") != "false",
+                             "next": values.get("CanGoNext") != "false"}
+        found["_target"] = name
     return _with_art(found, file_art(values.get("mpris:artUrl")))
 
 
@@ -472,6 +516,15 @@ class LinuxMedia:
                           "string:org.mpris.MediaPlayer2.Player"], timeout=1.5)
             tracks.append(dbus_track(name, parse_dbus_properties(reply)))
         return _pick(tracks)
+
+    def control(self, player: str, action: str, status: str | None) -> bool:
+        if self.playerctl:
+            command = {"previous": "previous", "play_pause": "play-pause", "next": "next"}[action]
+            return _run([self.playerctl, "--player=" + player, command]) is not None
+        assert self.dbus_send is not None  # only shown a player when available()
+        method = {"previous": "Previous", "play_pause": "PlayPause", "next": "Next"}[action]
+        return _run([self.dbus_send, "--session", "--type=method_call", "--dest=" + player,
+                     "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player." + method]) is not None
 
 
 # --- macOS ---------------------------------------------------------------------------------
@@ -509,6 +562,8 @@ def parse_media_control(text: str | None) -> Json | None:
         position = data.get("elapsedTime")
     found = track(data.get("title"), data.get("artist"), data.get("album"), friendly_app(app),
                   "playing" if data.get("playing") else "paused", position, data.get("duration"))
+    if found:
+        found["_target"] = True  # media-control acts on whatever macOS is playing
     return _with_art(found, base64_art(data.get("artworkData"), data.get("artworkMimeType")))
 
 
@@ -519,8 +574,11 @@ def parse_nowplaying(text: str | None) -> Json | None:
         return None
     values = dict(zip(_NOWPLAYING_FIELDS, (None if v.strip() == "null" else v.strip() for v in lines)))
     status = "playing" if (_seconds(values["playbackRate"]) or 0) > 0 else "paused"
-    return track(values["title"], values["artist"], values["album"], "", status,
-                 values["elapsedTime"], values["duration"])
+    found = track(values["title"], values["artist"], values["album"], "", status,
+                  values["elapsedTime"], values["duration"])
+    if found:
+        found["_target"] = True  # nowplaying-cli acts on whatever macOS is playing
+    return found
 
 
 class MacMedia:
@@ -539,6 +597,14 @@ class MacMedia:
             return parse_media_control(_run([self.media_control, "get", "--now"], timeout=3))
         assert self.nowplaying is not None  # only read when available()
         return parse_nowplaying(_run([self.nowplaying, "get"] + list(_NOWPLAYING_FIELDS)))
+
+    def control(self, target: object, action: str, status: str | None) -> bool:
+        if self.media_control:
+            command = {"previous": "previous-track", "play_pause": "toggle-play-pause", "next": "next-track"}[action]
+            return _run([self.media_control, command]) is not None
+        assert self.nowplaying is not None  # only shown a track when available()
+        command = {"previous": "previous", "play_pause": "togglePlayPause", "next": "next"}[action]
+        return _run([self.nowplaying, command]) is not None
 
 
 # --- Source --------------------------------------------------------------------------------
@@ -595,6 +661,7 @@ class MediaSource:
         self._last = UNAVAILABLE
         self._art = _Image("media-art", always=2, tries=4)
         self._icon = _Image("media-app-icon", always=1, tries=3)
+        self._target: Any = None  # the player shown now, for control()
 
     def read(self) -> Json:
         try:
@@ -613,6 +680,7 @@ class MediaSource:
         return data
 
     def _fetch(self) -> Json:
+        self._target = None
         if self.backend is None or not self.backend.available():
             return UNAVAILABLE
         try:
@@ -621,8 +689,23 @@ class MediaSource:
             found = None
         if not found:
             return NOTHING
+        self._target = found.pop("_target", None)
+        if self._target is None:
+            found["controls"] = {action: False for action in ACTIONS}  # nowhere to send them
         art = found.pop("_art", None)
         icon_id, icon = found.pop("_icon", None) or (None, None)
         found["art"] = self._art.get((found["app"], found["title"], found["artist"], found["album"]), art)
         found["app_icon"] = self._icon.get(icon_id, icon)
         return found
+
+    def control(self, action: str) -> bool:
+        """Previous, play/pause or next on the player shown now (the Music screen's buttons)."""
+        target, status = self._target, self._last.get("status")
+        if action not in ACTIONS or target is None or self.backend is None:
+            return False
+        try:
+            done = self.backend.control(target, action, status)
+        except Exception:
+            return False
+        self._at = None  # ask the player again right away, so the page sees the change
+        return done

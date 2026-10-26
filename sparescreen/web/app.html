@@ -33,6 +33,10 @@
     <symbol id="i-disk" viewBox="0 0 24 24"><path d="M22 12H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11zM6 16h.01M10 16h.01"/></symbol>
     <symbol id="i-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><path d="M19 20L9 12l10-8z"/><path d="M5 19V5"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z"/><path d="M19 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h3v16H7zM14 4h3v16h-3z"/></symbol>
     <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
     <symbol id="i-battery" viewBox="0 0 24 24"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2M6 10v4M10 10v4"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
@@ -181,6 +185,12 @@
           <div id="music-album" class="detail"></div>
           <div class="bar music-progress"><div id="music-bar" class="bar-fill"></div></div>
           <div class="music-times"><span id="music-pos"></span><span id="music-dur"></span></div>
+          <!-- Sent to the player on the PC (paired devices only); a tap here doesn't change screens. -->
+          <div id="music-controls" class="music-controls">
+            <button class="mc" data-action="previous" aria-label="Previous"><svg class="icon"><use xlink:href="#i-prev"></use></svg></button>
+            <button class="mc mc-main" data-action="play_pause" aria-label="Play or pause"><svg class="icon"><use id="mc-play" xlink:href="#i-pause"></use></svg></button>
+            <button class="mc" data-action="next" aria-label="Next"><svg class="icon"><use xlink:href="#i-next"></use></svg></button>
+          </div>
         </div>
       </div>
     </section>

@@ -5,22 +5,34 @@ import datetime
 import json
 import os
 import tempfile
+import threading
 import unittest
+import urllib.error
+import urllib.request
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 from sparescreen import media
+from sparescreen.config import ConfigStore
 from sparescreen.demo import DemoMedia
 from sparescreen.media import MediaSource
+from sparescreen.pairing import Pairing
+from sparescreen.server import serve
 
 PLAYING_KEYS = {"available", "playing", "title", "artist", "album", "app", "status", "position", "duration",
-                "art", "app_icon"}
+                "art", "app_icon", "controls"}
 S = media._SEP
 
 
 class FakeBackend:
     def __init__(self, result=None, available=True, error=None):
         self.result, self._available, self.error, self.calls = result, available, error, 0
+        self.pressed = []
+
+    def control(self, target, action, status):
+        self.pressed.append((target, action, status))
+        return True
 
     def available(self):
         return self._available
@@ -128,6 +140,53 @@ class SourceTest(unittest.TestCase):
         self.assertEqual(set(demo), set(media.track("x", position=1, duration=2)))
 
 
+class ControlTest(unittest.TestCase):
+    def test_buttons_go_to_the_player_shown(self):
+        song = media.track("Song", status="paused")
+        song["_target"] = "spotify"
+        backend = FakeBackend(song)
+        source = MediaSource(backend)
+        data = source.read()
+        self.assertEqual(data["controls"], media.ALL_CONTROLS)
+        self.assertNotIn("_target", data)
+        self.assertTrue(source.control("play_pause"))
+        self.assertEqual(backend.pressed, [("spotify", "play_pause", "paused")])
+        source.read()
+        self.assertEqual(backend.calls, 2)  # asked again right away, so the page sees the change
+        self.assertFalse(source.control("eject"))  # not a button
+
+    def test_nothing_to_control(self):
+        backend = FakeBackend(media.track("Song"))  # no target: the buttons have nowhere to go
+        source = MediaSource(backend)
+        self.assertEqual(source.read()["controls"], {"previous": False, "play_pause": False, "next": False})
+        self.assertFalse(source.control("next"))
+        backend.result = None
+        source._at = None
+        source.read()
+        self.assertFalse(source.control("next"))
+        self.assertEqual(backend.pressed, [])
+
+    def test_a_failing_player_is_just_false(self):
+        song = media.track("Song")
+        song["_target"] = "x"
+        backend = FakeBackend(song)
+        backend.control = mock.Mock(side_effect=RuntimeError("player went away"))
+        source = MediaSource(backend)
+        source.read()
+        self.assertFalse(source.control("next"))
+
+    def test_demo_buttons(self):
+        demo = DemoMedia()
+        first = demo.read()["title"]
+        self.assertTrue(demo.control("next"))
+        self.assertNotEqual(demo.read()["title"], first)
+        self.assertTrue(demo.control("previous"))
+        self.assertEqual(demo.read()["title"], first)
+        demo.control("play_pause")
+        self.assertEqual(demo.read()["status"], "paused")
+        self.assertFalse(demo.control("eject"))
+
+
 class FriendlyAppTest(unittest.TestCase):
     def test_names(self):
         cases = {
@@ -150,15 +209,24 @@ class FriendlyAppTest(unittest.TestCase):
             self.assertEqual(media.friendly_app(raw), expected, raw)
 
 
-def _session(aumid, status, title, artist="", album="", position=0, end=0, updated=None, thumbnail=None):
+def _session(aumid, status, title, artist="", album="", position=0, end=0, updated=None, thumbnail=None,
+             controls=None):
     props = SimpleNamespace(title=title, artist=artist, album_title=album, thumbnail=thumbnail)
     timeline = SimpleNamespace(start_time=datetime.timedelta(0), end_time=datetime.timedelta(seconds=end),
                                position=datetime.timedelta(seconds=position), last_updated_time=updated)
+    calls = []
+
+    def command(name):
+        return lambda: calls.append(name) or _Done(True)
+
     return SimpleNamespace(
         source_app_user_model_id=aumid,
-        get_playback_info=lambda: SimpleNamespace(playback_status=status),
+        get_playback_info=lambda: SimpleNamespace(playback_status=status, controls=controls),
         try_get_media_properties_async=lambda: _Done(props),
         get_timeline_properties=lambda: timeline,
+        try_skip_next_async=command("next"), try_skip_previous_async=command("previous"),
+        try_toggle_play_pause_async=command("toggle"), try_play_async=command("play"),
+        try_pause_async=command("pause"), calls=calls,
     )
 
 
@@ -193,6 +261,23 @@ class WindowsTest(unittest.TestCase):
         self.assertEqual((data["title"], data["artist"], data["album"], data["app"], data["status"]),
                          ("Song", "Band", "Album", "Spotify", "playing"))
         self.assertEqual(data["duration"], 200)
+
+    def test_controls_and_buttons(self):
+        controls = SimpleNamespace(is_previous_enabled=False, is_next_enabled=True,
+                                   is_play_pause_toggle_enabled=False, is_play_enabled=True, is_pause_enabled=True)
+        browser = _session("Chrome", 4, "A video", controls=controls)
+        backend = self._backend(browser, [browser])
+        data = backend.read()
+        self.assertEqual(data["controls"], {"previous": False, "play_pause": True, "next": True})
+        self.assertIs(data["_target"], browser)
+        self.assertTrue(backend.control(browser, "next", "playing"))
+        backend.control(browser, "play_pause", "playing")  # no toggle offered: pause it
+        backend.control(browser, "play_pause", "paused")
+        self.assertEqual(browser.calls, ["next", "pause", "play"])
+        unknown = _session("Spotify.exe", 4, "Song")  # says nothing about its controls
+        self.assertEqual(self._backend(unknown, [unknown]).read()["controls"], media.ALL_CONTROLS)
+        backend.control(unknown, "play_pause", "playing")
+        self.assertEqual(unknown.calls, ["toggle"])
 
     def test_paused_and_nothing(self):
         paused = _session("Chrome", 5, "A video", end=600, position=20)
@@ -381,7 +466,7 @@ class LinuxTest(unittest.TestCase):
                           "https://i.scdn.co/image/abc"]) + "\n"
                 + "No player could handle this command\n")
         data = media.parse_playerctl(text)
-        self.assertEqual(set(data), PLAYING_KEYS)
+        self.assertEqual(set(data) - {"_target"}, PLAYING_KEYS)  # _target stays on the PC
         self.assertEqual((data["title"], data["app"], data["status"], data["position"], data["duration"]),
                          ("Song", "Spotify", "playing", 61.5, 215))
         self.assertNotIn("_art", data)  # http(s) covers are never downloaded
@@ -433,6 +518,27 @@ class LinuxTest(unittest.TestCase):
             self.assertEqual(backend.read()["title"], "Song")
         self.assertIn("--all-players", run.call_args[0][0])
 
+    def test_buttons(self):
+        line = S.join(["Playing", "spotify", "Song", "Band", "Album", "1000000", "215000000", ""])
+        self.assertEqual(media.parse_playerctl(line)["_target"], "spotify")
+        with mock.patch.object(media, "_find", side_effect=lambda name, *a: "/usr/bin/" + name), \
+                mock.patch.object(media, "_run", return_value="") as run:
+            self.assertTrue(media.LinuxMedia().control("spotify", "play_pause", "playing"))
+        self.assertEqual(run.call_args[0][0], ["/usr/bin/playerctl", "--player=spotify", "play-pause"])
+        tools = {"dbus-send": "/usr/bin/dbus-send"}
+        with mock.patch.object(media, "_find", side_effect=lambda name, *a: tools.get(name)), \
+                mock.patch.object(media, "_run", return_value="") as run:
+            media.LinuxMedia().control("org.mpris.MediaPlayer2.spotify", "next", "playing")
+        self.assertIn("org.mpris.MediaPlayer2.Player.Next", run.call_args[0][0])
+        self.assertIn("--dest=org.mpris.MediaPlayer2.spotify", run.call_args[0][0])
+
+    def test_mpris_says_what_is_allowed(self):
+        values = media.parse_dbus_properties(DBUS_PROPS)
+        values.update(CanGoPrevious="false", CanGoNext="true")
+        data = media.dbus_track("org.mpris.MediaPlayer2.spotify", values)
+        self.assertEqual(data["controls"], {"previous": False, "play_pause": True, "next": True})
+        self.assertEqual(data["_target"], "org.mpris.MediaPlayer2.spotify")
+
     def test_backend_with_dbus_send(self):
         def run(args, timeout=2.0):
             return DBUS_NAMES if "org.freedesktop.DBus.ListNames" in args else DBUS_PROPS
@@ -454,7 +560,7 @@ class MacTest(unittest.TestCase):
                 '"album":"Album","duration":215.2,"elapsedTime":60,"elapsedTimeNow":61.53,'
                 '"timestamp":"2026-01-01T12:00:00Z"}')
         data = media.parse_media_control(text)
-        self.assertEqual(set(data), PLAYING_KEYS)
+        self.assertEqual(set(data) - {"_target"}, PLAYING_KEYS)
         self.assertEqual((data["app"], data["status"], data["position"], data["duration"]),
                          ("Spotify", "playing", 61.5, 215.2))
         paused = media.parse_media_control('{"bundleIdentifier":"com.apple.WebKit.GPU",'
@@ -489,6 +595,18 @@ class MacTest(unittest.TestCase):
         self.assertIsNone(media.parse_nowplaying("null\nnull\nnull\nnull\nnull\nnull\n"))
         self.assertIsNone(media.parse_nowplaying(""))
 
+    def test_buttons(self):
+        tools = {"media-control": "/opt/homebrew/bin/media-control"}
+        with mock.patch.object(media, "_find", side_effect=lambda name, *a: tools.get(name)), \
+                mock.patch.object(media, "_run", return_value="") as run:
+            media.MacMedia().control(True, "next", "playing")
+        self.assertEqual(run.call_args[0][0], ["/opt/homebrew/bin/media-control", "next-track"])
+        tools = {"nowplaying-cli": "/opt/homebrew/bin/nowplaying-cli"}
+        with mock.patch.object(media, "_find", side_effect=lambda name, *a: tools.get(name)), \
+                mock.patch.object(media, "_run", return_value=None) as run:
+            self.assertFalse(media.MacMedia().control(True, "play_pause", "playing"))  # couldn't run
+        self.assertEqual(run.call_args[0][0], ["/opt/homebrew/bin/nowplaying-cli", "togglePlayPause"])
+
     def test_backend_prefers_media_control(self):
         tools = {"media-control": "/opt/homebrew/bin/media-control", "nowplaying-cli": "/opt/homebrew/bin/nowplaying-cli"}
         with mock.patch.object(media, "_find", side_effect=lambda name, *a: tools.get(name)), \
@@ -509,3 +627,42 @@ class PlatformTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ButtonsEndpointTest(unittest.TestCase):
+    """POST /media acts on the PC: only paired devices (and this PC) may press."""
+
+    def test_only_paired_devices(self):
+        song = media.track("Song")
+        song["_target"] = "spotify"
+        backend = FakeBackend(song)
+        source = MediaSource(backend)
+        source.read()
+        with tempfile.TemporaryDirectory() as tmp:
+            pairing = Pairing(Path(tmp) / "devices.json", trust_localhost=False)
+            config = ConfigStore(Path(tmp) / "config.json")
+            server = serve("127.0.0.1", 0, [config, source], 5, config, pairing)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            base = f"http://127.0.0.1:{server.server_address[1]}"
+
+            def post(path, body, cookie=None):
+                req = urllib.request.Request(base + path, data=json.dumps(body).encode(), method="POST")
+                if cookie:
+                    req.add_header("Cookie", cookie)
+                try:
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        return resp.status, resp.headers, json.loads(resp.read())
+                except urllib.error.HTTPError as err:
+                    err.close()
+                    return err.code, err.headers, None
+
+            try:
+                self.assertEqual(post("/media", {"action": "next"})[0], 401)
+                self.assertEqual(backend.pressed, [])
+                cookie = post("/pair", {"code": pairing.code})[1]["Set-Cookie"].split(";", 1)[0]
+                status, _, body = post("/media", {"action": "next"}, cookie)
+                self.assertEqual((status, body), (200, {"ok": True}))
+                self.assertEqual(backend.pressed[0][:2], ("spotify", "next"))
+            finally:
+                server.shutdown()
+                server.server_close()

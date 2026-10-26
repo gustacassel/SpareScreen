@@ -100,7 +100,7 @@ def start_sampler(hub: Hub, sources: list[Source], interval: float) -> None:
 
 
 def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pairing], info: Optional[Json],
-                 clients: Clients, panel: Optional[Panel]) -> type[BaseHTTPRequestHandler]:
+                 clients: Clients, panel: Optional[Panel], media: Any = None) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def _trusted(self) -> bool:
             return pairing is None or pairing.is_trusted(self.client_address[0], self.headers.get("Cookie"))
@@ -216,6 +216,12 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
                     self.send_error(403)
                     return
                 self._send_json(200, panel.act(str(data.get("action", "")), data))
+            elif path == "/media" and media is not None:
+                # The Music screen's buttons act on the PC, so only paired devices may press them.
+                if not self._trusted() or not isinstance(data, dict):
+                    self.send_error(401)
+                    return
+                self._send_json(200, {"ok": media.control(str(data.get("action", "")))})
             elif path == "/config" and config is not None:
                 if not self._trusted():
                     self.send_error(401)
@@ -346,7 +352,9 @@ def serve(host: str, port: int, sources: list[Source], interval: float, config: 
     clients = Clients()
     if panel is not None:
         panel.hub = hub
-    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing, info, clients, panel))
+    # The now-playing source, when it can take the Music screen's buttons.
+    media = next((s for s in sources if s.name == "media" and callable(getattr(s, "control", None))), None)
+    server = ThreadingHTTPServer((host, port), make_handler(hub, config, pairing, info, clients, panel, media))
     start_sampler(hub, sources, interval)  # only once the port is ours (a busy port fails above)
     names.warm_up()
     server.daemon_threads = True

@@ -306,6 +306,15 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .music-times { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted);
                font-variant-numeric: tabular-nums; }
 .music.paused .music-art, .music.paused .music-title { opacity: .55; }
+/* Previous, play/pause and next: big round targets for a finger */
+.music-controls { display: flex; align-items: center; justify-content: center; margin-top: 14px; }
+.mc { width: 56px; height: 56px; margin: 0 10px; padding: 0; border: 0; border-radius: 50%;
+      background: var(--track); color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mc .icon { width: 24px; height: 24px; vertical-align: middle; fill: currentColor; }
+.mc-main { width: 68px; height: 68px; background: var(--accent); color: var(--bg); }
+.mc-main .icon { width: 30px; height: 30px; }
+.mc:active { opacity: .6; }
+.mc:disabled { opacity: .3; cursor: default; }
 
 /* Game screen: art and title on one side, the numbers that matter while playing on the other */
 .game-grid { display: flex; flex-direction: column; height: 100%; }
@@ -445,6 +454,11 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
   .music-artist { font-size: 5.5vh; }
   .music-app { font-size: 5vh; }
   .music-app img { width: 9vh; height: 9vh; }
+  .music-controls { justify-content: flex-start; margin: 4vh 0 0 -1.5vh; }
+  .mc { width: 14vh; height: 14vh; margin: 0 1.5vh; }
+  .mc .icon { width: 6vh; height: 6vh; }
+  .mc-main { width: 17vh; height: 17vh; }
+  .mc-main .icon { width: 7.5vh; height: 7.5vh; }
 
   .game-grid { flex-direction: row; }
   .game-card { width: 42%; margin-right: 10px; }

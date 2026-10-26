@@ -131,17 +131,10 @@ and with no mandatory app. That's this project's niche.
   Options: an opt-in `--https` with a self-signed certificate and its fingerprint shown in
   the PC window to compare on the phone; meanwhile, USB only (`--host 127.0.0.1`) on
   networks you don't trust, as the README says.
-- **Control the music from the phone** (asked for on 2026-10-26): previous, play/pause and
-  next buttons on the Music screen. Looks doable with what `media.py` already uses:
-  - Windows: the same media session (SMTC) has `try_toggle_play_pause_async`,
-    `try_skip_next_async` and `try_skip_previous_async`.
-  - Linux: MPRIS has `PlayPause`, `Next` and `Previous` (`playerctl play-pause|next|previous`,
-    or `dbus-send` without it).
-  - macOS: `media-control` and `nowplaying-cli` have toggle/next/previous commands.
-  - The page: a tap today moves to the next screen, so the buttons must stop the tap,
-    and be big enough for a finger. Send them with a POST that, like settings, only
-    paired devices may use (it acts on the PC). Show them only where the player allows
-    it (SMTC and MPRIS say whether next/previous are available).
+- ✅ **Control the music from the phone** (asked for on 2026-10-26; done: previous,
+  play/pause and next on the Music screen, through `media.py`'s backends and `POST /media`
+  for paired devices). Tested on Windows with a real media session; Linux and macOS
+  follow the same tools as reading but weren't tried on real machines.
 - **Game FPS.** ✅ Windows, with PresentMon (set up from the PC window). Still to do:
   - Linux: MangoHud's log files (when the game runs with MangoHud).
   - macOS: no practical free way for other apps' games.

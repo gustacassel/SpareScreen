@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 ### Added
 
+- Previous, play/pause and next buttons on the Music screen, sent to the player on the PC
+  (Windows media session, MPRIS on Linux, `media-control` or `nowplaying-cli` on macOS).
+  Only the ones the player accepts are active, only paired devices can press them, and a
+  press doesn't change screens. They work in `--demo` too.
 - Small charts of the last 5 minutes: CPU, GPU and RAM usage faintly behind their cards,
   the CPU and GPU temperatures next to their numbers, and the network speed (download and
   upload) on the PC screen. The PC keeps the history, so a page that was just opened

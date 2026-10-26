@@ -41,7 +41,7 @@ The page has screens that rotate on their own (or with a tap):
   5 minutes, download and upload), free disk space and drive temperatures. The running game and what's playing also show here when game mode or the
   Music screen is turned off.
 - **Music:** while something plays, the album cover, title, artist, album, the player
-  (with its icon) and the progress.
+  (with its icon) and the progress, with previous, play/pause and next buttons.
 - **Game:** while a game runs, game mode shows only this screen: the game's art and icon,
   how long you've been playing, and GPU/CPU usage, temperature, clock and power, VRAM and
   RAM. When the game closes, the normal screens come back.
@@ -365,16 +365,22 @@ is shown dimmed; with nothing playing the Music screen leaves the rotation.
 Covers only come from the PC itself, never from the internet. The player's icon is
 Windows only.
 
+The Music screen has **previous, play/pause and next** buttons that go to the player
+being shown. Only buttons the player accepts are active (Windows and Linux players say
+which; on macOS all three are offered), and only paired devices can press them, since
+they act on the PC. Pressing one doesn't change screens.
+
 - **Windows:** works out of the box. It reads the same info as the volume flyout (System
   Media Transport Controls), through the `winrt-Windows.Media.Control` packages that are
   installed automatically on Windows. Covers come from the player; the icon from the
-  player's program (or its Store app logo).
+  player's program (or its Store app logo). The buttons use the same media session.
 - **Linux:** reads MPRIS players over D-Bus. Install `playerctl` for best results; otherwise
   `dbus-send` (part of D-Bus, usually present) is used. Covers only when the player gives
   a local file (many do; Spotify and browsers give a web address, which is not fetched).
+  The buttons go through the same tool (MPRIS `PlayPause`, `Next`, `Previous`).
 - **macOS:** best effort. Install `media-control` (`brew install media-control`, works on
   macOS 15.4 and later) or `nowplaying-cli`. Without either, the block is hidden.
-  Covers with `media-control` only.
+  Covers with `media-control` only. The buttons use the same tool.
   AppleScript is not used, so there are no permission prompts.
 
 ## Temperatures, fans and GPU
