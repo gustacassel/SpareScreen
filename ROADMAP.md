@@ -144,6 +144,21 @@ and with no mandatory app. That's this project's niche.
   (a page opened under 0.14, updated to 0.15, did reload). Fixed: the agent always sends
   `dev`, changing on every start, so any restart reloads the page; even very old pages
   pick it up and reload from the next restart on.
+- **Spare the phone's battery** (idea, 2026-10-26): a phone plugged in all the time ages its
+  battery. Charge only up to 80%, then stop until it drops to 20%, and start again.
+  SpareScreen already reads the level (over USB). What's possible, to check:
+  - Many phones have this built in, without root: Samsung "Protect battery" (stops at
+    80-85%), Pixel "Charging optimization", others "Optimized/80% charging". Simplest first
+    step: detect it and point to it from the PC window, or turn it on over adb where a
+    setting allows it (e.g. Samsung's `settings put global protect_battery 1`, to confirm).
+  - Stopping the charge itself from Android needs root (writing the kernel's
+    `charging_enabled`), so it can't be generic. `dumpsys battery unplug` only pretends.
+  - Without touching the phone: switch the power off outside it. A smart plug with a local
+    API (Tasmota, Shelly: no cloud, no account), or a USB hub with per-port power switching
+    (`uhubctl`, Linux/macOS, some hubs only). Cutting USB power also cuts adb, so it fits a
+    phone on Wi-Fi charged from a separate port or charger.
+  - Whatever the way: the 20-80% band as a setting, and a "battery saver" status in the
+    PC window with what was found for that phone.
 - **Game FPS.** ✅ Windows, with PresentMon (set up from the PC window). Still to do:
   - Linux: MangoHud's log files (when the game runs with MangoHud).
   - macOS: no practical free way for other apps' games.
