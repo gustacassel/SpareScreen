@@ -41,17 +41,29 @@ jobs:
         with:
           ref: ${{ env.TAG }}
       - uses: actions/setup-python@v5
+        if: runner.os != 'Linux'
         with:
           python-version: "3.12"
       - name: Install
+        if: runner.os != 'Linux'
         run: python -m pip install . pyinstaller pillow
       - name: Build
+        if: runner.os != 'Linux'
         run: |
           SEP=$(python -c "import os; print(os.pathsep)")
           # pystray picks its backend at runtime, so name the Windows one (ignored elsewhere).
           pyinstaller --noconfirm --onefile --name sparescreen --paths . --hidden-import pystray._win32 \
             --add-data "sparescreen/web${SEP}sparescreen/web" \
             --icon assets/icon.ico packaging/entry.py
+      - name: Build (Linux, on an older Debian)
+        if: runner.os == 'Linux'
+        # A Linux executable only runs on systems at least as new as the one that built it
+        # (glibc). Built on Debian 11 it runs on Ubuntu 20.04, Debian 11, Mint 20 and newer;
+        # built on the runner's own Ubuntu it needed 24.04.
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src python:3.12-bullseye bash -c \
+            "pip install -q . pyinstaller pillow && pyinstaller --noconfirm --onefile --name sparescreen \
+             --paths . --add-data sparescreen/web:sparescreen/web packaging/entry.py"
       - name: Smoke test
         run: |
           ./${{ matrix.built }} --version

@@ -102,6 +102,23 @@ and with no mandatory app. That's this project's niche.
    Codex and Gemini CLI, and a status line that wraps the user's own. Gemini CLI was built
    from its source code (`chatRecordingService.ts`), not tested with real files yet.
    Still to do: other tools that keep local data, if people ask for them.
+   - Since 2026-06-18 Gemini CLI no longer serves personal Google accounts (free, AI Pro,
+     Ultra); they're sent to **Antigravity CLI** (`agy`). Gemini CLI still works with paid
+     API keys and company licenses. Its card should only show when there are chats: a
+     failed sign-in leaves `~/.gemini/tmp`, which today makes an empty card appear.
+   - **Antigravity CLI** (looked at 1.4.9 on 2026-10-28; no source code published, so from
+     its files): `~/.gemini/antigravity-cli/`.
+     - `brain/<id>/.system_generated/logs/transcript.jsonl`: one JSON line per step
+       (`step_index`, `source`, `type` USER_INPUT / PLANNER_RESPONSE, `status`,
+       `created_at`); answers carry `input_tokens`, `cache_read_tokens`, `output_tokens`.
+     - `conversation_summaries.db` (SQLite): per conversation `title`, `workspace_uris`
+       (the folder), `last_modified_time`, `status` (`CASCADE_RUN_STATUS_IDLE` when idle;
+       the value while working not seen yet), `not_fully_idle`, `killed`.
+     - The model ("gemini-3.8-flash-high") only shows inside a binary blob
+       (`conversations/<id>.db`, table `gen_metadata`): readable by pattern, best effort.
+     - Its quota ("Antigravity Starter Quota") isn't on disk: no limit bars.
+     Enough for a card like Codex's (tokens today/week per model, sessions, finished
+     alert). To check first: the status value while it works.
 4. **Complete macOS and Linux.** ✅ "App in focus" on Linux (X11, Sway, Hyprland) and
    macOS; ✅ CPU temperature on macOS with a free tool. Still to do: fans and GPU on
    macOS, Intel GPUs on Linux, focus on GNOME/KDE Wayland (not allowed by those desktops).
@@ -189,8 +206,11 @@ and with no mandatory app. That's this project's niche.
 - ✅ **Update itself** (done: `update.py`; the window shows a newer release and the
   executable updates with one click: `SHA256SUMS`, a `--version` test run, swap with
   `<name>.old`, restart; the phone's page reloads on the new version). Still to do:
-  - Test on real Linux and macOS machines (only Windows was tested end to end), including
-    whether the executables can reach GitHub over HTTPS there (certificates).
+  - Linux tried in Docker on 2026-10-28 (Ubuntu 20.04-24.04, Debian 12, Fedora 41): the
+    self-update works (exec in place), the phone pairs over Wi-Fi. Found and fixed: the
+    executable needed glibc 2.38 (now built on Debian 11) and missed the certificates on
+    Fedora (now `ssl_context()`). Still to try on real machines: music, sleep, sensors;
+    macOS not tried at all.
   - An "update automatically" option, besides "notify" and off.
   - Put the old file back by itself if the new version starts but then fails (today the
     test run catches a file that can't start at all; `<name>.old` is deleted once the new

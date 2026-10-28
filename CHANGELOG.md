@@ -4,6 +4,17 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The Linux executable didn't start on Ubuntu 22.04, Debian 12 and other systems older than
+  Ubuntu 24.04 (it needed glibc 2.38). It's now built on Debian 11 and runs on Ubuntu 20.04,
+  Debian 11 and newer (tried on Ubuntu 20.04, 22.04, 24.04, Debian 12 and Fedora 41).
+- The update check failed on Fedora (and likely openSUSE and macOS) with a certificate
+  error: the executable looked for the trusted certificates where Ubuntu keeps them. It now
+  uses the system's own list.
+
 ## [0.16.0] - 2026-10-26
 
 ### Fixed

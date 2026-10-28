@@ -19,6 +19,7 @@ import hashlib
 import json
 import os
 import re
+import ssl
 import subprocess
 import sys
 import threading
@@ -67,10 +68,28 @@ def parse_sums(text: str) -> dict[str, str]:
     return sums
 
 
+# Where each system keeps its trusted certificates, for HTTPS to GitHub.
+CA_BUNDLES = ("/etc/ssl/certs/ca-certificates.crt",  # Debian, Ubuntu, Arch, Alpine
+              "/etc/pki/tls/certs/ca-bundle.crt",    # Fedora, RHEL
+              "/etc/ssl/ca-bundle.pem",              # openSUSE
+              "/etc/ssl/cert.pem")                   # macOS and others
+
+
+def ssl_context() -> ssl.SSLContext:
+    """The packaged executable carries its own OpenSSL, which looks for certificates where
+    the machine that built it keeps them (Fedora, for one, keeps them elsewhere and every
+    check failed). Point it at this system's own list; Windows uses its certificate store."""
+    if sys.platform != "win32" and not os.environ.get("SSL_CERT_FILE"):
+        for bundle in CA_BUNDLES:
+            if os.path.isfile(bundle):
+                return ssl.create_default_context(cafile=bundle)
+    return ssl.create_default_context()
+
+
 def _get(url: str, timeout: float = 15) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": f"SpareScreen/{__version__}",
                                                    "Accept": "application/vnd.github+json"})
-    with urllib.request.urlopen(request, timeout=timeout) as resp:
+    with urllib.request.urlopen(request, timeout=timeout, context=ssl_context()) as resp:
         data: bytes = resp.read()
         return data
 
@@ -161,7 +180,9 @@ class Updater:
         if not self.frozen:
             return ("Run git pull in the SpareScreen folder, then restart it." if _from_clone()
                     else "Download it from the release page.")
-        latest = self.latest or {"assets": {}}
+        latest = self.latest
+        if latest is None:
+            return ""  # not checked yet, or the check failed: its error says so
         if self.asset not in latest["assets"]:
             return "That release has no file for this system: see the release page."
         if SUMS not in latest["assets"]:
@@ -237,7 +258,8 @@ class Updater:
     def _download(self, url: str, expected: str) -> None:
         digest = hashlib.sha256()
         request = urllib.request.Request(url, headers={"User-Agent": f"SpareScreen/{__version__}"})
-        with urllib.request.urlopen(request, timeout=60) as resp, open(self.new_file, "wb") as out:
+        with urllib.request.urlopen(request, timeout=60, context=ssl_context()) as resp, \
+                open(self.new_file, "wb") as out:
             total = int(resp.headers.get("Content-Length") or 0)
             done = 0
             while True:

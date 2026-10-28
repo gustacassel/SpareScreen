@@ -212,3 +212,26 @@ class PanelTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CertificatesTest(unittest.TestCase):
+    """The executable's own OpenSSL looks for certificates where the build machine keeps
+    them; elsewhere (Fedora, macOS) it must be pointed at the system's list."""
+
+    def test_uses_the_systems_list(self):
+        found = {}
+        with mock.patch.object(sys, "platform", "linux"), \
+                mock.patch.dict(update.os.environ, {}, clear=True), \
+                mock.patch.object(update.os.path, "isfile", lambda path: path == "/etc/pki/tls/certs/ca-bundle.crt"), \
+                mock.patch.object(update.ssl, "create_default_context",
+                                  side_effect=lambda **kw: found.update(kw) or "context"):
+            self.assertEqual(update.ssl_context(), "context")
+        self.assertEqual(found, {"cafile": "/etc/pki/tls/certs/ca-bundle.crt"})
+
+    def test_windows_and_ssl_cert_file_keep_the_default(self):
+        for platform, env in (("win32", {}), ("linux", {"SSL_CERT_FILE": "/my/certs.pem"})):
+            with mock.patch.object(sys, "platform", platform), \
+                    mock.patch.dict(update.os.environ, env, clear=True), \
+                    mock.patch.object(update.ssl, "create_default_context") as create:
+                update.ssl_context()
+            create.assert_called_once_with()

@@ -67,7 +67,7 @@ and run it. No Python needed.
 | System | File | How to run |
 |---|---|---|
 | Windows | `sparescreen-windows-x64.exe` | Double-click it. Windows SmartScreen may warn about an unknown app: *More info > Run anyway*. |
-| Linux | `sparescreen-linux-x64` | `chmod +x sparescreen-linux-x64` once, then `./sparescreen-linux-x64` |
+| Linux | `sparescreen-linux-x64` | `chmod +x sparescreen-linux-x64` once, then `./sparescreen-linux-x64`. Ubuntu 20.04, Debian 11 or newer (any 64-bit Linux from about 2020 on). |
 | macOS (Apple Silicon) | `sparescreen-macos-arm64` | `chmod +x sparescreen-macos-arm64`, then run it from Terminal. The first time macOS blocks it: *System Settings > Privacy & Security > Open Anyway*. |
 
 When you start it by hand it opens the **SpareScreen window** on the PC (see below).
