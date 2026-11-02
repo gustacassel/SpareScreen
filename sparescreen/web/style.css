@@ -145,7 +145,13 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .updated { margin-top: -4px; }
 
 /* AI screen: one card per installed tool; in portrait they stack */
-.ai-grid { display: flex; flex-direction: column; height: 100%; }
+.ai-screen { display: flex; flex-direction: column; height: 100%; }
+.ai-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ai-minor { display: none; flex-shrink: 0; margin-top: 8px; padding: 0 4px; font-size: 13px; color: var(--muted);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-minor.on { display: block; }
+.ai-minor span { margin-right: 16px; }
+.ai-minor b { color: var(--text); font-weight: 600; letter-spacing: .06em; }
 .ai-card { flex: 1; display: flex; flex-direction: column; margin-top: 10px; }
 .ai-card:first-child { margin-top: 0; }
 .ai-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }

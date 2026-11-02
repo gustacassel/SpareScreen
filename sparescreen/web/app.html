@@ -123,7 +123,11 @@
 
     <!-- Screen 2: AI coding tools (one card per installed tool, built by app.js) -->
     <section class="screen" data-name="ai" data-title="AI">
-      <div id="ai-grid" class="ai-grid"></div>
+      <div class="ai-screen">
+        <div id="ai-grid" class="ai-grid"></div>
+        <!-- Tools installed but not in use today: one short line each, under the cards -->
+        <div id="ai-minor" class="ai-minor"></div>
+      </div>
     </section>
 
     <!-- Screen 3: what is going on on the PC -->

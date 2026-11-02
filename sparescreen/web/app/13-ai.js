@@ -108,12 +108,44 @@
     return card;
   }
 
+  // In use: a session open (or from the last hours), or tokens today. Those get the cards;
+  // a tool only used earlier this week shrinks to a line under them, and one not used all
+  // week leaves the screen. With none in use today, they all keep their cards.
+  function inUse(tool) {
+    var t = tool.today || {};
+    return (tool.sessions && tool.sessions.length > 0) || (t.input || 0) + (t.output || 0) + (t.cache_read || 0) > 0;
+  }
+
+  function weekTokens(tool) {
+    var total = 0;
+    for (var i = 0; tool.week_models && i < tool.week_models.length; i++) total += tool.week_models[i].tokens || 0;
+    return total;
+  }
+
+  function renderMinor(tools) {
+    var box = $("ai-minor");
+    box.innerHTML = "";
+    for (var i = 0; i < tools.length; i++) {
+      var line = el("span");
+      line.appendChild(el("b", "", tools[i].name.toUpperCase()));
+      line.appendChild(document.createTextNode(" · " + shortNumber(weekTokens(tools[i])) + " this week"));
+      box.appendChild(line);
+    }
+    box.className = "ai-minor" + (tools.length ? " on" : "");
+  }
+
   function renderAi(data, now) {
-    var tools = [];
+    var installed = [], active = [], earlier = [];
     for (var i = 0; i < AI_TOOLS.length; i++) {
       var tool = data[AI_TOOLS[i]];
-      if (tool && tool.installed) tools.push(tool);
+      if (!tool || !tool.installed) continue;
+      installed.push(tool);
+      watchSessions(tool, tool.sessions);  // alerts for every tool, shown or not
+      if (inUse(tool)) active.push(tool);
+      else if (weekTokens(tool) > 0) earlier.push(tool);
     }
+    var tools = active.length ? active : installed;
+    renderMinor(active.length ? earlier : []);
     var grid = $("ai-grid");
     // "dual" is the compact layout for two or more; "triple" squeezes it a little further.
     grid.className = "ai-grid " + (tools.length > 1 ? "dual" : "single") + (tools.length > 2 ? " triple" : "");
@@ -126,8 +158,5 @@
       grid.appendChild(empty);
       return;
     }
-    for (var j = 0; j < tools.length; j++) {
-      watchSessions(tools[j], tools[j].sessions);
-      grid.appendChild(toolCard(tools[j], now));
-    }
+    for (var j = 0; j < tools.length; j++) grid.appendChild(toolCard(tools[j], now));
   }

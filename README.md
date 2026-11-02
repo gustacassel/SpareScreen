@@ -464,9 +464,12 @@ they act on the PC. Pressing one doesn't change screens.
 
 ## AI tools: Claude Code, Codex and Gemini CLI
 
-The AI screen shows a card for each tool it finds on the PC, and nothing for the ones
-that aren't installed. Everything is read from the tools' own local files; nothing is
-sent anywhere.
+The AI screen shows a card for each tool you're using: one with a session open (or from
+the last hours) or tokens today. A tool you only used earlier this week shrinks to one line
+under the cards ("CODEX · 940K this week"), and one you haven't used all week isn't shown,
+so the tool you actually use gets the room. When none is in use today, they all keep their
+cards. The "session finished" alert works for every tool, shown or not. Everything is read
+from the tools' own local files; nothing is sent anywhere.
 
 | | Claude Code | Codex CLI | Gemini CLI |
 |---|---|---|---|

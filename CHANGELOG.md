@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
 
 ## [Unreleased]
 
+### Changed
+
+- The AI screen gives the room to the tools in use (a session open, or tokens today): one
+  used only earlier this week shrinks to a line under the cards, and one not used all week
+  isn't shown. Before, an installed but unused Codex or Gemini CLI took as much space as
+  the Claude Code you were using.
+
 ### Security
 
 - A website open in a browser on the PC could read the dashboard's data, the pairing code
