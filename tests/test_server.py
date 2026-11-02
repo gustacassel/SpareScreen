@@ -98,3 +98,54 @@ class ServerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DnsRebindingTest(unittest.TestCase):
+    """A website that points a name of its own at 127.0.0.1 reaches the agent from this PC,
+    but under that name: it must get nothing that this PC gets without a pairing code."""
+
+    @classmethod
+    def setUpClass(cls):
+        from sparescreen.pairing import Pairing
+
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.config = ConfigStore(Path(cls.tmp.name) / "config.json")
+        cls.server = serve("127.0.0.1", 0, [cls.config], 0.2, cls.config, Pairing(Path(cls.tmp.name) / "d.json"))
+        cls.port = cls.server.server_address[1]
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls.tmp.cleanup()
+
+    def ask(self, method, path, host, body=None):
+        import http.client
+
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        headers = {"Host": host}
+        if body is not None:
+            headers["Origin"] = "http://" + host  # same origin, as a rebinding page would be
+        conn.request(method, path, body=json.dumps(body) if body is not None else None, headers=headers)
+        resp = conn.getresponse()
+        resp.read()
+        conn.close()
+        return resp
+
+    def test_other_names_get_nothing(self):
+        evil = f"evil.example:{self.port}"
+        for method, path, body in (("GET", "/events", None), ("GET", "/history", None), ("GET", "/names", None),
+                                   ("GET", "/info", None), ("POST", "/config", {"theme": "neon"}),
+                                   ("POST", "/handoff", {})):
+            self.assertIn(self.ask(method, path, evil, body).status, (401, 403), path)
+        self.assertEqual(self.config.read()["theme"], "graphite")
+
+    def test_localhost_still_works(self):
+        for host in (f"localhost:{self.port}", f"127.0.0.1:{self.port}", "localhost"):
+            self.assertEqual(self.ask("GET", "/history", host).status, 200, host)
+
+    def test_pages_cant_be_framed_by_other_sites(self):
+        resp = self.ask("GET", "/panel.html", f"localhost:{self.port}")
+        self.assertEqual(resp.headers["X-Frame-Options"], "SAMEORIGIN")
+        self.assertNotIn("Python", resp.headers["Server"])

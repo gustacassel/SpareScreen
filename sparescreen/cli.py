@@ -18,7 +18,7 @@ from .appwindow import open_window
 from .config import ConfigStore
 from .demo import demo_sources
 from .pairing import Pairing
-from .panel import Panel
+from .panel import Panel, panel_key
 from .photos import Photos
 from .power import PowerWatch
 from .server import serve
@@ -220,12 +220,13 @@ def main() -> Optional[int]:
         pairing.reset()
     phone_url = f"http://{lan_ip()}:{args.port}" if args.host in ("0.0.0.0", "::") else None
     local_url = f"http://localhost:{args.port}"
-    window_url = f"{local_url}/panel.html"  # the PC window: checks, devices, pairing
+    key = panel_key()
+    window_url = f"{local_url}/panel.html#key={key}"  # the PC window: checks, devices, pairing
     info = {"phone_url": phone_url, "version": __version__}
     activity = cast("Optional[Activity]", next((s for s in sources if s.name == "activity"), None))
     panel = Panel(pairing, bridge, usb=not args.no_usb, info=info, local_url=local_url,
                   autostart_args=autostart_args(), config=config, activity=activity, updater=updater,
-                  photos=photos)
+                  photos=photos, key=key)
     try:
         server = serve(args.host, args.port, sources, args.interval, config, pairing, info=info, panel=panel)
     except OSError as exc:

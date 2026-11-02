@@ -176,6 +176,17 @@ and with no mandatory app. That's this project's niche.
     phone on Wi-Fi charged from a separate port or charger.
   - Whatever the way: the 20-80% band as a setting, and a "battery saver" status in the
     PC window with what was found for that phone.
+- **Security review** (2026-11-02, before 1.0; one pass by hand and one independent):
+  fixed DNS rebinding (this PC is trusted only as `localhost`), a key for the PC window
+  (apps on a USB phone), pairing code rotation and growing lockouts, framing, unbounded
+  reads, `/whoami` readable by any site. Still open, accepted for now:
+  - Updates: `SHA256SUMS` comes from the same release, so it proves the download wasn't
+    damaged, not who made it. Sign it with a key kept offline (minisign/Ed25519) and check
+    it against a public key inside SpareScreen; pin the workflow's actions by commit and
+    its build packages by version; turn on GitHub's immutable releases.
+  - Someone on the same Wi-Fi answering for the PC's `.local` name could catch the pairing
+    when the phone moves to it (same family as plain HTTP on Wi-Fi, documented). A
+    challenge in `/whoami` signed with the device's key would close it.
 - **Game FPS.** ✅ Windows, with PresentMon (set up from the PC window). Still to do:
   - Linux: MangoHud's log files (when the game runs with MangoHud).
   - macOS: no practical free way for other apps' games.

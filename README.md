@@ -99,8 +99,10 @@ with three tabs, kept live. A dot on a tab means something there needs you:
 At the bottom, **Start with Windows** (or "Start when I log in" elsewhere) and **Check for
 updates**; at the top, **Open dashboard**.
 
-It answers only to this PC (`http://localhost:8765/panel.html`); other devices and other
-websites can't read it or press its buttons.
+It answers only to this PC, and only to the window SpareScreen opens itself (from the tray
+icon, or the `panel.html#key=...` address it prints in the terminal): it carries a key kept
+in `~/.sparescreen/panel.key`. Other devices, other websites, and apps on a phone plugged
+in over USB can't read it or press its buttons.
 
 ### Updating
 
@@ -590,12 +592,14 @@ no modern syntax (a test checks this). See [CLAUDE.md](CLAUDE.md) for the projec
   Python may accept connections. Allow it on *private networks*. If your Wi-Fi is set
   as *public*, switch it to *private* or allow port 8765 in the firewall.
 - **Privacy on Wi-Fi:** only paired devices get data, but the connection itself is plain
-  HTTP on your local network. On a network you don't trust, use USB only with
-  `--host 127.0.0.1`.
+  HTTP on your local network: someone on the same network could read it, or pretend to be
+  the PC (or its `.local` name) to catch the phone's pairing. On a network you don't trust,
+  use USB only with `--host 127.0.0.1`.
 - **Lost the pairing code?** It's in the SpareScreen window (and printed when the agent
-  starts); a new one is made every time it starts. The paired device keeps working;
-  `--reset-pairing` forgets it.
-- **"Too many attempts":** after 5 wrong codes, pairing pauses for a minute.
+  starts). A new one is made every time it starts and after every pairing, so a code
+  works once. The paired device keeps working; `--reset-pairing` forgets it.
+- **"Too many attempts":** after 5 wrong codes, pairing pauses for a minute (twice as long
+  each time it happens again, up to an hour) and the code changes.
 - **Red dot in the top corner / "Disconnected" screen:** the phone lost its connection
   to the agent (the dot right away, the full screen after 30 seconds, with the time of the
   last data). The page reconnects by itself when the agent is back, and reloads itself

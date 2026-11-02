@@ -12,10 +12,15 @@
     return node;
   }
 
+  // SpareScreen opens this window as panel.html#key=...: the key goes back with every
+  // request (a phone on USB reaches the PC as localhost too, but doesn't have it).
+  var KEY = (/[#&]key=([\w-]+)/.exec(location.hash) || [])[1] || "";
+
   function request(method, path, body, done) {
     var xhr = new XMLHttpRequest();
     xhr.open(method, path);
     xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("X-Panel-Key", KEY);
     xhr.onload = function () {
       var data = null;
       try { data = JSON.parse(xhr.responseText); } catch (e) { data = null; }
@@ -303,6 +308,7 @@
   function refresh() {
     request("GET", "panel/state", null, function (status, state) {
       if (status === 200 && state) render(state);
+      else if (status === 403) $("running").textContent = "Open this window from SpareScreen: its tray icon, or the address it prints.";
       else if (!updating) $("running").textContent = "SpareScreen isn't running. Start it again to use this window.";
     });
   }
@@ -311,7 +317,7 @@
   // A quick restart (--dev) is back within a moment, so check once before closing.
   function watchAgent() {
     if (!window.EventSource) return;
-    var alive = new EventSource("panel/events");
+    var alive = new EventSource("panel/events?key=" + encodeURIComponent(KEY));
     alive.onerror = function () {
       alive.close();
       if (updating) {
@@ -324,6 +330,7 @@
             watchAgent();
             return;
           }
+          if (status === 403) return;  // running, but this window has no key: refresh() says how to open it
           window.close();
           $("running").textContent = "SpareScreen was closed. You can close this window.";
         });

@@ -131,7 +131,7 @@
       if (status !== 200) return;
       var lines = [];
       if (info.phone_url) lines.push(["Phone address", info.phone_url]);
-      if (info.code) lines.push(["Pairing code", info.code]);
+      lines.push(["Pairing code", "in the SpareScreen window"]);  // not sent here: a USB phone is "this PC" too
       lines.push(["USB", "plug the phone in with USB debugging on"]);
       for (var i = 0; i < lines.length; i++) {
         var row = el("div", "connect-row");

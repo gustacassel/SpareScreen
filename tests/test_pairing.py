@@ -29,10 +29,13 @@ class PairingTest(unittest.TestCase):
 
     def test_localhost_is_trusted_and_network_is_not(self):
         p = Pairing(self.path)
-        self.assertTrue(p.is_trusted("127.0.0.1", None))
-        self.assertTrue(p.is_trusted("::1", None))
+        self.assertTrue(p.is_trusted("127.0.0.1", None, "localhost"))
+        self.assertTrue(p.is_trusted("::1", None, "[::1]"))
+        # From here, but asking for another name: a website pointed at 127.0.0.1 (DNS rebinding).
+        self.assertFalse(p.is_trusted("127.0.0.1", None, "evil.example"))
+        self.assertFalse(p.is_trusted("127.0.0.1", None))
         self.assertFalse(p.is_trusted("192.168.0.20", None))
-        self.assertFalse(Pairing(self.path, trust_localhost=False).is_trusted("127.0.0.1", None))
+        self.assertFalse(Pairing(self.path, trust_localhost=False).is_trusted("127.0.0.1", None, "localhost"))
 
     def test_pairing_gives_a_token_that_survives_restarts(self):
         p = Pairing(self.path)
@@ -57,6 +60,27 @@ class PairingTest(unittest.TestCase):
         with mock.patch.object(pairing_module.time, "time", return_value=10 ** 12):
             token, error = p.pair(p.code)
         self.assertIsNotNone(token)
+
+    def test_code_changes_after_pairing_and_lockouts_grow(self):
+        p = Pairing(self.path)
+        used = p.code
+        p.pair(used)
+        self.assertNotEqual(p.code, used)  # seen once, can't pair again later
+        self.assertEqual(p.pair(used)[1][0], "wrong")
+        p = Pairing(self.path)  # a fresh count of wrong codes
+        lockouts = []
+        for round_ in range(3):
+            with mock.patch.object(pairing_module.time, "time", return_value=10 ** 12 * (round_ + 1)):
+                before = p.code
+                wrong = "000000" if p.code != "000000" else "111111"
+                for _ in range(MAX_FAILURES):
+                    error = p.pair(wrong)[1]
+                lockouts.append(error[1])
+                self.assertNotEqual(p.code, before)  # guesses so far are worth nothing
+        self.assertEqual(lockouts, [60, 120, 240])
+
+    def test_odd_characters_in_the_code(self):
+        self.assertEqual(Pairing(self.path).pair("é1234")[1][0], "wrong")  # no crash
 
     def test_reset_forgets_devices(self):
         p = Pairing(self.path)
@@ -117,12 +141,11 @@ class PairedServerTest(unittest.TestCase):
         self.assertEqual(self.call("/events", cookie=cookie)[0], 200)
         self.assertEqual(self.call("/config", {"theme": "neon"}, cookie=cookie)[0], 200)
 
-    def test_pair_code_is_only_shown_to_this_pc(self):
-        # In this test localhost is not trusted as a device, but /pair-code still checks
-        # the real address: a request from 127.0.0.1 may read it.
-        status, _, body = self.call("/pair-code")
-        self.assertEqual(status, 200)
-        self.assertEqual(json.loads(body)["code"], self.pairing.code)
+    def test_code_is_not_handed_out(self):
+        # Only the PC window (with its key) shows the code; /info doesn't, since a phone on
+        # USB also arrives as this PC.
+        self.assertNotIn("code", json.loads(self.call("/info")[2] or b"{}"))
+        self.assertEqual(self.call("/pair-code")[0], 404)
 
 
 if __name__ == "__main__":

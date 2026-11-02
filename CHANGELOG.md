@@ -4,6 +4,28 @@ All notable changes to SpareScreen are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+
+- A website open in a browser on the PC could read the dashboard's data, the pairing code
+  and the photos, and change settings, by pointing a name of its own at 127.0.0.1 (DNS
+  rebinding): requests from this PC were trusted without checking the name they were sent
+  to. This PC is now trusted only when it asks for itself as `localhost` (the PC's own
+  browser and phones on USB still need no code).
+- The SpareScreen window needs a key that only SpareScreen's own launcher knows (tray icon,
+  or the address printed in the terminal). A phone on USB reaches the PC as `localhost`
+  too, so any app on it could otherwise press the window's buttons (for example point the
+  photo folder at Documents and download the pictures).
+- The pairing code changes after each pairing and after each lockout, and lockouts grow
+  (1, 2, 4... minutes, up to an hour): guessing it over the network stays out of reach.
+  The dashboard's settings on the PC no longer show the code (the SpareScreen window does).
+- SpareScreen's pages can no longer be shown inside another website's frame
+  (clickjacking), and replies no longer name the Python version.
+- A malformed request could make the agent read without end before any pairing; stalled
+  connections are now dropped after a minute.
+- Other websites can no longer read `/whoami`, which let them notice SpareScreen.
+
 ## [0.16.1] - 2026-10-28
 
 ### Fixed

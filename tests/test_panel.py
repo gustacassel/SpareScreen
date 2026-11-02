@@ -109,7 +109,7 @@ class PanelServerTest(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.pairing = Pairing(Path(cls.tmp.name) / "devices.json")
         config = ConfigStore(Path(cls.tmp.name) / "config.json")
-        cls.panel = panel.Panel(cls.pairing, info={"version": "test"}, local_url="http://localhost")
+        cls.panel = panel.Panel(cls.pairing, info={"version": "test"}, local_url="http://localhost", key="k" * 24)
         cls.server = serve("127.0.0.1", 0, [config], 0.2, config, cls.pairing, panel=cls.panel)
         cls.port = cls.server.server_address[1]
         threading.Thread(target=cls.server.serve_forever, daemon=True).start()
@@ -120,8 +120,11 @@ class PanelServerTest(unittest.TestCase):
         cls.server.server_close()
         cls.tmp.cleanup()
 
-    def call(self, path, body=None, headers=None):
-        req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", headers=headers or {},
+    def call(self, path, body=None, headers=None, key="k" * 24):
+        headers = dict(headers or {})
+        if key:
+            headers["X-Panel-Key"] = key
+        req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", headers=headers,
                                      data=json.dumps(body).encode() if body is not None else None)
         try:
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -144,6 +147,14 @@ class PanelServerTest(unittest.TestCase):
         self.assertEqual(self.call("/panel/action", {"action": "unpair", "index": 0},
                                    {"Origin": "https://evil.example"})[0], 403)
         self.assertEqual(self.call("/config", {"theme": "neon"}, {"Origin": "https://evil.example"})[0], 403)
+
+    def test_needs_the_windows_key(self):
+        # A phone on USB reaches the PC as localhost too: without the key, nothing.
+        self.assertEqual(self.call("/panel/state", key=None)[0], 403)
+        self.assertEqual(self.call("/panel/state", key="wrong" * 5)[0], 403)
+        self.assertEqual(self.call("/panel/events", key=None)[0], 403)
+        self.assertEqual(self.call("/panel/action", {"action": "unpair", "index": 0}, key=None)[0], 403)
+        self.assertEqual(len(self.pairing.devices()), 0)
 
     def test_action(self):
         with mock.patch.object(panel.webbrowser, "open") as opened:

@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import images, names
 from .history import History
-from .pairing import LOCAL_ADDRESSES
+from .pairing import LOCAL_ADDRESSES, LOCAL_HOSTS, host_name
 from .shapes import Json, Source
 
 if TYPE_CHECKING:
@@ -80,8 +80,6 @@ class Clients:
             return [dict(c) for c in self._open.values()]
 
 
-LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
-
 
 def start_sampler(hub: Hub, sources: list[Source], interval: float) -> None:
     def loop() -> None:
@@ -103,13 +101,24 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
                  clients: Clients, panel: Optional[Panel], media: Any = None,
                  photos: Any = None) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
+        server_version = "SpareScreen"  # not "BaseHTTP/0.6 Python/3.x" in every reply
+        sys_version = ""
+        timeout = 60  # a connection that sends or takes nothing for a minute is dropped
+                      # (the streams write at least every 15 s)
+
         def _trusted(self) -> bool:
-            return pairing is None or pairing.is_trusted(self.client_address[0], self.headers.get("Cookie"))
+            return pairing is None or pairing.is_trusted(self.client_address[0], self.headers.get("Cookie"),
+                                                         host_name(self.headers.get("Host")))
+
+        def _panel(self, query: str = "") -> bool:
+            """The PC window: this PC by name, with the window's key (header, or ?key= for the
+            event stream, which can't send headers). A phone on USB is localhost too."""
+            key = self.headers.get("X-Panel-Key") or (parse_qs(query).get("key") or [""])[0]
+            return panel is not None and self._local() and panel.allows(key)
 
         def _local(self) -> bool:
             """This PC, reached by its own name (a DNS-rebinding page would carry another Host)."""
-            host = (self.headers.get("Host") or "").rsplit(":", 1)[0].lower()
-            return self.client_address[0] in LOCAL_ADDRESSES and host in LOCAL_HOSTS
+            return self.client_address[0] in LOCAL_ADDRESSES and host_name(self.headers.get("Host")) in LOCAL_HOSTS
 
         def _cross_site(self) -> bool:
             """A POST sent by another website's page: browsers always say where it comes from."""
@@ -128,7 +137,7 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
             self.wfile.write(body)
 
         def _read_json(self) -> Any:
-            size = min(int(self.headers.get("Content-Length") or 0), 10_000)
+            size = max(0, min(int(self.headers.get("Content-Length") or 0), 10_000))  # -1 would read forever
             return json.loads(self.rfile.read(size) or b"{}")
 
         def do_GET(self) -> None:
@@ -137,8 +146,15 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
                 self._redeem(parse_qs(query).get("handoff", [""])[0])
             elif path == "/whoami":
                 # The page on the phone tries the PC's names; this says "yes, it's this agent".
-                # No data at all, and readable from the page's other address (CORS).
-                self._send_json(200, {"id": names.INSTANCE}, [("Access-Control-Allow-Origin", "*")])
+                # No data at all, and readable from the page's other address (CORS): only a
+                # page on this same port (SpareScreen's own), so other websites can't use the
+                # id to notice SpareScreen or follow the browser around.
+                origin = self.headers.get("Origin") or ""
+                address = self.server.server_address
+                assert isinstance(address, tuple)  # (host, port): this server is always TCP
+                allowed = [("Access-Control-Allow-Origin", origin), ("Vary", "Origin")] \
+                    if origin and urlparse(origin).port == address[1] else [("Vary", "Origin")]
+                self._send_json(200, {"id": names.INSTANCE}, allowed)
             elif path == "/names":
                 if self._trusted():
                     address = self.server.server_address
@@ -163,19 +179,15 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
                     pairing.note_waiting(self.client_address[0], self.headers.get("User-Agent") or "")
                 self._send_json(200, {"paired": trusted, "pairing": pairing is not None})
             elif path == "/panel/state":
-                if panel is None or not self._local():
+                if panel is None or not self._panel():
                     self._send_json(403, {})
                 else:
                     self._send_json(200, panel.state(clients.list()))
             elif path == "/panel/events":
-                if panel is None or not self._local():
+                if panel is None or not self._panel(query):
                     self.send_error(403)
                 else:
                     self._stream_alive()
-            elif path == "/pair-code":
-                # Only this PC may read the code (the page on the PC can show it).
-                local = pairing is not None and self.client_address[0] in LOCAL_ADDRESSES
-                self._send_json(200 if local else 403, {"code": pairing.code} if local and pairing else {})
             elif path.startswith("/art/"):
                 self._serve_art(path[len("/art/"):])
             elif path == "/photos" and photos is not None:
@@ -187,11 +199,12 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
             elif path.startswith("/photo/") and photos is not None:
                 self._serve_photo(path[len("/photo/"):])
             elif path == "/info":
-                # "Connect a phone" details for the settings screen, only on this PC.
-                if self.client_address[0] not in LOCAL_ADDRESSES:
+                # "Connect a phone" details for the settings screen, only on this PC. Not the
+                # pairing code: a phone on USB is "this PC" too (the PC window shows the code).
+                if not self._local():
                     self._send_json(403, {})
                 else:
-                    self._send_json(200, dict(info or {}, code=pairing.code if pairing else None))
+                    self._send_json(200, dict(info or {}))
             else:
                 self._serve_static("index.html" if path == "/" else path.lstrip("/"))
 
@@ -221,7 +234,7 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
                     return
                 self._send_json(200, {"code": pairing.handoff(digest) if digest and pairing else None})
             elif path == "/panel/action" and panel is not None:
-                if not self._local() or not isinstance(data, dict):
+                if not self._panel() or not isinstance(data, dict):
                     self.send_error(403)
                     return
                 self._send_json(200, panel.act(str(data.get("action", "")), data))
@@ -295,6 +308,11 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-cache")
+            # Only SpareScreen's own frame (index.html) may show its pages: another website
+            # can't put the PC window under a fake button (clickjacking).
+            self.send_header("X-Frame-Options", "SAMEORIGIN")
+            self.send_header("Content-Security-Policy", "frame-ancestors 'self'")
+            self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(body)
 
@@ -333,7 +351,7 @@ def make_handler(hub: Hub, config: Optional[ConfigStore], pairing: Optional[Pair
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             address = self.client_address[0]
-            local = address in LOCAL_ADDRESSES
+            local = self._local()
             # Remote devices are tied to their pairing: unpaired (or replaced by a new device)
             # means the stream closes, and the page asks for the code again.
             digest = None if local or pairing is None else pairing.paired_hash(self.headers.get("Cookie"))

@@ -72,9 +72,11 @@ class NamesServerTest(unittest.TestCase):
         cls.server.server_close()
         cls.tmp.cleanup()
 
-    def call(self, method, path, body=None, cookie=None):
+    def call(self, method, path, body=None, cookie=None, origin=None):
         conn = http.client.HTTPConnection("127.0.0.1", self.server.server_address[1], timeout=5)
         headers = {"Cookie": cookie} if cookie else {}
+        if origin:
+            headers["Origin"] = origin
         conn.request(method, path, json.dumps(body) if body is not None else None, headers)
         resp = conn.getresponse()
         data = resp.read()
@@ -82,9 +84,12 @@ class NamesServerTest(unittest.TestCase):
         return resp.status, resp.headers, json.loads(data) if data.startswith(b"{") else None
 
     def test_whoami_is_public_and_cross_origin(self):
-        status, headers, data = self.call("GET", "/whoami")
+        port = self.server.server_address[1]
+        status, headers, data = self.call("GET", "/whoami", origin=f"http://192.168.0.5:{port}")
         self.assertEqual((status, data["id"]), (200, names.INSTANCE))
-        self.assertEqual(headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(headers["Access-Control-Allow-Origin"], f"http://192.168.0.5:{port}")  # the page's other address
+        _, headers, _ = self.call("GET", "/whoami", origin="https://some-website.example")
+        self.assertIsNone(headers["Access-Control-Allow-Origin"])  # other sites can't read it
 
     def test_move_to_a_name_keeps_the_pairing(self):
         self.assertEqual(self.call("GET", "/names")[0], 401)

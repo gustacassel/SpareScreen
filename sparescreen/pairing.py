@@ -4,11 +4,18 @@ The agent shows a 6-digit code. A new device sends it once and gets a random
 token back in a long-lived cookie; from then on the cookie is enough. Only a
 hash of each token is stored on the PC (~/.sparescreen/devices.json).
 
-Requests from this machine are always trusted: the PC's own browser and phones
-on USB (adb reverse makes them connect through 127.0.0.1).
+Requests from this machine are trusted when they ask for it by its own name
+(localhost): the PC's own browser and phones on USB (adb reverse makes them connect
+through 127.0.0.1 as localhost). Coming from 127.0.0.1 isn't enough: a website can
+point a name of its own at 127.0.0.1 (DNS rebinding) and its page would arrive from
+here too, but under that name.
 
 One paired device at a time: pairing a new one forgets the previous one (the PC
 window shows the code and who is asking for it). USB and the PC itself don't count.
+
+The code changes after every pairing (someone who saw it can't use it again later) and
+after every lockout, and each lockout lasts twice as long as the last (up to an hour):
+guessing six digits through the network stays out of reach.
 """
 
 from __future__ import annotations
@@ -28,10 +35,25 @@ from .shapes import Json
 DEVICES_FILE = Path.home() / ".sparescreen" / "devices.json"
 COOKIE = "sparescreen_token"
 LOCAL_ADDRESSES = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]"}  # this PC asking for itself by name
 MAX_FAILURES = 5     # wrong codes in a row before a short lockout
-LOCKOUT = 60         # seconds
+LOCKOUT = 60         # seconds, doubling with each lockout in a row
+MAX_LOCKOUT = 3600
 WAITING_FOR = 120    # seconds a device that asked to pair shows up as "waiting"
 HANDOFF_FOR = 60     # seconds a code to move a device to another address of the PC lasts
+
+
+def _same(a: str, b: str) -> bool:
+    """compare_digest for any text (it refuses non-ASCII str)."""
+    return secrets.compare_digest(a.encode("utf-8", "replace"), b.encode("utf-8", "replace"))
+
+
+def host_name(header: Optional[str]) -> str:
+    """The name a request was sent to, from its Host header, without the port."""
+    host = (header or "").strip().lower()
+    if host.startswith("["):  # [::1]:8765
+        return host[:host.find("]") + 1] if "]" in host else host
+    return host.split(":", 1)[0]
 
 
 def _hash(token: str) -> str:
@@ -43,9 +65,10 @@ class Pairing:
         self.path = path
         self.trust_localhost = trust_localhost
         self.single = single
-        self.code = f"{secrets.randbelow(10 ** 6):06d}"
+        self.code = self._new_code()
         self._lock = threading.Lock()
         self._failures = 0
+        self._lockouts = 0
         self._locked_until: float = 0
         self._waiting: Optional[Json] = None  # the last device that asked to pair: {"address", "device", "at"}
         self._handoffs: dict[str, tuple[str, float]] = {}  # one-time code -> (device hash, valid until)
@@ -54,8 +77,10 @@ class Pairing:
         except (OSError, ValueError):
             self._devices = []
 
-    def is_trusted(self, address: str, cookie_header: Optional[str]) -> bool:
-        if self.trust_localhost and address in LOCAL_ADDRESSES:
+    def is_trusted(self, address: str, cookie_header: Optional[str], host: str = "") -> bool:
+        """`host` is the name the request was sent to (host_name()): this PC needs no code
+        only when it asks for itself as localhost."""
+        if self.trust_localhost and address in LOCAL_ADDRESSES and host in LOCAL_HOSTS:
             return True
         return self.paired_hash(cookie_header) is not None
 
@@ -69,7 +94,7 @@ class Pairing:
 
     def knows(self, digest: str) -> bool:
         with self._lock:
-            return any(secrets.compare_digest(d.get("hash", ""), digest) for d in self._devices)
+            return any(_same(d.get("hash", ""), digest) for d in self._devices)
 
     def note_waiting(self, address: str, device: str) -> None:
         """A device that isn't paired opened the page: the PC window shows it with the code."""
@@ -96,14 +121,19 @@ class Pairing:
             now = time.time()
             if now < self._locked_until:
                 return None, ("locked", int(self._locked_until - now) + 1)
-            if not secrets.compare_digest(str(code).strip(), self.code):
+            if not _same(str(code).strip(), self.code):
                 self._failures += 1
                 if self._failures >= MAX_FAILURES:
                     self._failures = 0
-                    self._locked_until = now + LOCKOUT
-                    return None, ("locked", LOCKOUT)
+                    self._lockouts += 1
+                    seconds = min(LOCKOUT * 2 ** (self._lockouts - 1), MAX_LOCKOUT)
+                    self._locked_until = now + seconds
+                    self._rotate()  # the guesses so far are worth nothing
+                    return None, ("locked", seconds)
                 return None, ("wrong", MAX_FAILURES - self._failures)
             self._failures = 0
+            self._lockouts = 0
+            self._rotate()  # who saw this code can't pair with it again later
             token = secrets.token_urlsafe(32)
             if self.single:
                 self._devices = []  # the new device replaces the previous one
@@ -112,6 +142,14 @@ class Pairing:
             self._waiting = None
             self._save()
             return token, None
+
+    @staticmethod
+    def _new_code() -> str:
+        return f"{secrets.randbelow(10 ** 6):06d}"
+
+    def _rotate(self) -> None:
+        self.code = self._new_code()
+        print(f"Pairing code for new devices is now {self.code}", flush=True)
 
     def handoff(self, digest: str) -> str:
         """A one-time code that moves a paired device to another address of this PC (the

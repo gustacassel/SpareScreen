@@ -1,19 +1,24 @@
 """The PC window: what's missing (with a button to fix it), who is connected and pairing.
 
-The server answers /panel/state and /panel/action to this machine only; the page is
-web/panel.html, opened in an app window (appwindow.py). Checks are built from the
-latest data snapshot, so they show what the dashboard actually gets.
+The server answers /panel/state and /panel/action to this machine only, and only with
+the window's key: a phone on USB also reaches the agent as localhost (adb reverse), and
+any app on it could otherwise press these buttons. SpareScreen opens the window as
+panel.html#key=..., the page sends the key back with every request, and it's kept in
+~/.sparescreen/panel.key so a second start (or the tray) opens a window that works.
+Checks are built from the latest data snapshot, so they show what the dashboard gets.
 """
 
 from __future__ import annotations
 
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
 import time
 import webbrowser
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from . import autostart, fps, lhm, names
@@ -28,6 +33,27 @@ if TYPE_CHECKING:
     from .server import Hub
     from .update import Updater
     from .usb import UsbBridge
+
+KEY_FILE = Path.home() / ".sparescreen" / "panel.key"
+
+
+def panel_key(path: Path = KEY_FILE) -> str:
+    """The PC window's key, made once and kept (only this user can read it)."""
+    try:
+        key = path.read_text(encoding="utf-8").strip()
+        if len(key) >= 20:
+            return key
+    except OSError:
+        pass
+    key = secrets.token_urlsafe(24)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(key, encoding="utf-8")
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    return key
+
 
 # Shown as the device name; modern browsers hide the phone model, so this stays generic.
 _SYSTEMS = (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("CrOS", "ChromeOS"),
@@ -55,8 +81,10 @@ class Panel:
     def __init__(self, pairing: Optional[Pairing] = None, bridge: Optional[UsbBridge] = None, usb: bool = True,
                  info: Optional[Json] = None, local_url: str = "", autostart_args: Iterable[str] = (),
                  config: Optional[ConfigStore] = None, activity: Optional[Activity] = None,
-                 updater: Optional[Updater] = None, photos: Optional[Photos] = None) -> None:
+                 updater: Optional[Updater] = None, photos: Optional[Photos] = None,
+                 key: Optional[str] = None) -> None:
         self.pairing = pairing
+        self.key = key or secrets.token_urlsafe(24)  # see panel_key()
         self.updater = updater
         self.photos = photos
         self.config = config
@@ -69,6 +97,10 @@ class Panel:
         self.hub: Optional[Hub] = None  # set by server.serve()
         self.message: Optional[str] = None  # result of the last action, shown once
         self.reachable: dict[str, float] = {}  # PC name -> when a phone last reached SpareScreen by it
+
+    def allows(self, key: Optional[str]) -> bool:
+        """The request carries the window's key."""
+        return bool(key) and secrets.compare_digest(str(key), self.key)
 
     def name_works(self, name: str) -> None:
         self.reachable[name] = time.time()
