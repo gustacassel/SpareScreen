@@ -26,7 +26,10 @@ class DemoShapeTest(unittest.TestCase):
     def test_ai_tools(self):
         with tempfile.TemporaryDirectory() as home, mock.patch.object(claude, "load_limits", return_value=None):
             os.mkdir(os.path.join(home, "sessions"))
-            os.mkdir(os.path.join(home, "tmp"))
+            chats = os.path.join(home, "tmp", "project", "chats")
+            os.makedirs(chats)
+            with open(os.path.join(chats, "session-1.jsonl"), "w", encoding="utf-8") as f:
+                f.write('{"sessionId": "s1"}\n')
             real = {"claude": claude.ClaudeSource(home=home).read(), "codex": CodexSource(home=home).read(),
                     "gemini": GeminiSource(home=home).read()}
         for name, demo in (("claude", DemoClaude().read()), ("codex", DemoCodex().read()),

@@ -17,12 +17,13 @@
 
 <p align="center">
   <img src="docs/screenshots/hardware.png" width="32%" alt="Hardware screen: CPU, GPU and RAM usage, temperature and clocks">
-  <img src="docs/screenshots/ai.png" width="32%" alt="AI screen: Claude Code and Codex usage limits and sessions">
+  <img src="docs/screenshots/ai.png" width="32%" alt="AI screen: Claude Code, Codex and Gemini CLI usage limits and sessions">
   <img src="docs/screenshots/pc.png" width="32%" alt="PC screen: app in focus, top apps, fans, network and disks">
 </p>
 <p align="center">
-  <img src="docs/screenshots/music.png" width="32%" alt="Music screen: album cover, title, artist, player and progress">
-  <img src="docs/screenshots/game.png" width="32%" alt="Game screen: game art and icon, play time, GPU, CPU, VRAM and RAM">
+  <img src="docs/screenshots/music.png" width="32%" alt="Music screen: album cover, title, artist, progress and previous, play/pause and next buttons">
+  <img src="docs/screenshots/photos.png" width="32%" alt="Photos screen: a photo from a folder on the PC">
+  <img src="docs/screenshots/game.png" width="32%" alt="Game screen: game art and icon, FPS, play time, GPU, CPU, VRAM and RAM">
 </p>
 
 Turn that old phone in your drawer into a live dashboard for your computer.
@@ -56,6 +57,15 @@ screen, a browser rule).
 
 Runs on Windows, Linux and macOS, with any device that has a browser.
 Free and open source (MIT license). Ideas and next steps in [ROADMAP.md](ROADMAP.md).
+
+### Where it has been tried
+
+| | |
+|---|---|
+| **Windows 11** | Everything, day to day: USB and Wi-Fi, sensors, sleep and hibernation, music buttons, photos, updates from the window. |
+| **Linux** | The executable on Ubuntu 20.04, 22.04 and 24.04, Debian 12 and Fedora 41 (in containers): it starts, pairs a phone over Wi-Fi and updates itself. Sensors, music and sleep not yet tried on a real machine. |
+| **macOS** | Not tried yet: should work, treat it as experimental. |
+| **Phones** | Galaxy A55 (Android 14, Chrome) and Galaxy J5 Prime (Android 8, Samsung Internet 7.2, an engine from 2017), over USB and Wi-Fi. iPhone and iPad not tried yet. |
 
 ## Getting started
 

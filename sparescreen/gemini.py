@@ -101,6 +101,10 @@ class GeminiSource:
         if now - self._at >= self.refresh:
             self._scan(now)
             self._at = now
+        if not self._files:
+            # No chats in the last days. Gemini CLI leaves its folders even after a sign-in
+            # that failed (it no longer serves personal accounts): that's not a tool in use.
+            return {"installed": False}
         midnight = datetime.combine(datetime.now().date(), datetime.min.time()).timestamp()
         return {
             "installed": True,

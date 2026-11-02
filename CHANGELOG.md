@@ -12,6 +12,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and versions 
   used only earlier this week shrinks to a line under the cards, and one not used all week
   isn't shown. Before, an installed but unused Codex or Gemini CLI took as much space as
   the Claude Code you were using.
+- Gemini CLI only counts as installed when it has chats: since it stopped serving personal
+  Google accounts, a sign-in that failed left its folders behind and an empty card.
+
+### Fixed
+
+- On a short screen (a browser's own bars on a small phone, before going full screen) the
+  Hardware cards' temperatures ran over the card titles. Tried on a Galaxy J5 Prime
+  (Samsung Internet 7.2), where every screen now shows right.
 
 ### Security
 

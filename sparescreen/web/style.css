@@ -106,10 +106,12 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 .hw-grid { display: flex; flex-direction: column; height: 100%; }
 .hw { flex: 1; display: flex; flex-direction: column; margin-top: 10px; }
 .hw:first-child { margin-top: 0; }
-.hw-body { flex: 1; display: flex; align-items: center; min-height: 0; }
-.hw .ring-wrap { width: 17vh; height: 17vh; }
+/* Centered with auto margins, not align-items: when a short screen (a browser's own bars)
+   leaves too little room, the extra goes down and is cut, instead of over the card's title. */
+.hw-body { flex: 1; display: flex; align-items: flex-start; min-height: 0; }
+.hw .ring-wrap { width: 17vh; height: 17vh; margin: auto 0; }
 .hw .ring-label { font-size: 4.2vh; }
-.hw-info { flex: 1; min-width: 0; margin-left: 16px; }
+.hw-info { flex: 1; min-width: 0; margin: auto 0 auto 16px; }
 .temp { font-size: 6vh; font-weight: 300; line-height: 1; font-variant-numeric: tabular-nums; }
 .temp small { font-size: .45em; }
 .temp.na { color: var(--muted); }
@@ -228,6 +230,7 @@ small { font-size: .5em; color: var(--muted); margin-left: 2px; }
 /* Behind a hardware card: usage, faint, in the lower part of the card */
 .hw { position: relative; }
 .hw > h2, .hw > .hw-body { position: relative; }
+.hw > h2 { flex-shrink: 0; }  /* short screens: the content may be cut, never climb over the title */
 .hw-spark { position: absolute; left: 0; right: 0; bottom: 0; height: 45%; width: 100%; }
 .hw-spark .spark-area { opacity: .14; }
 .hw-spark .spark-line { display: none; }  /* a line would cross the text above it */

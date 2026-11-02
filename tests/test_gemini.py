@@ -140,6 +140,8 @@ class GeminiSourceTest(unittest.TestCase):
 
     def test_not_installed(self):
         self.assertEqual(GeminiSource(home=self.home / "nowhere").read(), {"installed": False})
+        # Folders left by a sign-in that failed, but no chats: not a tool in use.
+        self.assertEqual(self.source.read(), {"installed": False})
 
     def test_model_labels(self):
         self.assertEqual(model_label("gemini-2.5-flash-lite"), "Gemini 2.5 Flash Lite")
